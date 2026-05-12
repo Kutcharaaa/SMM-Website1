@@ -138,25 +138,30 @@ export default function AdminServicesPage() {
 
     if (!confirmDelete) return;
 
-const chunkSize = 100;
+    try {
+      const response = await fetch("/api/admin/services/bulk-delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ids: selectedIds,
+        }),
+      });
 
-for (let i = 0; i < selectedIds.length; i += chunkSize) {
-  const chunk = selectedIds.slice(i, i + chunkSize);
+      const result = await response.json();
 
-  const { error } = await supabase
-    .from("services")
-    .delete()
-    .in("id", chunk);
+      if (!result.success) {
+        setMessage(result.message);
+        return;
+      }
 
-  if (error) {
-    setMessage(error.message);
-    return;
-  }
-}
-
-    setMessage(`${selectedIds.length} services deleted successfully.`);
-    setSelectedIds([]);
-    loadServices();
+      setMessage(result.message);
+      setSelectedIds([]);
+      loadServices();
+    } catch {
+      setMessage("Failed to delete selected services.");
+    }
   }
 
   async function addService() {
@@ -343,11 +348,10 @@ for (let i = 0; i < selectedIds.length; i += chunkSize) {
 
                   <td className="p-5">
                     <span
-                      className={`rounded-full px-3 py-1 text-xs ${
-                        service.auto_order
+                      className={`rounded-full px-3 py-1 text-xs ${service.auto_order
                           ? "bg-purple-500/10 text-purple-400"
                           : "bg-zinc-800 text-zinc-400"
-                      }`}
+                        }`}
                     >
                       {service.auto_order ? "Auto" : "Manual"}
                     </span>
@@ -493,11 +497,10 @@ for (let i = 0; i < selectedIds.length; i += chunkSize) {
 
                 <button
                   onClick={() => setAutoOrder(!autoOrder)}
-                  className={`rounded-xl px-4 py-3 text-sm font-semibold transition ${
-                    autoOrder
+                  className={`rounded-xl px-4 py-3 text-sm font-semibold transition ${autoOrder
                       ? "bg-purple-500/10 text-purple-400"
                       : "bg-zinc-800 text-zinc-400"
-                  }`}
+                    }`}
                 >
                   Auto Order: {autoOrder ? "Enabled" : "Disabled"}
                 </button>
