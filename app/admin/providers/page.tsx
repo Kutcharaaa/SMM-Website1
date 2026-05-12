@@ -265,7 +265,9 @@ export default function AdminProvidersPage() {
         current.filter((id) => !visibleIds.includes(id))
       );
     } else {
-      setSelectedServices((current) => Array.from(new Set([...current, ...visibleIds])));
+      setSelectedServices((current) =>
+        Array.from(new Set([...current, ...visibleIds]))
+      );
     }
   }
 
@@ -556,9 +558,12 @@ export default function AdminProvidersPage() {
                         service.provider_service_id
                       );
 
-                      const basePrice = Number(service.price || 0);
+                      const providerUsdRate = Number(service.price || 0);
+                      const usdToPhpMarketRate = 58;
                       const markup = Number(markupPercent || 0);
-                      const finalPrice = basePrice + basePrice * (markup / 100);
+
+                      const phpCost = providerUsdRate * usdToPhpMarketRate;
+                      const finalPrice = phpCost + phpCost * (markup / 100);
 
                       return (
                         <tr
@@ -590,7 +595,7 @@ export default function AdminProvidersPage() {
                           </td>
 
                           <td className="p-5 text-zinc-400">
-                            {basePrice.toFixed(4)}
+                            ${providerUsdRate.toFixed(4)}
                           </td>
 
                           <td className="p-5 text-purple-400 font-semibold">

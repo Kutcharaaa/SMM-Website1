@@ -34,23 +34,23 @@ export async function POST(req: Request) {
 
     const { data: usdRate, error: rateError } = await supabaseAdmin
       .from("exchange_rates")
-      .select("panel_rate")
+      .select("market_rate")
       .eq("currency_code", "USD")
       .single();
 
     if (rateError || !usdRate) {
       return NextResponse.json({
         success: false,
-        message: "USD panel rate not found. Please sync currencies first.",
+        message: "USD market rate not found. Please sync currencies first.",
       });
     }
 
-    const usdToPhpPanelRate = Number(usdRate.panel_rate || 0);
+    const usdToPhpMarketRate = Number(usdRate.market_rate || 0);
 
-    if (usdToPhpPanelRate <= 0) {
+    if (usdToPhpMarketRate <= 0) {
       return NextResponse.json({
         success: false,
-        message: "Invalid USD panel rate.",
+        message: "Invalid USD market rate.",
       });
     }
 
@@ -58,17 +58,13 @@ export async function POST(req: Request) {
 
     const rows = services.map((service: any) => {
       const providerUsdPrice = Number(service.price || 0);
-
-      const phpCost = providerUsdPrice * usdToPhpPanelRate;
-
+      const phpCost = providerUsdPrice * usdToPhpMarketRate;
       const finalPhpPrice = phpCost + phpCost * (markup / 100);
 
       return {
         name: service.name,
         category: service.category || "Uncategorized",
-        description: `${service.type || "Provider service"} | Imported from ${
-          provider.name
-        } | Provider USD Rate: $${providerUsdPrice}`,
+        description: `${service.type || "Provider service"} | Imported from ${provider.name} | Provider USD Rate: $${providerUsdPrice} | USD/PHP Market Rate: ₱${usdToPhpMarketRate} | Markup: ${markup}%`,
         price_per_1000: Number(finalPhpPrice.toFixed(4)),
         min_quantity: Number(service.min || 0),
         max_quantity: Number(service.max || 0),
@@ -91,7 +87,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      message: `${rows.length} services imported successfully using USD panel rate ₱${usdToPhpPanelRate}.`,
+      message: `${rows.length} services imported successfully using USD market rate ₱${usdToPhpMarketRate} with ${markup}% markup.`,
       imported: rows.length,
     });
   } catch {
