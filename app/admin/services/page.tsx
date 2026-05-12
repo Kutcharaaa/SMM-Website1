@@ -164,6 +164,39 @@ export default function AdminServicesPage() {
     }
   }
 
+async function deleteAllServices() {
+  const confirmDelete = confirm(
+    "Delete ALL services? This cannot be undone."
+  );
+
+  if (!confirmDelete) return;
+
+  const doubleConfirm = confirm(
+    "Are you 100% sure? This will remove every service from your panel."
+  );
+
+  if (!doubleConfirm) return;
+
+  try {
+    const response = await fetch("/api/admin/services/delete-all", {
+      method: "POST",
+    });
+
+    const result = await response.json();
+
+    if (!result.success) {
+      setMessage(result.message);
+      return;
+    }
+
+    setMessage(result.message);
+    setSelectedIds([]);
+    loadServices();
+  } catch {
+    setMessage("Failed to delete all services.");
+  }
+}
+
   async function addService() {
     if (!name || !category || !price || !minQuantity || !maxQuantity) {
       setMessage("Please complete all required fields.");
@@ -279,24 +312,31 @@ export default function AdminServicesPage() {
             Add Service
           </button>
 
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={toggleSelectAll}
-              className="border border-zinc-800 hover:border-blue-500 rounded-xl px-5 py-3 font-semibold transition"
-            >
-              {selectedIds.length === services.length && services.length > 0
-                ? "Unselect All"
-                : "Select All"}
-            </button>
+<div className="flex flex-wrap gap-3">
+  <button
+    onClick={toggleSelectAll}
+    className="border border-zinc-800 hover:border-blue-500 rounded-xl px-5 py-3 font-semibold transition"
+  >
+    {selectedIds.length === services.length && services.length > 0
+      ? "Unselect All"
+      : "Select All"}
+  </button>
 
-            <button
-              onClick={deleteSelectedServices}
-              disabled={selectedIds.length <= 0}
-              className="border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl px-5 py-3 font-semibold transition disabled:opacity-40"
-            >
-              Delete Selected ({selectedIds.length})
-            </button>
-          </div>
+  <button
+    onClick={deleteSelectedServices}
+    disabled={selectedIds.length <= 0}
+    className="border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl px-5 py-3 font-semibold transition disabled:opacity-40"
+  >
+    Delete Selected ({selectedIds.length})
+  </button>
+
+  <button
+    onClick={deleteAllServices}
+    className="border border-red-600 bg-red-600/20 hover:bg-red-600/30 text-red-300 rounded-xl px-5 py-3 font-semibold transition"
+  >
+    Delete All Services
+  </button>
+</div>
         </div>
 
         <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 overflow-x-auto">
