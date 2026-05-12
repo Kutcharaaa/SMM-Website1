@@ -138,15 +138,21 @@ export default function AdminServicesPage() {
 
     if (!confirmDelete) return;
 
-    const { error } = await supabase
-      .from("services")
-      .delete()
-      .in("id", selectedIds);
+const chunkSize = 100;
 
-    if (error) {
-      setMessage(error.message);
-      return;
-    }
+for (let i = 0; i < selectedIds.length; i += chunkSize) {
+  const chunk = selectedIds.slice(i, i + chunkSize);
+
+  const { error } = await supabase
+    .from("services")
+    .delete()
+    .in("id", chunk);
+
+  if (error) {
+    setMessage(error.message);
+    return;
+  }
+}
 
     setMessage(`${selectedIds.length} services deleted successfully.`);
     setSelectedIds([]);
