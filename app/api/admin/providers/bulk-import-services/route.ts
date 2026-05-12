@@ -64,7 +64,7 @@ export async function POST(req: Request) {
       return {
         name: service.name,
         category: service.category || "Uncategorized",
-        description: `${service.type || "Provider service"} | Imported from ${provider.name} | Provider USD Rate: $${providerUsdPrice} | USD/PHP Market Rate: ₱${usdToPhpMarketRate} | Markup: ${markup}%`,
+        description: service.name,
         price_per_1000: Number(finalPhpPrice.toFixed(4)),
         min_quantity: Number(service.min || 0),
         max_quantity: Number(service.max || 0),
