@@ -1,0 +1,113 @@
+"use client";
+
+import { supabase } from "@/lib/supabase";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+
+export default function LoginPage() {
+    const router = useRouter();
+
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [message, setMessage] = useState("");
+
+    async function handleLogin(e: React.FormEvent) {
+        e.preventDefault();
+
+        setMessage("Logging in...");
+
+        const { error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+        });
+
+        if (error) {
+            setMessage(error.message);
+            return;
+        }
+
+        setMessage("Login successful!");
+        window.location.href = "/dashboard";
+    }
+
+    return (
+        <main className="min-h-screen bg-black text-white">
+            <Navbar />
+
+            <section className="max-w-7xl mx-auto px-6 py-24">
+                <div className="max-w-md mx-auto bg-zinc-900/70 border border-zinc-800 rounded-3xl p-8">
+                    <h1 className="text-4xl font-black mb-3">Welcome Back</h1>
+
+                    <p className="text-zinc-400 mb-8">
+                        Login to your Ascend Service account.
+                    </p>
+
+                    <form onSubmit={handleLogin} className="flex flex-col gap-5">
+                        <input
+                            type="email"
+                            placeholder="Email address"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="bg-black border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500"
+                        />
+
+                        <input
+                            type="password"
+                            placeholder="Password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="bg-black border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500"
+                        />
+
+                        <div className="flex items-center justify-between text-sm">
+                            <label className="flex items-center gap-2 text-zinc-400">
+                                <input type="checkbox" className="accent-blue-500" />
+                                Remember me
+                            </label>
+
+                            <a
+                                href="/forgot-password"
+                                className="text-blue-400 hover:text-blue-300"
+                            >
+                                Forgot password?
+                            </a>
+                        </div>
+
+                        <div className="bg-black border border-zinc-800 rounded-xl p-4 flex items-center justify-between">
+                            <label className="flex items-center gap-3 text-zinc-300">
+                                <input type="checkbox" className="w-5 h-5 accent-blue-500" />
+                                I&apos;m not a robot
+                            </label>
+
+                            <div className="text-xs text-zinc-500 text-right">
+                                <p>reCAPTCHA</p>
+                                <p>Privacy - Terms</p>
+                            </div>
+                        </div>
+
+                        {message && <p className="text-sm text-blue-400">{message}</p>}
+
+                        <button
+                            type="submit"
+                            className="bg-blue-600 hover:bg-blue-700 rounded-xl py-3 font-semibold transition"
+                        >
+                            Login
+                        </button>
+                    </form>
+
+                    <p className="text-zinc-400 text-sm mt-6">
+                        Don&apos;t have an account?{" "}
+                        <a href="/register" className="text-blue-400 hover:text-blue-300">
+                            Create account
+                        </a>
+                    </p>
+                </div>
+            </section>
+
+            <Footer />
+        </main>
+    );
+}

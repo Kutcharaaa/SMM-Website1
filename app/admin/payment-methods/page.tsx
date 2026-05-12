@@ -1,0 +1,455 @@
+"use client";
+
+import AdminLayout from "@/components/AdminLayout";
+import AdminGuard from "@/components/AdminGuard";
+import { supabase } from "@/lib/supabase";
+import { useEffect, useState } from "react";
+
+type PaymentMethod = {
+    id: string;
+    name: string;
+    account_name: string;
+    account_number: string;
+    instructions: string;
+    qr_url: string;
+    is_active: boolean;
+    created_at: string;
+};
+
+export default function AdminPaymentMethodsPage() {
+    const [methods, setMethods] = useState<PaymentMethod[]>([]);
+    const [message, setMessage] = useState("");
+
+    const [showModal, setShowModal] = useState(false);
+    const [selectedMethod, setSelectedMethod] =
+        useState<PaymentMethod | null>(null);
+
+    const [name, setName] = useState("");
+    const [accountName, setAccountName] = useState("");
+    const [accountNumber, setAccountNumber] =
+        useState("");
+    const [instructions, setInstructions] =
+        useState("");
+    const [qrUrl, setQrUrl] = useState("");
+    const [isActive, setIsActive] = useState(true);
+
+    async function loadMethods() {
+        const { data, error } = await supabase
+            .from("payment_methods")
+            .select("*")
+            .order("created_at", { ascending: false });
+
+        if (error) {
+            setMessage(error.message);
+            return;
+        }
+
+        setMethods(data || []);
+    }
+
+    useEffect(() => {
+        loadMethods();
+    }, []);
+
+    function resetForm() {
+        setName("");
+        setAccountName("");
+        setAccountNumber("");
+        setInstructions("");
+        setQrUrl("");
+        setIsActive(true);
+    }
+
+    function openManage(method: PaymentMethod) {
+        setSelectedMethod(method);
+
+        setName(method.name || "");
+        setAccountName(method.account_name || "");
+        setAccountNumber(method.account_number || "");
+        setInstructions(method.instructions || "");
+        setQrUrl(method.qr_url || "");
+        setIsActive(method.is_active);
+    }
+
+    async function addMethod() {
+        if (!name) {
+            setMessage("Method name is required.");
+            return;
+        }
+
+        const { error } = await supabase
+            .from("payment_methods")
+            .insert({
+                name,
+                account_name: accountName,
+                account_number: accountNumber,
+                instructions,
+                qr_url: qrUrl,
+                is_active: true,
+            });
+
+        if (error) {
+            setMessage(error.message);
+            return;
+        }
+
+        setMessage("Payment method added successfully.");
+
+        resetForm();
+        setShowModal(false);
+
+        loadMethods();
+    }
+
+    async function updateMethod() {
+        if (!selectedMethod) return;
+
+        const { error } = await supabase
+            .from("payment_methods")
+            .update({
+                name,
+                account_name: accountName,
+                account_number: accountNumber,
+                instructions,
+                qr_url: qrUrl,
+                is_active: isActive,
+            })
+            .eq("id", selectedMethod.id);
+
+        if (error) {
+            setMessage(error.message);
+            return;
+        }
+
+        setMessage("Payment method updated.");
+
+        setSelectedMethod(null);
+
+        resetForm();
+
+        loadMethods();
+    }
+
+    async function deleteMethod() {
+        if (!selectedMethod) return;
+
+        const confirmDelete = confirm(
+            `Delete "${selectedMethod.name}" payment method?`
+        );
+
+        if (!confirmDelete) return;
+
+        const { error } = await supabase
+            .from("payment_methods")
+            .delete()
+            .eq("id", selectedMethod.id);
+
+        if (error) {
+            setMessage(error.message);
+            return;
+        }
+
+        setMessage("Payment method deleted.");
+
+        setSelectedMethod(null);
+
+        resetForm();
+
+        loadMethods();
+    }
+
+    return (
+        <AdminGuard allowedRoles={["super_admin"]}>
+            <AdminLayout>
+                <h2 className="text-4xl font-black mb-4">
+                    Payment Methods
+                </h2>
+
+                <p className="text-zinc-400 mb-8">
+                    Manage deposit methods, QR codes,
+                    account details, and payment instructions.
+                </p>
+
+                {message && (
+                    <p className="text-sm text-blue-400 mb-4">
+                        {message}
+                    </p>
+                )}
+
+                <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 p-6 mb-8">
+                    <button
+                        onClick={() => {
+                            resetForm();
+                            setShowModal(true);
+                        }}
+                        className="bg-blue-600 hover:bg-blue-700 rounded-xl px-5 py-3 font-semibold transition"
+                    >
+                        Add Payment Method
+                    </button>
+                </div>
+
+                <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 overflow-hidden">
+                    <table className="w-full text-sm">
+                        <thead className="bg-black/60 text-zinc-500">
+                            <tr>
+                                <th className="text-left p-5">Method</th>
+                                <th className="text-left p-5">
+                                    Account Name
+                                </th>
+                                <th className="text-left p-5">
+                                    Account Number
+                                </th>
+                                <th className="text-left p-5">
+                                    Status
+                                </th>
+                                <th className="text-left p-5">
+                                    Action
+                                </th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {methods.map((method) => (
+                                <tr
+                                    key={method.id}
+                                    className="border-t border-zinc-900"
+                                >
+                                    <td className="p-5 font-medium">
+                                        {method.name}
+                                    </td>
+
+                                    <td className="p-5 text-zinc-400">
+                                        {method.account_name || "-"}
+                                    </td>
+
+                                    <td className="p-5 text-zinc-400">
+                                        {method.account_number || "-"}
+                                    </td>
+
+                                    <td className="p-5">
+                                        <span
+                                            className={`rounded-full px-3 py-1 text-xs ${method.is_active
+                                                    ? "bg-green-500/10 text-green-400"
+                                                    : "bg-red-500/10 text-red-400"
+                                                }`}
+                                        >
+                                            {method.is_active
+                                                ? "Active"
+                                                : "Disabled"}
+                                        </span>
+                                    </td>
+
+                                    <td className="p-5">
+                                        <button
+                                            onClick={() =>
+                                                openManage(method)
+                                            }
+                                            className="text-blue-400 hover:text-blue-300 font-semibold"
+                                        >
+                                            Manage
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+
+                            {methods.length <= 0 && (
+                                <tr>
+                                    <td
+                                        colSpan={5}
+                                        className="p-10 text-center text-zinc-500"
+                                    >
+                                        No payment methods yet.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
+                {(showModal || selectedMethod) && (
+                    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
+                        <div className="w-full max-w-2xl rounded-3xl border border-zinc-800 bg-zinc-950 overflow-hidden">
+                            <div className="p-6 border-b border-zinc-800 flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-2xl font-black">
+                                        {selectedMethod
+                                            ? "Manage Payment Method"
+                                            : "Add Payment Method"}
+                                    </h3>
+                                </div>
+
+                                <button
+                                    onClick={() => {
+                                        setShowModal(false);
+                                        setSelectedMethod(null);
+                                        resetForm();
+                                    }}
+                                    className="text-zinc-500 hover:text-white text-xl"
+                                >
+                                    ×
+                                </button>
+                            </div>
+
+                            <div className="p-6 space-y-5">
+                                <input
+                                    type="text"
+                                    placeholder="Method Name"
+                                    value={name}
+                                    onChange={(e) =>
+                                        setName(e.target.value)
+                                    }
+                                    className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500"
+                                />
+
+                                <input
+                                    type="text"
+                                    placeholder="Account Name"
+                                    value={accountName}
+                                    onChange={(e) =>
+                                        setAccountName(e.target.value)
+                                    }
+                                    className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500"
+                                />
+
+                                <input
+                                    type="text"
+                                    placeholder="Account Number"
+                                    value={accountNumber}
+                                    onChange={(e) =>
+                                        setAccountNumber(e.target.value)
+                                    }
+                                    className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500"
+                                />
+
+                                <textarea
+                                    rows={4}
+                                    placeholder="Instructions"
+                                    value={instructions}
+                                    onChange={(e) =>
+                                        setInstructions(
+                                            e.target.value
+                                        )
+                                    }
+                                    className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500 resize-none"
+                                />
+
+                                <div className="space-y-3">
+                                    <label className="block text-sm text-zinc-500">
+                                        Upload QR Image
+                                    </label>
+
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+
+                                            if (!file) return;
+
+                                            setMessage("Uploading QR image...");
+
+                                            const fileName = `${Date.now()}-${file.name}`;
+
+                                            const { error: uploadError } =
+                                                await supabase.storage
+                                                    .from("payment-method-qrs")
+                                                    .upload(fileName, file);
+
+                                            if (uploadError) {
+                                                setMessage(uploadError.message);
+                                                return;
+                                            }
+
+                                            const {
+                                                data: { publicUrl },
+                                            } = supabase.storage
+                                                .from("payment-method-qrs")
+                                                .getPublicUrl(fileName);
+
+                                            setQrUrl(publicUrl);
+
+                                            setMessage("QR image uploaded.");
+                                        }}
+                                        className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 outline-none"
+                                    />
+
+                                    {qrUrl && (
+                                        <img
+                                            src={qrUrl}
+                                            alt="QR Preview"
+                                            className="w-52 h-52 object-cover rounded-2xl border border-zinc-800"
+                                        />
+                                    )}
+                                </div>
+
+                                {selectedMethod && (
+                                    <select
+                                        value={
+                                            isActive
+                                                ? "active"
+                                                : "disabled"
+                                        }
+                                        onChange={(e) =>
+                                            setIsActive(
+                                                e.target.value ===
+                                                "active"
+                                            )
+                                        }
+                                        className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500"
+                                    >
+                                        <option value="active">
+                                            Active
+                                        </option>
+
+                                        <option value="disabled">
+                                            Disabled
+                                        </option>
+                                    </select>
+                                )}
+                            </div>
+
+                            <div className="p-6 border-t border-zinc-800 flex justify-between gap-3">
+                                <div>
+                                    {selectedMethod && (
+                                        <button
+                                            onClick={deleteMethod}
+                                            className="border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl px-5 py-3 font-semibold transition"
+                                        >
+                                            Delete
+                                        </button>
+                                    )}
+                                </div>
+
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => {
+                                            setShowModal(false);
+                                            setSelectedMethod(null);
+                                            resetForm();
+                                        }}
+                                        className="border border-zinc-800 hover:border-zinc-600 rounded-xl px-5 py-3 font-semibold transition"
+                                    >
+                                        Cancel
+                                    </button>
+
+                                    <button
+                                        onClick={
+                                            selectedMethod
+                                                ? updateMethod
+                                                : addMethod
+                                        }
+                                        className="bg-blue-600 hover:bg-blue-700 rounded-xl px-5 py-3 font-semibold transition"
+                                    >
+                                        {selectedMethod
+                                            ? "Save Changes"
+                                            : "Create Method"}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </AdminLayout>
+        </AdminGuard>
+    );
+}
