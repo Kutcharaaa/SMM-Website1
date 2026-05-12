@@ -33,6 +33,8 @@ export default function AdminServicesPage() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [message, setMessage] = useState("");
 
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
 
@@ -106,6 +108,49 @@ export default function AdminServicesPage() {
     setProviderId(service.provider_id || "");
     setAutoOrder(Boolean(service.auto_order));
     setStatus(service.status || "active");
+  }
+
+  function toggleSelectService(id: string) {
+    setSelectedIds((current) =>
+      current.includes(id)
+        ? current.filter((item) => item !== id)
+        : [...current, id]
+    );
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.length === services.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(services.map((service) => service.id));
+    }
+  }
+
+  async function deleteSelectedServices() {
+    if (selectedIds.length <= 0) {
+      setMessage("Please select at least one service.");
+      return;
+    }
+
+    const confirmDelete = confirm(
+      `Delete ${selectedIds.length} selected services? This cannot be undone.`
+    );
+
+    if (!confirmDelete) return;
+
+    const { error } = await supabase
+      .from("services")
+      .delete()
+      .in("id", selectedIds);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setMessage(`${selectedIds.length} services deleted successfully.`);
+    setSelectedIds([]);
+    loadServices();
   }
 
   async function addService() {
@@ -212,7 +257,7 @@ export default function AdminServicesPage() {
 
         {message && <p className="text-sm text-blue-400 mb-4">{message}</p>}
 
-        <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 p-6 mb-8">
+        <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 p-6 mb-8 flex flex-wrap gap-3 justify-between">
           <button
             onClick={() => {
               resetForm();
@@ -222,12 +267,32 @@ export default function AdminServicesPage() {
           >
             Add Service
           </button>
+
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={toggleSelectAll}
+              className="border border-zinc-800 hover:border-blue-500 rounded-xl px-5 py-3 font-semibold transition"
+            >
+              {selectedIds.length === services.length && services.length > 0
+                ? "Unselect All"
+                : "Select All"}
+            </button>
+
+            <button
+              onClick={deleteSelectedServices}
+              disabled={selectedIds.length <= 0}
+              className="border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl px-5 py-3 font-semibold transition disabled:opacity-40"
+            >
+              Delete Selected ({selectedIds.length})
+            </button>
+          </div>
         </div>
 
         <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-black/60 text-zinc-500">
               <tr>
+                <th className="text-left p-5">Select</th>
                 <th className="text-left p-5">Service</th>
                 <th className="text-left p-5">Category</th>
                 <th className="text-left p-5">Provider</th>
@@ -243,6 +308,15 @@ export default function AdminServicesPage() {
             <tbody>
               {services.map((service) => (
                 <tr key={service.id} className="border-t border-zinc-900">
+                  <td className="p-5">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(service.id)}
+                      onChange={() => toggleSelectService(service.id)}
+                      className="h-5 w-5 accent-blue-600"
+                    />
+                  </td>
+
                   <td className="p-5">
                     <p className="font-medium">{service.name}</p>
                     <p className="text-xs text-zinc-500 max-w-xs truncate">
@@ -303,7 +377,7 @@ export default function AdminServicesPage() {
 
               {services.length <= 0 && (
                 <tr>
-                  <td colSpan={9} className="p-10 text-center text-zinc-500">
+                  <td colSpan={10} className="p-10 text-center text-zinc-500">
                     No services yet.
                   </td>
                 </tr>
@@ -341,133 +415,97 @@ export default function AdminServicesPage() {
               </div>
 
               <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-                <div>
-                  <p className="text-sm text-zinc-400 mb-2">Service Name</p>
-                  <input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500"
-                    placeholder="Instagram Followers"
-                  />
-                </div>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500"
+                  placeholder="Service Name"
+                />
 
-                <div>
-                  <p className="text-sm text-zinc-400 mb-2">Category</p>
-                  <input
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500"
-                    placeholder="Instagram"
-                  />
-                </div>
+                <input
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500"
+                  placeholder="Category"
+                />
 
-                <div>
-                  <p className="text-sm text-zinc-400 mb-2">Description</p>
-                  <textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500 min-h-24"
-                    placeholder="Service description"
-                  />
-                </div>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500 min-h-24"
+                  placeholder="Description"
+                />
 
                 <div className="grid md:grid-cols-3 gap-4">
-                  <div>
-                    <p className="text-sm text-zinc-400 mb-2">Price / 1000</p>
-                    <input
-                      value={price}
-                      onChange={(e) => setPrice(e.target.value)}
-                      type="number"
-                      className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500"
-                    />
-                  </div>
+                  <input
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    type="number"
+                    placeholder="Price / 1000"
+                    className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500"
+                  />
 
-                  <div>
-                    <p className="text-sm text-zinc-400 mb-2">Min Quantity</p>
-                    <input
-                      value={minQuantity}
-                      onChange={(e) => setMinQuantity(e.target.value)}
-                      type="number"
-                      className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500"
-                    />
-                  </div>
+                  <input
+                    value={minQuantity}
+                    onChange={(e) => setMinQuantity(e.target.value)}
+                    type="number"
+                    placeholder="Min"
+                    className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500"
+                  />
 
-                  <div>
-                    <p className="text-sm text-zinc-400 mb-2">Max Quantity</p>
-                    <input
-                      value={maxQuantity}
-                      onChange={(e) => setMaxQuantity(e.target.value)}
-                      type="number"
-                      className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500"
-                    />
-                  </div>
+                  <input
+                    value={maxQuantity}
+                    onChange={(e) => setMaxQuantity(e.target.value)}
+                    type="number"
+                    placeholder="Max"
+                    className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500"
+                  />
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-zinc-400 mb-2">Provider</p>
-                    <select
-                      value={providerId}
-                      onChange={(e) => setProviderId(e.target.value)}
-                      className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500"
-                    >
-                      <option value="">Manual / No Provider</option>
-
-                      {providers.map((provider) => (
-                        <option key={provider.id} value={provider.id}>
-                          {provider.name} ({provider.mode})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <p className="text-sm text-zinc-400 mb-2">
-                      Provider Service ID
-                    </p>
-                    <input
-                      value={providerServiceId}
-                      onChange={(e) => setProviderServiceId(e.target.value)}
-                      className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500"
-                      placeholder="1234"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between rounded-2xl border border-zinc-800 bg-black p-4">
-                  <div>
-                    <p className="font-semibold">Auto Order</p>
-                    <p className="text-sm text-zinc-500">
-                      Later, this service will auto-send orders to the selected
-                      provider.
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() => setAutoOrder(!autoOrder)}
-                    className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
-                      autoOrder
-                        ? "bg-purple-500/10 text-purple-400"
-                        : "bg-zinc-800 text-zinc-400"
-                    }`}
+                  <select
+                    value={providerId}
+                    onChange={(e) => setProviderId(e.target.value)}
+                    className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500"
                   >
-                    {autoOrder ? "Enabled" : "Disabled"}
-                  </button>
+                    <option value="">Manual / No Provider</option>
+
+                    {providers.map((provider) => (
+                      <option key={provider.id} value={provider.id}>
+                        {provider.name} ({provider.mode})
+                      </option>
+                    ))}
+                  </select>
+
+                  <input
+                    value={providerServiceId}
+                    onChange={(e) => setProviderServiceId(e.target.value)}
+                    className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500"
+                    placeholder="Provider Service ID"
+                  />
                 </div>
+
+                <button
+                  onClick={() => setAutoOrder(!autoOrder)}
+                  className={`rounded-xl px-4 py-3 text-sm font-semibold transition ${
+                    autoOrder
+                      ? "bg-purple-500/10 text-purple-400"
+                      : "bg-zinc-800 text-zinc-400"
+                  }`}
+                >
+                  Auto Order: {autoOrder ? "Enabled" : "Disabled"}
+                </button>
 
                 {selectedService && (
-                  <div>
-                    <p className="text-sm text-zinc-400 mb-2">Status</p>
-                    <select
-                      value={status}
-                      onChange={(e) => setStatus(e.target.value)}
-                      className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500"
-                    >
-                      <option value="active">Active</option>
-                      <option value="paused">Paused</option>
-                      <option value="disabled">Disabled</option>
-                    </select>
-                  </div>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500"
+                  >
+                    <option value="active">Active</option>
+                    <option value="paused">Paused</option>
+                    <option value="disabled">Disabled</option>
+                  </select>
                 )}
               </div>
 
