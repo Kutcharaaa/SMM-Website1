@@ -1,6 +1,7 @@
 import { resend } from "@/lib/resend";
 
-const FROM_EMAIL = "Ascend Service <onboarding@resend.dev>";
+const FROM_EMAIL =
+  "Ascend Service <noreply@mail.ascend-service.org>";
 
 export async function sendEmail({
   to,
