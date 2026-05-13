@@ -74,19 +74,72 @@ export async function POST(req: Request) {
       });
     }
 
-    const { error: orderError } = await supabaseAdmin.from("orders").insert({
-      user_id: userId,
-      service_id: service.id,
-      service_name: service.name,
-      link,
-      quantity: qty,
-      price: charge,
-      start_count: 0,
-      current_count: 0,
-      provider_order_id: null,
-      provider_name: service.provider_name,
-      status: "pending",
-    });
+    let providerOrderId: string | null = null;
+    let orderStatus = "pending";
+
+    if (
+      service.auto_order &&
+      service.provider_id &&
+      service.provider_service_id
+    ) {
+      const { data: provider } = await supabaseAdmin
+        .from("providers")
+        .select("*")
+        .eq("id", service.provider_id)
+        .single();
+
+      if (
+        provider &&
+        provider.status === "active" &&
+        provider.mode === "auto"
+      ) {
+        try {
+          const formData = new FormData();
+
+          formData.append("key", provider.api_key);
+          formData.append("action", "add");
+          formData.append(
+            "service",
+            String(service.provider_service_id)
+          );
+          formData.append("link", link);
+          formData.append("quantity", String(qty));
+
+          const providerResponse = await fetch(provider.api_url, {
+            method: "POST",
+            body: formData,
+          });
+
+          const providerResult = await providerResponse.json();
+
+          if (
+            providerResponse.ok &&
+            providerResult.order
+          ) {
+            providerOrderId = String(providerResult.order);
+            orderStatus = "processing";
+          }
+        } catch {
+          orderStatus = "pending";
+        }
+      }
+    }
+
+    const { error: orderError } = await supabaseAdmin
+      .from("orders")
+      .insert({
+        user_id: userId,
+        service_id: service.id,
+        service_name: service.name,
+        link,
+        quantity: qty,
+        price: charge,
+        start_count: 0,
+        current_count: 0,
+        provider_order_id: providerOrderId,
+        provider_name: service.provider_name,
+        status: orderStatus,
+      });
 
     if (orderError) {
       await supabaseAdmin
@@ -114,7 +167,12 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      message: "Order created successfully.",
+      message:
+        orderStatus === "processing"
+          ? "Order created and sent to provider successfully."
+          : "Order created successfully.",
+      provider_order_id: providerOrderId,
+      status: orderStatus,
     });
   } catch {
     return NextResponse.json({
