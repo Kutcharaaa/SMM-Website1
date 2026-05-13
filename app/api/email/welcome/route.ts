@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import {
-  sendEmail,
-  welcomeEmail,
-} from "@/lib/email";
+import { supabaseAdmin } from "@/lib/supabase-admin";
+import { sendEmail, baseEmailTemplate } from "@/lib/email";
 
 export async function POST(req: Request) {
   try {
@@ -15,17 +13,39 @@ export async function POST(req: Request) {
       });
     }
 
+    const token = crypto.randomUUID();
+
+    await supabaseAdmin
+      .from("profiles")
+      .update({
+        email_verification_token: token,
+        email_verification_sent_at: new Date().toISOString(),
+        email_verified: false,
+      })
+      .eq("email", email);
+
+    const verifyUrl = `https://ascend-service.org/api/auth/verify-email?token=${token}`;
+
     await sendEmail({
       to: email,
-      subject: "Welcome to Ascend Service",
-      html: welcomeEmail({
-        username,
+      subject: "Welcome to Ascend Service - Verify Your Email",
+      html: baseEmailTemplate({
+        title: "Welcome to Ascend Service",
+        message: `Welcome${
+          username ? `, ${username}` : ""
+        }! Please verify your email address to secure your account and complete your registration.`,
+        details: `
+          <p><strong>Account Email:</strong> ${email}</p>
+          <p>Click the button below to verify your email address.</p>
+        `,
+        buttonText: "Verify Email",
+        buttonUrl: verifyUrl,
       }),
     });
 
     return NextResponse.json({
       success: true,
-      message: "Welcome email sent.",
+      message: "Welcome verification email sent.",
     });
   } catch {
     return NextResponse.json({
