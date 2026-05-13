@@ -61,6 +61,7 @@ export default function NewOrderPage() {
     setServices(serviceData || []);
 
     const { data: authData } = await supabase.auth.getUser();
+
     if (!authData.user) return;
 
     const { data: profileData } = await supabase
@@ -130,6 +131,11 @@ export default function NewOrderPage() {
   const estimatedCharge = selectedService
     ? (Number(quantity || 0) / 1000) * Number(selectedService.price_per_1000)
     : 0;
+
+  function getPublicServiceId(service: Service | null) {
+    if (!service) return "N/A";
+    return service.provider_service_id || service.id.slice(0, 8);
+  }
 
   function getServiceTags(service: Service) {
     const text = `${service.name} ${service.description || ""}`.toLowerCase();
@@ -325,10 +331,12 @@ export default function NewOrderPage() {
 
               {filteredServices.map((service) => {
                 const tags = getServiceTags(service);
+                const publicId = getPublicServiceId(service);
 
                 return (
                   <option key={service.id} value={service.id}>
-                    ₱{Number(service.price_per_1000 || 0).toFixed(2)} / 1000 -{" "}
+                    [{publicId}] - ₱
+                    {Number(service.price_per_1000 || 0).toFixed(2)} / 1000 -{" "}
                     {tags.length > 0 ? `[${tags.join("] [")}] ` : ""}
                     {service.name}
                   </option>
@@ -389,6 +397,13 @@ export default function NewOrderPage() {
 
           {selectedService ? (
             <div className="space-y-5 text-sm">
+              <div>
+                <p className="text-zinc-500">Service ID</p>
+                <span className="inline-flex rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-black text-blue-400">
+                  [{getPublicServiceId(selectedService)}]
+                </span>
+              </div>
+
               <div>
                 <p className="text-zinc-500">Selected Service</p>
                 <p className="font-semibold">{selectedService.name}</p>
