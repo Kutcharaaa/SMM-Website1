@@ -3,10 +3,6 @@
 import AdminLayout from "@/components/AdminLayout";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
-import {
-  sendEmail,
-  depositStatusEmail,
-} from "@/lib/email";
 
 type Deposit = {
   id: string;
@@ -25,8 +21,6 @@ type Deposit = {
 
 type Profile = {
   balance: number;
-  email?: string | null;
-  username?: string | null;
 };
 
 export default function AdminPaymentsPage() {
@@ -61,50 +55,15 @@ export default function AdminPaymentsPage() {
   }, []);
 
   function getStatusStyle(status: string) {
-    if (status === "approved") {
-      return "bg-green-500/10 text-green-400";
-    }
-
-    if (status === "rejected") {
-      return "bg-red-500/10 text-red-400";
-    }
-
+    if (status === "approved") return "bg-green-500/10 text-green-400";
+    if (status === "rejected") return "bg-red-500/10 text-red-400";
     return "bg-yellow-500/10 text-yellow-400";
-  }
-
-  function addProofToEmail(html: string, proofUrl?: string, label = "Payment Proof") {
-    if (!proofUrl) return html;
-
-    return html.replace(
-      "</div></div>",
-      `
-        <div style="margin-top:20px;">
-          <p style="font-weight:bold; margin-bottom:10px;">
-            ${label}
-          </p>
-
-          <img
-            src="${proofUrl}"
-            alt="Payment Proof"
-            style="
-              width:100%;
-              max-height:480px;
-              object-fit:contain;
-              border-radius:16px;
-              border:1px solid #222;
-              background:#000;
-            "
-          />
-        </div>
-      </div></div>
-      `
-    );
   }
 
   async function getUserProfile(userId: string) {
     const { data, error } = await supabase
       .from("profiles")
-      .select("balance, email, username")
+      .select("balance")
       .eq("id", userId)
       .single();
 
@@ -172,24 +131,6 @@ export default function AdminPaymentsPage() {
       is_read: false,
     });
 
-    if (profile.email) {
-      const emailHtml = depositStatusEmail({
-        status: "approved",
-        amount: Number(selectedDeposit.amount || 0),
-        method: selectedDeposit.method,
-      });
-
-      await sendEmail({
-        to: profile.email,
-        subject: "Deposit Approved",
-        html: addProofToEmail(
-          emailHtml,
-          selectedDeposit.proof_url,
-          "Payment Proof"
-        ),
-      });
-    }
-
     setMessage("Deposit approved successfully.");
     setSelectedDeposit(null);
     setShowRejectBox(false);
@@ -206,13 +147,9 @@ export default function AdminPaymentsPage() {
     }
 
     const confirmReject = confirm("Reject this deposit request?");
-
     if (!confirmReject) return;
 
     setMessage("Rejecting deposit...");
-
-    const profile = await getUserProfile(selectedDeposit.user_id);
-    if (!profile) return;
 
     const { error: depositError } = await supabase
       .from("deposits")
@@ -235,24 +172,6 @@ export default function AdminPaymentsPage() {
       is_read: false,
     });
 
-    if (profile.email) {
-      const emailHtml = depositStatusEmail({
-        status: "rejected",
-        amount: Number(selectedDeposit.amount || 0),
-        method: selectedDeposit.method,
-      });
-
-      await sendEmail({
-        to: profile.email,
-        subject: "Deposit Rejected",
-        html: addProofToEmail(
-          emailHtml,
-          selectedDeposit.proof_url,
-          "Submitted Payment Proof"
-        ),
-      });
-    }
-
     setMessage("Deposit rejected successfully.");
     setSelectedDeposit(null);
     setShowRejectBox(false);
@@ -269,9 +188,7 @@ export default function AdminPaymentsPage() {
         balance.
       </p>
 
-      {message && (
-        <p className="text-sm text-blue-400 mb-4">{message}</p>
-      )}
+      {message && <p className="text-sm text-blue-400 mb-4">{message}</p>}
 
       <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 overflow-hidden">
         <table className="w-full text-sm">
@@ -355,7 +272,6 @@ export default function AdminPaymentsPage() {
             <div className="p-6 border-b border-zinc-800 flex items-center justify-between">
               <div>
                 <h3 className="text-2xl font-black">Review Deposit</h3>
-
                 <p className="text-sm text-zinc-500">
                   Verify payment details before approving or rejecting.
                 </p>
@@ -377,7 +293,6 @@ export default function AdminPaymentsPage() {
               <div className="space-y-5">
                 <div>
                   <p className="text-sm text-zinc-500">Paid Amount</p>
-
                   <p className="text-3xl font-black text-blue-400">
                     {selectedDeposit.currency || "PHP"}{" "}
                     {Number(selectedDeposit.amount || 0).toFixed(2)}
@@ -386,7 +301,6 @@ export default function AdminPaymentsPage() {
 
                 <div>
                   <p className="text-sm text-zinc-500">Wallet Credit</p>
-
                   <p className="text-3xl font-black text-green-400">
                     ₱
                     {Number(
@@ -399,18 +313,14 @@ export default function AdminPaymentsPage() {
 
                 <div>
                   <p className="text-sm text-zinc-500">Conversion Rate</p>
-
                   <p className="font-semibold">
                     1 {selectedDeposit.currency || "PHP"} = ₱
-                    {Number(
-                      selectedDeposit.conversion_rate || 1
-                    ).toFixed(2)}
+                    {Number(selectedDeposit.conversion_rate || 1).toFixed(2)}
                   </p>
                 </div>
 
                 <div>
                   <p className="text-sm text-zinc-500">User ID</p>
-
                   <p className="text-sm text-zinc-300 break-all">
                     {selectedDeposit.user_id}
                   </p>
@@ -418,13 +328,11 @@ export default function AdminPaymentsPage() {
 
                 <div>
                   <p className="text-sm text-zinc-500">Payment Method</p>
-
                   <p className="font-semibold">{selectedDeposit.method}</p>
                 </div>
 
                 <div>
                   <p className="text-sm text-zinc-500">Reference Number</p>
-
                   <p className="font-semibold">
                     {selectedDeposit.reference_number}
                   </p>
@@ -432,7 +340,6 @@ export default function AdminPaymentsPage() {
 
                 <div>
                   <p className="text-sm text-zinc-500">Status</p>
-
                   <span
                     className={`inline-block rounded-full px-3 py-1 text-xs capitalize ${getStatusStyle(
                       selectedDeposit.status
@@ -445,7 +352,6 @@ export default function AdminPaymentsPage() {
                 {selectedDeposit.reject_reason && (
                   <div>
                     <p className="text-sm text-zinc-500">Reject Reason</p>
-
                     <p className="text-red-400">
                       {selectedDeposit.reject_reason}
                     </p>
@@ -454,11 +360,8 @@ export default function AdminPaymentsPage() {
 
                 <div>
                   <p className="text-sm text-zinc-500">Submitted</p>
-
                   <p className="text-zinc-300">
-                    {new Date(
-                      selectedDeposit.created_at
-                    ).toLocaleString()}
+                    {new Date(selectedDeposit.created_at).toLocaleString()}
                   </p>
                 </div>
 
