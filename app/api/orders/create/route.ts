@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { sendEmail, baseEmailTemplate } from "@/lib/email";
+import {
+  sendEmail,
+  orderPlacedEmail,
+  adminAlertEmail,
+} from "@/lib/email";
 
 export async function POST(req: Request) {
   try {
@@ -177,24 +181,34 @@ export async function POST(req: Request) {
       },
     ]);
 
-    if (profile.email) {
-      await sendEmail({
-        to: "rowellenuque0326@gmail.com",
-        subject: "Order Placed Successfully",
-        html: baseEmailTemplate({
-          title: "Order Confirmed",
-          message:
-            "Your order was placed successfully and is now being processed.",
-          details: `
-            <p><strong>Service:</strong> ${service.name}</p>
-            <p><strong>Quantity:</strong> ${qty}</p>
-            <p><strong>Charge:</strong> ₱${charge.toFixed(2)}</p>
-            <p><strong>Status:</strong> ${orderStatus}</p>
-          `,
-        }),
-      });
-    }
+if (profile.email) {
+  await sendEmail({
+    to: profile.email,
+    subject: "Order Placed Successfully",
+    html: orderPlacedEmail({
+      serviceName: service.name,
+      quantity: qty,
+      charge,
+      status: orderStatus,
+    }),
+  });
+}
 
+await sendEmail({
+  to: "rowellenuque0326@gmail.com",
+  subject: "New Order Received",
+  html: adminAlertEmail({
+    title: "New Order",
+    message: "A new order has been placed on Ascend Service.",
+    details: `
+      <p><strong>User:</strong> ${profile.username || "Unknown"}</p>
+      <p><strong>Service:</strong> ${service.name}</p>
+      <p><strong>Quantity:</strong> ${qty}</p>
+      <p><strong>Charge:</strong> ₱${charge.toFixed(2)}</p>
+      <p><strong>Status:</strong> ${orderStatus}</p>
+    `,
+  }),
+});
     return NextResponse.json({
       success: true,
       message:
