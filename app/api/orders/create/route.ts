@@ -134,9 +134,8 @@ export async function POST(req: Request) {
         await supabaseAdmin.from("notifications").insert({
           user_id: null,
           title: "Provider Auto Order Failed",
-          message: `${provider.name}: ${
-            providerResult.error || "Unknown provider error"
-          }. User was not charged.`,
+          message: `${provider.name}: ${providerResult.error || "Unknown provider error"
+            }. User was not charged.`,
           type: "provider_error",
           is_read: false,
         });
@@ -205,8 +204,8 @@ export async function POST(req: Request) {
       success: true,
       message:
         orderStatus === "processing"
-          ? "Order created and sent to provider successfully."
-          : "Order created successfully.",
+          ? "Order placed successfully. Your order is now processing."
+          : "Order placed successfully.",
       provider_order_id: providerOrderId,
       status: orderStatus,
     });
