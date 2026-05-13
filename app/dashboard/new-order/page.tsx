@@ -182,14 +182,6 @@ export default function NewOrderPage() {
       return;
     }
 
-    const charge = (qty / 1000) * Number(selectedService.price_per_1000);
-    const balance = Number(profile?.balance || 0);
-
-    if (balance < charge) {
-      setMessage("Insufficient wallet balance.");
-      return;
-    }
-
     setMessage("Creating order...");
 
     const { data: authData } = await supabase.auth.getUser();
@@ -199,48 +191,41 @@ export default function NewOrderPage() {
       return;
     }
 
-    const newBalance = balance - charge;
+    try {
+      const response = await fetch("/api/orders/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: authData.user.id,
+          serviceId: selectedService.id,
+          link,
+          quantity: qty,
+        }),
+      });
 
-    const { error: balanceError } = await supabase
-      .from("profiles")
-      .update({ balance: newBalance })
-      .eq("id", authData.user.id);
+      const result = await response.json();
 
-    if (balanceError) {
-      setMessage(balanceError.message);
-      return;
+      if (!result.success) {
+        setMessage(result.message);
+        return;
+      }
+
+      setMessage(result.message || "Order placed successfully.");
+
+      setNetwork("Everything");
+      setCategory("");
+      setSelectedServiceId("");
+      setSearch("");
+      setLink("");
+      setQuantity("");
+      setNotes("");
+
+      loadData();
+    } catch {
+      setMessage("Failed to create order.");
     }
-
-    const { error: orderError } = await supabase.from("orders").insert({
-      user_id: authData.user.id,
-      service_id: selectedService.id,
-      service_name: selectedService.name,
-      link,
-      quantity: qty,
-      price: charge,
-      start_count: 0,
-      current_count: 0,
-      provider_order_id: null,
-      provider_name: selectedService.provider_name,
-      status: "pending",
-    });
-
-    if (orderError) {
-      setMessage(orderError.message);
-      return;
-    }
-
-    setMessage("Order placed successfully.");
-
-    setNetwork("Everything");
-    setCategory("");
-    setSelectedServiceId("");
-    setSearch("");
-    setLink("");
-    setQuantity("");
-    setNotes("");
-
-    loadData();
   }
 
   return (
@@ -346,8 +331,8 @@ export default function NewOrderPage() {
                         type="button"
                         onClick={() => setSelectedServiceId(service.id)}
                         className={`w-full text-left px-4 py-3 border-b border-zinc-900 transition ${isSelected
-                            ? "bg-blue-600/15"
-                            : "hover:bg-zinc-900"
+                          ? "bg-blue-600/15"
+                          : "hover:bg-zinc-900"
                           }`}
                       >
                         <div className="flex items-start gap-3">
