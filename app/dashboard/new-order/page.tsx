@@ -277,11 +277,10 @@ export default function NewOrderPage() {
               setSelectedServiceId("");
               setSearch("");
             }}
-            className={`rounded-2xl border px-5 py-4 font-semibold transition ${
-              network === item.name
-                ? "border-blue-500 bg-blue-500/10 text-blue-400"
-                : "border-zinc-800 bg-zinc-950/80 text-zinc-400 hover:border-blue-500 hover:text-white"
-            }`}
+            className={`rounded-2xl border px-5 py-4 font-semibold transition ${network === item.name
+              ? "border-blue-500 bg-blue-500/10 text-blue-400"
+              : "border-zinc-800 bg-zinc-950/80 text-zinc-400 hover:border-blue-500 hover:text-white"
+              }`}
           >
             <span className="mr-2">{item.icon}</span>
             {item.name}
@@ -321,29 +320,68 @@ export default function NewOrderPage() {
               ))}
             </select>
 
-            <select
-              value={selectedServiceId}
-              onChange={(e) => setSelectedServiceId(e.target.value)}
-              disabled={!category}
-              className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500 disabled:opacity-50"
-            >
-              <option value="">Select Service / Server</option>
+            <div className="rounded-xl border border-zinc-800 bg-black overflow-hidden">
+              <div className="border-b border-zinc-800 px-4 py-3 text-sm text-zinc-500">
+                Select Service / Server
+              </div>
 
-              {filteredServices.map((service) => {
-                const tags = getServiceTags(service);
-                const publicId = getPublicServiceId(service);
+              {!category ? (
+                <div className="px-4 py-4 text-sm text-zinc-500">
+                  Please select a category first.
+                </div>
+              ) : filteredServices.length <= 0 ? (
+                <div className="px-4 py-4 text-sm text-zinc-500">
+                  No services found.
+                </div>
+              ) : (
+                <div className="max-h-80 overflow-y-auto">
+                  {filteredServices.map((service) => {
+                    const tags = getServiceTags(service);
+                    const publicId = getPublicServiceId(service);
+                    const isSelected = selectedServiceId === service.id;
 
-                return (
-                  <option key={service.id} value={service.id}>
-                    [{publicId}] - ₱
-                    {Number(service.price_per_1000 || 0).toFixed(2)} / 1000 -{" "}
-                    {tags.length > 0 ? `[${tags.join("] [")}] ` : ""}
-                    {service.name}
-                  </option>
-                );
-              })}
-            </select>
+                    return (
+                      <button
+                        key={service.id}
+                        type="button"
+                        onClick={() => setSelectedServiceId(service.id)}
+                        className={`w-full text-left px-4 py-3 border-b border-zinc-900 transition ${isSelected
+                            ? "bg-blue-600/15"
+                            : "hover:bg-zinc-900"
+                          }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="mt-0.5 inline-flex min-w-[64px] justify-center rounded-lg bg-blue-600 px-3 py-1 text-xs font-black text-white shadow-sm">
+                            {publicId}
+                          </span>
 
+                          <div className="flex-1">
+                            <p className="text-sm font-semibold text-white leading-relaxed">
+                              {service.name}
+                            </p>
+
+                            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                              <span className="text-blue-400 font-bold">
+                                ₱{Number(service.price_per_1000 || 0).toFixed(2)} / 1000
+                              </span>
+
+                              {tags.map((tag) => (
+                                <span
+                                  key={tag}
+                                  className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-zinc-400"
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
             {filteredServices.length > 0 && category && (
               <p className="text-xs text-zinc-500">
                 Services sorted from cheapest to most expensive.
@@ -398,9 +436,10 @@ export default function NewOrderPage() {
           {selectedService ? (
             <div className="space-y-5 text-sm">
               <div>
-                <p className="text-zinc-500">Service ID</p>
-                <span className="inline-flex rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-black text-blue-400">
-                  [{getPublicServiceId(selectedService)}]
+                <p className="text-zinc-500 mb-2">Service ID</p>
+
+                <span className="inline-flex min-w-[64px] justify-center rounded-lg bg-blue-600 px-3 py-1 text-xs font-black text-white shadow-sm">
+                  {getPublicServiceId(selectedService)}
                 </span>
               </div>
 
