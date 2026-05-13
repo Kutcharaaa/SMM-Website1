@@ -238,16 +238,20 @@ export default function NewOrderPage() {
           <button
             key={item.name}
             onClick={() => {
-              setNetwork(item.name);
+              if (network === item.name) {
+                setNetwork("Everything");
+              } else {
+                setNetwork(item.name);
+              }
+
               setCategory("");
               setSelectedServiceId("");
               setSearch("");
             }}
-            className={`rounded-2xl border px-5 py-4 font-semibold transition ${
-              network === item.name
+            className={`rounded-2xl border px-5 py-4 font-semibold transition ${network === item.name
                 ? "border-blue-500 bg-blue-500/10 text-blue-400"
                 : "border-zinc-800 bg-zinc-950/80 text-zinc-400 hover:border-blue-500 hover:text-white"
-            }`}
+              }`}
           >
             <span className="mr-2">{item.icon}</span>
             {item.name}
