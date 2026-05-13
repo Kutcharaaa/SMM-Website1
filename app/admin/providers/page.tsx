@@ -13,6 +13,8 @@ type Provider = {
   status: string;
   mode: string;
   balance: number | null;
+  auto_disable_low_balance?: boolean | null;
+  low_balance_threshold?: number | null;
 };
 
 type ImportedService = {
@@ -39,11 +41,15 @@ export default function AdminProvidersPage() {
 
   const [importModal, setImportModal] = useState(false);
   const [importProvider, setImportProvider] = useState<Provider | null>(null);
-  const [importedServices, setImportedServices] = useState<ImportedService[]>([]);
+  const [importedServices, setImportedServices] = useState<ImportedService[]>(
+    []
+  );
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [markupPercent, setMarkupPercent] = useState("30");
   const [importing, setImporting] = useState(false);
+
+  const [usdMarketRate, setUsdMarketRate] = useState(0);
 
   async function loadProviders() {
     const { data, error } = await supabase
@@ -57,6 +63,16 @@ export default function AdminProvidersPage() {
     }
 
     setProviders(data || []);
+  }
+
+  async function loadUsdMarketRate() {
+    const { data } = await supabase
+      .from("exchange_rates")
+      .select("market_rate")
+      .eq("currency_code", "USD")
+      .single();
+
+    setUsdMarketRate(Number(data?.market_rate || 0));
   }
 
   async function addProvider() {
@@ -74,6 +90,8 @@ export default function AdminProvidersPage() {
       status: "active",
       mode: "manual",
       balance: 0,
+      auto_disable_low_balance: false,
+      low_balance_threshold: 0,
     });
 
     setLoading(false);
@@ -146,6 +164,32 @@ export default function AdminProvidersPage() {
       return;
     }
 
+    loadProviders();
+  }
+
+  function updateLocalProvider(providerId: string, updates: Partial<Provider>) {
+    setProviders((current) =>
+      current.map((provider) =>
+        provider.id === providerId ? { ...provider, ...updates } : provider
+      )
+    );
+  }
+
+  async function updateProviderSafety(provider: Provider) {
+    const { error } = await supabase
+      .from("providers")
+      .update({
+        auto_disable_low_balance: Boolean(provider.auto_disable_low_balance),
+        low_balance_threshold: Number(provider.low_balance_threshold || 0),
+      })
+      .eq("id", provider.id);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    alert("Safety settings saved.");
     loadProviders();
   }
 
@@ -292,6 +336,7 @@ export default function AdminProvidersPage() {
 
   useEffect(() => {
     loadProviders();
+    loadUsdMarketRate();
   }, []);
 
   const filteredServices = importedServices.filter((service) => {
@@ -315,7 +360,7 @@ export default function AdminProvidersPage() {
           <h2 className="text-4xl font-black mb-4">Providers</h2>
 
           <p className="text-zinc-400 mb-8">
-            Manage API providers, balances, status, and sync settings.
+            Manage API providers, balances, status, safety, and sync settings.
           </p>
 
           <div className="grid lg:grid-cols-3 gap-6 mb-8">
@@ -420,10 +465,78 @@ export default function AdminProvidersPage() {
                     >
                       {provider.mode}
                     </span>
+
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-medium ${
+                        provider.auto_disable_low_balance
+                          ? "bg-orange-500/10 text-orange-400"
+                          : "bg-zinc-800 text-zinc-400"
+                      }`}
+                    >
+                      Auto Disable{" "}
+                      {provider.auto_disable_low_balance ? "ON" : "OFF"}
+                    </span>
                   </div>
 
                   <div className="mt-4 text-sm text-zinc-500">
                     API Key: ••••••••••••••••
+                  </div>
+
+                  <div className="mt-6 rounded-2xl border border-zinc-800 bg-black p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-white">
+                          Auto Disable on Low Balance
+                        </p>
+
+                        <p className="text-xs text-zinc-500 mt-1">
+                          If enabled, this provider can be disabled when its
+                          balance is too low.
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() =>
+                          updateLocalProvider(provider.id, {
+                            auto_disable_low_balance:
+                              !provider.auto_disable_low_balance,
+                          })
+                        }
+                        className={`rounded-xl px-4 py-2 text-xs font-bold transition ${
+                          provider.auto_disable_low_balance
+                            ? "bg-orange-500/10 text-orange-400"
+                            : "bg-zinc-800 text-zinc-400"
+                        }`}
+                      >
+                        {provider.auto_disable_low_balance
+                          ? "Enabled"
+                          : "Disabled"}
+                      </button>
+                    </div>
+
+                    <div className="mt-4">
+                      <p className="text-sm text-zinc-400 mb-2">
+                        Low Balance Threshold ($)
+                      </p>
+
+                      <input
+                        type="number"
+                        value={provider.low_balance_threshold || 0}
+                        onChange={(e) =>
+                          updateLocalProvider(provider.id, {
+                            low_balance_threshold: Number(e.target.value),
+                          })
+                        }
+                        className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 outline-none focus:border-orange-500"
+                      />
+                    </div>
+
+                    <button
+                      onClick={() => updateProviderSafety(provider)}
+                      className="mt-4 w-full rounded-xl bg-orange-600 hover:bg-orange-700 px-4 py-3 text-sm font-semibold transition"
+                    >
+                      Save Safety Settings
+                    </button>
                   </div>
 
                   <div className="flex flex-wrap gap-3 mt-6">
@@ -559,10 +672,8 @@ export default function AdminProvidersPage() {
                       );
 
                       const providerUsdRate = Number(service.price || 0);
-                      const usdToPhpMarketRate = 58;
                       const markup = Number(markupPercent || 0);
-
-                      const phpCost = providerUsdRate * usdToPhpMarketRate;
+                      const phpCost = providerUsdRate * usdMarketRate;
                       const finalPrice = phpCost + phpCost * (markup / 100);
 
                       return (
