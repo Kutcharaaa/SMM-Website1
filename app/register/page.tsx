@@ -3,6 +3,7 @@
 import { supabase } from "@/lib/supabase";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { welcomeEmail } from "@/lib/email";
 
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -55,6 +56,17 @@ export default function RegisterPage() {
         balance: 0,
       });
     }
+
+    await fetch("/api/email/welcome", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email,
+        username,
+      }),
+    });
 
     setMessage("Account created successfully! Redirecting to login...");
 
