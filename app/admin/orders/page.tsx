@@ -100,6 +100,33 @@ export default function AdminOrdersPage() {
     }
   }
 
+async function handleProviderAction(action: "sync" | "cancel" | "refill") {
+  if (!selectedOrder) return;
+
+  setMessage(`Processing ${action} request...`);
+
+  try {
+    const response = await fetch("/api/orders/action", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        orderId: selectedOrder.id,
+        action,
+      }),
+    });
+
+    const result = await response.json();
+
+    setMessage(result.message || "Action completed.");
+
+    loadOrders();
+  } catch {
+    setMessage("Failed to process provider action.");
+  }
+}
+
   async function updateOrderStatus() {
     if (!selectedOrder || !newStatus) return;
 
