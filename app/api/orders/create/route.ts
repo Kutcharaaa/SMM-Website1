@@ -102,6 +102,16 @@ export async function POST(req: Request) {
       });
     }
 
+    await supabaseAdmin.from("notifications").insert({
+      user_id: null,
+      title: "New Order",
+      message: `New order placed: ${service.name} | Quantity: ${qty} | Charge: ₱${charge.toFixed(
+        2
+      )}`,
+      type: "new_order",
+      is_read: false,
+    });
+
     return NextResponse.json({
       success: true,
       message: "Order created successfully.",
