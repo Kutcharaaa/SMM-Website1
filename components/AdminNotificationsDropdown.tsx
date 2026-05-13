@@ -17,24 +17,45 @@ export default function AdminNotificationsDropdown() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   async function loadNotifications() {
-    const { data: authData } = await supabase.auth.getUser();
-
-    if (!authData.user) return;
-
     const { data } = await supabase
       .from("notifications")
       .select("*")
-      .eq("user_id", authData.user.id)
-      .in("type", [
-        "new_deposit",
-        "deposit_followup",
-        "new_order",
-        "new_ticket",
-      ])
+      .or("user_id.is.null,type.in.(new_deposit,deposit_followup,new_order,new_ticket,provider_low_balance)")
       .order("created_at", { ascending: false })
       .limit(10);
 
     setNotifications(data || []);
+  }
+
+  async function markAsRead() {
+    const unreadIds = notifications
+      .filter((notification) => !notification.is_read)
+      .map((notification) => notification.id);
+
+    if (unreadIds.length <= 0) return;
+
+    const { error } = await supabase
+      .from("notifications")
+      .update({ is_read: true })
+      .in("id", unreadIds);
+
+    if (error) return;
+
+    setNotifications((current) =>
+      current.map((notification) => ({
+        ...notification,
+        is_read: true,
+      }))
+    );
+  }
+
+  async function toggleDropdown() {
+    const nextOpen = !open;
+    setOpen(nextOpen);
+
+    if (nextOpen) {
+      await markAsRead();
+    }
   }
 
   useEffect(() => {
@@ -52,7 +73,7 @@ export default function AdminNotificationsDropdown() {
   return (
     <div className="relative">
       <button
-        onClick={() => setOpen(!open)}
+        onClick={toggleDropdown}
         className="relative text-xl hover:text-zinc-400 transition"
       >
         🔔
@@ -69,7 +90,7 @@ export default function AdminNotificationsDropdown() {
           <div className="p-4 border-b border-zinc-800">
             <h3 className="font-bold text-white">Admin Notifications</h3>
             <p className="text-xs text-zinc-500">
-              New deposits, orders, tickets, and follow-ups
+              Deposits, orders, tickets, follow-ups, and provider alerts
             </p>
           </div>
 

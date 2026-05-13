@@ -31,6 +31,37 @@ export default function NotificationsDropdown() {
     setNotifications(data || []);
   }
 
+  async function markAsRead() {
+    const unreadIds = notifications
+      .filter((notification) => !notification.is_read)
+      .map((notification) => notification.id);
+
+    if (unreadIds.length <= 0) return;
+
+    const { error } = await supabase
+      .from("notifications")
+      .update({ is_read: true })
+      .in("id", unreadIds);
+
+    if (error) return;
+
+    setNotifications((current) =>
+      current.map((notification) => ({
+        ...notification,
+        is_read: true,
+      }))
+    );
+  }
+
+  async function toggleDropdown() {
+    const nextOpen = !open;
+    setOpen(nextOpen);
+
+    if (nextOpen) {
+      await markAsRead();
+    }
+  }
+
   useEffect(() => {
     loadNotifications();
   }, []);
@@ -40,7 +71,7 @@ export default function NotificationsDropdown() {
   return (
     <div className="relative">
       <button
-        onClick={() => setOpen(!open)}
+        onClick={toggleDropdown}
         className="relative text-xl hover:text-zinc-400 transition"
       >
         🔔
@@ -56,9 +87,7 @@ export default function NotificationsDropdown() {
         <div className="absolute right-0 mt-4 w-96 rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl overflow-hidden z-50">
           <div className="p-4 border-b border-zinc-800">
             <h3 className="font-bold text-white">Notifications</h3>
-            <p className="text-xs text-zinc-500">
-              Latest account updates
-            </p>
+            <p className="text-xs text-zinc-500">Latest account updates</p>
           </div>
 
           <div className="max-h-96 overflow-y-auto">
@@ -72,25 +101,17 @@ export default function NotificationsDropdown() {
                   key={notification.id}
                   className="p-4 border-b border-zinc-900 hover:bg-zinc-900/70"
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-semibold text-white">
-                        {notification.title}
-                      </p>
+                  <p className="font-semibold text-white">
+                    {notification.title}
+                  </p>
 
-                      <p className="text-sm text-zinc-400 mt-1">
-                        {notification.message}
-                      </p>
+                  <p className="text-sm text-zinc-400 mt-1">
+                    {notification.message}
+                  </p>
 
-                      <p className="text-xs text-zinc-600 mt-2">
-                        {new Date(notification.created_at).toLocaleString()}
-                      </p>
-                    </div>
-
-                    {!notification.is_read && (
-                      <span className="w-2 h-2 rounded-full bg-blue-500 mt-2" />
-                    )}
-                  </div>
+                  <p className="text-xs text-zinc-600 mt-2">
+                    {new Date(notification.created_at).toLocaleString()}
+                  </p>
                 </div>
               ))
             )}
