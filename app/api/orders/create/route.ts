@@ -179,7 +179,7 @@ export async function POST(req: Request) {
 
     if (profile.email) {
       await sendEmail({
-        to: profile.email,
+        to: "rowellenugue0326@gmail.com",
         subject: "Order Placed Successfully",
         html: baseEmailTemplate({
           title: "Order Confirmed",
