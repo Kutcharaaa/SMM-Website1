@@ -233,6 +233,24 @@ export default function NewOrderPage() {
         Choose a social network, select a service, and place your order.
       </p>
 
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-xl font-black">
+          Choose a Social Network
+        </h3>
+
+        <button
+          onClick={() => {
+            setNetwork("Everything");
+            setCategory("");
+            setSelectedServiceId("");
+            setSearch("");
+          }}
+          className="rounded-xl border border-zinc-800 px-4 py-2 text-sm text-zinc-400 hover:border-blue-500 hover:text-white transition"
+        >
+          Clear Selection
+        </button>
+      </div>
+
       <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3 mb-8">
         {networks.map((item) => (
           <button
@@ -249,8 +267,8 @@ export default function NewOrderPage() {
               setSearch("");
             }}
             className={`rounded-2xl border px-5 py-4 font-semibold transition ${network === item.name
-                ? "border-blue-500 bg-blue-500/10 text-blue-400"
-                : "border-zinc-800 bg-zinc-950/80 text-zinc-400 hover:border-blue-500 hover:text-white"
+              ? "border-blue-500 bg-blue-500/10 text-blue-400"
+              : "border-zinc-800 bg-zinc-950/80 text-zinc-400 hover:border-blue-500 hover:text-white"
               }`}
           >
             <span className="mr-2">{item.icon}</span>
