@@ -80,14 +80,14 @@ export async function POST(req: Request) {
     let orderStatus = "pending";
 
     if (
-      service.mode === "auto" &&
-      service.provider_name &&
+      service.auto_order &&
+      service.provider_id &&
       service.provider_service_id
     ) {
       const { data: provider } = await supabaseAdmin
         .from("providers")
         .select("*")
-        .eq("name", service.provider_name)
+        .eq("id", service.provider_id)
         .single();
 
       if (
