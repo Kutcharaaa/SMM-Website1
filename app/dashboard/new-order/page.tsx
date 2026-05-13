@@ -61,7 +61,6 @@ export default function NewOrderPage() {
     setServices(serviceData || []);
 
     const { data: authData } = await supabase.auth.getUser();
-
     if (!authData.user) return;
 
     const { data: profileData } = await supabase
@@ -70,9 +69,7 @@ export default function NewOrderPage() {
       .eq("id", authData.user.id)
       .single();
 
-    if (profileData) {
-      setProfile(profileData);
-    }
+    if (profileData) setProfile(profileData);
   }
 
   useEffect(() => {
@@ -112,7 +109,8 @@ export default function NewOrderPage() {
 
         return (
           service.name.toLowerCase().includes(keyword) ||
-          service.category.toLowerCase().includes(keyword)
+          service.category.toLowerCase().includes(keyword) ||
+          service.provider_service_id?.toLowerCase().includes(keyword)
         );
       })
       .sort(
@@ -124,9 +122,27 @@ export default function NewOrderPage() {
   const selectedService =
     services.find((service) => service.id === selectedServiceId) || null;
 
+  const cheapestPrice =
+    filteredServices.length > 0
+      ? Math.min(...filteredServices.map((s) => Number(s.price_per_1000 || 0)))
+      : 0;
+
   const estimatedCharge = selectedService
     ? (Number(quantity || 0) / 1000) * Number(selectedService.price_per_1000)
     : 0;
+
+  function getServiceTags(service: Service) {
+    const text = `${service.name} ${service.description || ""}`.toLowerCase();
+    const tags: string[] = [];
+
+    if (Number(service.price_per_1000) === cheapestPrice) tags.push("CHEAP");
+    if (text.includes("refill")) tags.push("REFILL");
+    if (text.includes("instant") || text.includes("fast")) tags.push("FAST");
+    if (text.includes("hq") || text.includes("quality")) tags.push("HQ");
+    if (text.includes("real")) tags.push("REAL");
+
+    return tags.slice(0, 3);
+  }
 
   function getDetail(label: string) {
     if (!selectedService) return "N/A";
@@ -160,9 +176,7 @@ export default function NewOrderPage() {
       return;
     }
 
-    const charge =
-      (qty / 1000) * Number(selectedService.price_per_1000);
-
+    const charge = (qty / 1000) * Number(selectedService.price_per_1000);
     const balance = Number(profile?.balance || 0);
 
     if (balance < charge) {
@@ -183,9 +197,7 @@ export default function NewOrderPage() {
 
     const { error: balanceError } = await supabase
       .from("profiles")
-      .update({
-        balance: newBalance,
-      })
+      .update({ balance: newBalance })
       .eq("id", authData.user.id);
 
     if (balanceError) {
@@ -234,9 +246,7 @@ export default function NewOrderPage() {
       </p>
 
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xl font-black">
-          Choose a Social Network
-        </h3>
+        <h3 className="text-xl font-black">Choose a Social Network</h3>
 
         <button
           onClick={() => {
@@ -256,20 +266,16 @@ export default function NewOrderPage() {
           <button
             key={item.name}
             onClick={() => {
-              if (network === item.name) {
-                setNetwork("Everything");
-              } else {
-                setNetwork(item.name);
-              }
-
+              setNetwork(network === item.name ? "Everything" : item.name);
               setCategory("");
               setSelectedServiceId("");
               setSearch("");
             }}
-            className={`rounded-2xl border px-5 py-4 font-semibold transition ${network === item.name
-              ? "border-blue-500 bg-blue-500/10 text-blue-400"
-              : "border-zinc-800 bg-zinc-950/80 text-zinc-400 hover:border-blue-500 hover:text-white"
-              }`}
+            className={`rounded-2xl border px-5 py-4 font-semibold transition ${
+              network === item.name
+                ? "border-blue-500 bg-blue-500/10 text-blue-400"
+                : "border-zinc-800 bg-zinc-950/80 text-zinc-400 hover:border-blue-500 hover:text-white"
+            }`}
           >
             <span className="mr-2">{item.icon}</span>
             {item.name}
@@ -288,7 +294,7 @@ export default function NewOrderPage() {
                 setSearch(e.target.value);
                 setSelectedServiceId("");
               }}
-              placeholder="Search services..."
+              placeholder="Search service name, category, or service ID..."
               className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500"
             />
 
@@ -317,13 +323,24 @@ export default function NewOrderPage() {
             >
               <option value="">Select Service / Server</option>
 
-              {filteredServices.map((service) => (
-                <option key={service.id} value={service.id}>
-                  ₱{Number(service.price_per_1000 || 0).toFixed(2)} -{" "}
-                  {service.name}
-                </option>
-              ))}
+              {filteredServices.map((service) => {
+                const tags = getServiceTags(service);
+
+                return (
+                  <option key={service.id} value={service.id}>
+                    ₱{Number(service.price_per_1000 || 0).toFixed(2)} / 1000 -{" "}
+                    {tags.length > 0 ? `[${tags.join("] [")}] ` : ""}
+                    {service.name}
+                  </option>
+                );
+              })}
             </select>
+
+            {filteredServices.length > 0 && category && (
+              <p className="text-xs text-zinc-500">
+                Services sorted from cheapest to most expensive.
+              </p>
+            )}
 
             <input
               type="url"
@@ -375,6 +392,17 @@ export default function NewOrderPage() {
               <div>
                 <p className="text-zinc-500">Selected Service</p>
                 <p className="font-semibold">{selectedService.name}</p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {getServiceTags(selectedService).map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-xs font-bold text-blue-400"
+                  >
+                    {tag}
+                  </span>
+                ))}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
