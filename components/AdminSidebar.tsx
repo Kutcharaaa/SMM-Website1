@@ -22,8 +22,13 @@ export default function AdminSidebar() {
   const pathname = usePathname();
 
   const [role, setRole] = useState("admin");
+
   const [pendingPayments, setPendingPayments] = useState(0);
   const [hasNewPayments, setHasNewPayments] = useState(false);
+
+  const [pendingOrders, setPendingOrders] = useState(0);
+  const [hasNewOrders, setHasNewOrders] = useState(false);
+
   const [minimized, setMinimized] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
@@ -56,18 +61,37 @@ export default function AdminSidebar() {
 
     if (!latestPendingCreatedAt) {
       setHasNewPayments(false);
-      return;
-    }
-
-    if (!lastOpenedAt) {
+    } else if (!lastOpenedAt) {
       setHasNewPayments(true);
-      return;
+    } else {
+      setHasNewPayments(
+        new Date(latestPendingCreatedAt).getTime() >
+          new Date(lastOpenedAt).getTime()
+      );
     }
 
-    setHasNewPayments(
-      new Date(latestPendingCreatedAt).getTime() >
-        new Date(lastOpenedAt).getTime()
-    );
+    const { data: pendingOrderData, count: orderCount } = await supabase
+      .from("orders")
+      .select("created_at", { count: "exact" })
+      .in("status", ["pending", "processing"])
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    setPendingOrders(orderCount || 0);
+
+    const latestOrderCreatedAt = pendingOrderData?.[0]?.created_at;
+    const lastOrdersOpenedAt = localStorage.getItem("orders_last_opened_at");
+
+    if (!latestOrderCreatedAt) {
+      setHasNewOrders(false);
+    } else if (!lastOrdersOpenedAt) {
+      setHasNewOrders(true);
+    } else {
+      setHasNewOrders(
+        new Date(latestOrderCreatedAt).getTime() >
+          new Date(lastOrdersOpenedAt).getTime()
+      );
+    }
   }
 
   useEffect(() => {
@@ -116,6 +140,11 @@ export default function AdminSidebar() {
   function handlePaymentsClick() {
     localStorage.setItem("payments_last_opened_at", new Date().toISOString());
     setHasNewPayments(false);
+  }
+
+  function handleOrdersClick() {
+    localStorage.setItem("orders_last_opened_at", new Date().toISOString());
+    setHasNewOrders(false);
   }
 
   const groups: MenuGroup[] = [
@@ -241,11 +270,7 @@ export default function AdminSidebar() {
     >
       <div className="px-4 py-5 border-b border-zinc-800/80 flex items-center justify-between">
         {!minimized ? (
-          <img
-            src="/logo.png"
-            alt="Ascend Service"
-            className="h-14 w-auto"
-          />
+          <img src="/logo.png" alt="Ascend Service" className="h-14 w-auto" />
         ) : (
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 border border-blue-500/20 text-2xl font-black text-blue-400">
             A
@@ -331,6 +356,8 @@ export default function AdminSidebar() {
                         onClick={
                           item.name === "Payments"
                             ? handlePaymentsClick
+                            : item.name === "Orders"
+                            ? handleOrdersClick
                             : undefined
                         }
                         title={minimized ? item.name : undefined}
@@ -364,11 +391,35 @@ export default function AdminSidebar() {
                             </div>
                           )}
 
+                        {!minimized &&
+                          item.name === "Orders" &&
+                          pendingOrders > 0 && (
+                            <div className="flex items-center gap-2">
+                              <span className="min-w-5 h-5 rounded-full bg-blue-500/15 border border-blue-500/20 px-1.5 text-[10px] font-bold text-blue-400 flex items-center justify-center">
+                                {pendingOrders}
+                              </span>
+
+                              {hasNewOrders && (
+                                <span className="rounded-full bg-blue-500/15 border border-blue-500/20 px-2.5 py-0.5 text-[10px] font-bold text-blue-400">
+                                  NEW
+                                </span>
+                              )}
+                            </div>
+                          )}
+
                         {minimized &&
                           item.name === "Payments" &&
                           pendingPayments > 0 && (
                             <span className="absolute right-2 top-1 min-w-5 h-5 rounded-full bg-red-500 border border-red-400 px-1 text-[10px] font-bold text-white flex items-center justify-center">
                               {pendingPayments}
+                            </span>
+                          )}
+
+                        {minimized &&
+                          item.name === "Orders" &&
+                          pendingOrders > 0 && (
+                            <span className="absolute right-2 top-1 min-w-5 h-5 rounded-full bg-blue-500 border border-blue-400 px-1 text-[10px] font-bold text-white flex items-center justify-center">
+                              {pendingOrders}
                             </span>
                           )}
                       </Link>
