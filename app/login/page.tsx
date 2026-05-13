@@ -7,8 +7,6 @@ import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
-
-
 function LoginContent() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -121,32 +119,6 @@ function LoginContent() {
               className="bg-black border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500"
             />
 
-            <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 text-zinc-400">
-                <input type="checkbox" className="accent-blue-500" />
-                Remember me
-              </label>
-
-              <a
-                href="/forgot-password"
-                className="text-blue-400 hover:text-blue-300"
-              >
-                Forgot password?
-              </a>
-            </div>
-
-            <div className="bg-black border border-zinc-800 rounded-xl p-4 flex items-center justify-between">
-              <label className="flex items-center gap-3 text-zinc-300">
-                <input type="checkbox" className="w-5 h-5 accent-blue-500" />
-                I&apos;m not a robot
-              </label>
-
-              <div className="text-xs text-zinc-500 text-right">
-                <p>reCAPTCHA</p>
-                <p>Privacy - Terms</p>
-              </div>
-            </div>
-
             {message && <p className="text-sm text-blue-400">{message}</p>}
 
             <button
@@ -156,17 +128,18 @@ function LoginContent() {
               Login
             </button>
           </form>
-
-          <p className="text-zinc-400 text-sm mt-6">
-            Don&apos;t have an account?{" "}
-            <a href="/register" className="text-blue-400 hover:text-blue-300">
-              Create account
-            </a>
-          </p>
         </div>
       </section>
 
       <Footer />
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginContent />
+    </Suspense>
   );
 }
