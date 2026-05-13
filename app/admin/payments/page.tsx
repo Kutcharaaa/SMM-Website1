@@ -75,6 +75,19 @@ export default function AdminPaymentsPage() {
     return data as Profile;
   }
 
+  async function sendDepositEmail(depositId: string, status: "approved" | "rejected") {
+    await fetch("/api/email/deposit-status", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        depositId,
+        status,
+      }),
+    });
+  }
+
   async function approveDeposit() {
     if (!selectedDeposit) return;
 
@@ -131,6 +144,8 @@ export default function AdminPaymentsPage() {
       is_read: false,
     });
 
+    await sendDepositEmail(selectedDeposit.id, "approved");
+
     setMessage("Deposit approved successfully.");
     setSelectedDeposit(null);
     setShowRejectBox(false);
@@ -171,6 +186,8 @@ export default function AdminPaymentsPage() {
       type: "deposit_rejected",
       is_read: false,
     });
+
+    await sendDepositEmail(selectedDeposit.id, "rejected");
 
     setMessage("Deposit rejected successfully.");
     setSelectedDeposit(null);
@@ -305,8 +322,8 @@ export default function AdminPaymentsPage() {
                     ₱
                     {Number(
                       selectedDeposit.wallet_credit ||
-                        selectedDeposit.amount ||
-                        0
+                      selectedDeposit.amount ||
+                      0
                     ).toFixed(2)}
                   </p>
                 </div>
