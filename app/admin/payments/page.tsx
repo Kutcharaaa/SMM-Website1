@@ -3,6 +3,10 @@
 import AdminLayout from "@/components/AdminLayout";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
+import {
+  sendEmail,
+  depositStatusEmail,
+} from "@/lib/email";
 
 type Deposit = {
   id: string;
@@ -19,10 +23,15 @@ type Deposit = {
   created_at: string;
 };
 
+type Profile = {
+  balance: number;
+  email?: string | null;
+  username?: string | null;
+};
+
 export default function AdminPaymentsPage() {
   const [deposits, setDeposits] = useState<Deposit[]>([]);
-  const [selectedDeposit, setSelectedDeposit] =
-    useState<Deposit | null>(null);
+  const [selectedDeposit, setSelectedDeposit] = useState<Deposit | null>(null);
   const [showRejectBox, setShowRejectBox] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [message, setMessage] = useState("");
@@ -41,15 +50,15 @@ export default function AdminPaymentsPage() {
     setDeposits(data || []);
   }
 
-useEffect(() => {
-  loadDeposits();
-
-  const interval = setInterval(() => {
+  useEffect(() => {
     loadDeposits();
-  }, 3000);
 
-  return () => clearInterval(interval);
-}, []);
+    const interval = setInterval(() => {
+      loadDeposits();
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   function getStatusStyle(status: string) {
     if (status === "approved") {
@@ -61,6 +70,50 @@ useEffect(() => {
     }
 
     return "bg-yellow-500/10 text-yellow-400";
+  }
+
+  function addProofToEmail(html: string, proofUrl?: string, label = "Payment Proof") {
+    if (!proofUrl) return html;
+
+    return html.replace(
+      "</div></div>",
+      `
+        <div style="margin-top:20px;">
+          <p style="font-weight:bold; margin-bottom:10px;">
+            ${label}
+          </p>
+
+          <img
+            src="${proofUrl}"
+            alt="Payment Proof"
+            style="
+              width:100%;
+              max-height:480px;
+              object-fit:contain;
+              border-radius:16px;
+              border:1px solid #222;
+              background:#000;
+            "
+          />
+        </div>
+      </div></div>
+      `
+    );
+  }
+
+  async function getUserProfile(userId: string) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("balance, email, username")
+      .eq("id", userId)
+      .single();
+
+    if (error) {
+      setMessage(error.message);
+      return null;
+    }
+
+    return data as Profile;
   }
 
   async function approveDeposit() {
@@ -80,18 +133,10 @@ useEffect(() => {
 
     setMessage("Approving deposit...");
 
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("balance")
-      .eq("id", selectedDeposit.user_id)
-      .single();
+    const profile = await getUserProfile(selectedDeposit.user_id);
+    if (!profile) return;
 
-    if (profileError) {
-      setMessage(profileError.message);
-      return;
-    }
-
-    const currentBalance = Number(profile?.balance || 0);
+    const currentBalance = Number(profile.balance || 0);
     const newBalance = currentBalance + creditAmount;
 
     const { error: balanceError } = await supabase
@@ -127,6 +172,24 @@ useEffect(() => {
       is_read: false,
     });
 
+    if (profile.email) {
+      const emailHtml = depositStatusEmail({
+        status: "approved",
+        amount: Number(selectedDeposit.amount || 0),
+        method: selectedDeposit.method,
+      });
+
+      await sendEmail({
+        to: profile.email,
+        subject: "Deposit Approved",
+        html: addProofToEmail(
+          emailHtml,
+          selectedDeposit.proof_url,
+          "Payment Proof"
+        ),
+      });
+    }
+
     setMessage("Deposit approved successfully.");
     setSelectedDeposit(null);
     setShowRejectBox(false);
@@ -148,6 +211,9 @@ useEffect(() => {
 
     setMessage("Rejecting deposit...");
 
+    const profile = await getUserProfile(selectedDeposit.user_id);
+    if (!profile) return;
+
     const { error: depositError } = await supabase
       .from("deposits")
       .update({
@@ -168,6 +234,24 @@ useEffect(() => {
       type: "deposit_rejected",
       is_read: false,
     });
+
+    if (profile.email) {
+      const emailHtml = depositStatusEmail({
+        status: "rejected",
+        amount: Number(selectedDeposit.amount || 0),
+        method: selectedDeposit.method,
+      });
+
+      await sendEmail({
+        to: profile.email,
+        subject: "Deposit Rejected",
+        html: addProofToEmail(
+          emailHtml,
+          selectedDeposit.proof_url,
+          "Submitted Payment Proof"
+        ),
+      });
+    }
 
     setMessage("Deposit rejected successfully.");
     setSelectedDeposit(null);
@@ -253,6 +337,14 @@ useEffect(() => {
                 </td>
               </tr>
             ))}
+
+            {deposits.length <= 0 && (
+              <tr>
+                <td colSpan={7} className="p-10 text-center text-zinc-500">
+                  No deposit requests yet.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
