@@ -127,6 +127,21 @@ export default function AddFundsPage() {
       return;
     }
 
+    await fetch("/api/email/admin-new-deposit", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        amount: Number(amount),
+        currency,
+        method: selectedMethod.name,
+        reference,
+        proofUrl: publicUrlData.publicUrl,
+        userId: authData.user.id,
+      }),
+    });
+
     const { data: admins } = await supabase
       .from("profiles")
       .select("id")
@@ -143,9 +158,8 @@ export default function AddFundsPage() {
           title: "New Deposit Request",
           message: `New ${currency} ${Number(
             amount
-          ).toFixed(2)} deposit request via ${
-            selectedMethod.name
-          }.`,
+          ).toFixed(2)} deposit request via ${selectedMethod.name
+            }.`,
           type: "new_deposit",
           is_read: false,
         }))
