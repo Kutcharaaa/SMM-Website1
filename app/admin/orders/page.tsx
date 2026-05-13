@@ -100,32 +100,32 @@ export default function AdminOrdersPage() {
     }
   }
 
-async function handleProviderAction(action: "sync" | "cancel" | "refill") {
-  if (!selectedOrder) return;
+  async function handleProviderAction(action: "sync" | "cancel" | "refill") {
+    if (!selectedOrder) return;
 
-  setMessage(`Processing ${action} request...`);
+    setMessage(`Processing ${action} request...`);
 
-  try {
-    const response = await fetch("/api/orders/action", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        orderId: selectedOrder.id,
-        action,
-      }),
-    });
+    try {
+      const response = await fetch("/api/orders/action", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          orderId: selectedOrder.id,
+          action,
+        }),
+      });
 
-    const result = await response.json();
+      const result = await response.json();
 
-    setMessage(result.message || "Action completed.");
+      setMessage(result.message || "Action completed.");
 
-    loadOrders();
-  } catch {
-    setMessage("Failed to process provider action.");
+      loadOrders();
+    } catch {
+      setMessage("Failed to process provider action.");
+    }
   }
-}
 
   async function updateOrderStatus() {
     if (!selectedOrder || !newStatus) return;
@@ -429,6 +429,31 @@ async function handleProviderAction(action: "sync" | "cancel" | "refill") {
                     <p className="font-semibold text-purple-400">
                       {selectedOrder.provider_order_id}
                     </p>
+                  </div>
+                )}
+
+                {selectedOrder.provider_order_id && (
+                  <div className="grid md:grid-cols-3 gap-3">
+                    <button
+                      onClick={() => handleProviderAction("sync")}
+                      className="rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-3 text-sm font-semibold transition"
+                    >
+                      Sync This Order
+                    </button>
+
+                    <button
+                      onClick={() => handleProviderAction("cancel")}
+                      className="rounded-xl bg-red-600 hover:bg-red-700 px-4 py-3 text-sm font-semibold transition"
+                    >
+                      Cancel Provider Order
+                    </button>
+
+                    <button
+                      onClick={() => handleProviderAction("refill")}
+                      className="rounded-xl bg-purple-600 hover:bg-purple-700 px-4 py-3 text-sm font-semibold transition"
+                    >
+                      Request Refill
+                    </button>
                   </div>
                 )}
 
