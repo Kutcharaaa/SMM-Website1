@@ -38,13 +38,36 @@ export default function LoginPage() {
       loginEmail = profile.email;
     }
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data: loginData, error } = await supabase.auth.signInWithPassword({
       email: loginEmail,
       password,
     });
 
     if (error) {
       setMessage(error.message);
+      return;
+    }
+
+    if (!loginData.user) {
+      setMessage("Login failed. Please try again.");
+      return;
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("email_verified")
+      .eq("id", loginData.user.id)
+      .single();
+
+    if (profileError) {
+      await supabase.auth.signOut();
+      setMessage("Unable to verify your account status.");
+      return;
+    }
+
+    if (!profile?.email_verified) {
+      await supabase.auth.signOut();
+      setMessage("Please verify your email before logging in.");
       return;
     }
 
