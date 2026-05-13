@@ -14,8 +14,17 @@ function normalizeStatus(providerStatus: string) {
   return status;
 }
 
-export async function POST() {
+export async function POST(req: Request) {
   try {
+    const secret = req.headers.get("authorization");
+
+    if (secret !== `Bearer ${process.env.CRON_SECRET}`) {
+      return NextResponse.json({
+        success: false,
+        message: "Unauthorized.",
+      });
+    }
+
     const { data: orders, error: ordersError } = await supabaseAdmin
       .from("orders")
       .select("*")
