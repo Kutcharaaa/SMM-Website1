@@ -79,7 +79,13 @@ export async function POST(req: Request) {
         .update({
           status: nextStatus,
           start_count: Number(result.start_count || order.start_count || 0),
-          current_count: Number(result.remains || order.current_count || 0),
+          current_count:
+            nextStatus === "completed"
+              ? Number(order.quantity || 0)
+              : Math.max(
+                0,
+                Number(order.quantity || 0) - Number(result.remains || 0)
+              ),
         })
         .eq("id", order.id);
 
