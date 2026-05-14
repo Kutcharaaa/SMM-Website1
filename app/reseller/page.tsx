@@ -196,25 +196,23 @@ export default function ResellerPage() {
             ))}
           </div>
 
-          <div className="mt-20 rounded-3xl border border-zinc-800 bg-zinc-950/80 p-8">
-            <div className="flex flex-col gap-8 xl:flex-row xl:items-center xl:justify-between">
-              <div className="max-w-2xl">
-                <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-blue-400">
-                  Point System
-                </p>
+          <div className="mt-20 grid gap-6 xl:grid-cols-2">
+            <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 p-8">
+              <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-blue-400">
+                Point System
+              </p>
 
-                <h2 className="text-4xl font-black">
-                  Earn Rewards From Every Order
-                </h2>
+              <h2 className="text-4xl font-black">
+                Earn Rewards From Every Order
+              </h2>
 
-                <p className="mt-5 text-zinc-400">
-                  Every completed order can generate reseller points depending
-                  on your reseller level. Higher reseller levels unlock better
-                  point conversion values.
-                </p>
-              </div>
+              <p className="mt-5 text-zinc-400">
+                Every completed order can generate reseller points depending on
+                your reseller level. Higher reseller levels unlock better point
+                conversion values.
+              </p>
 
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="mt-8 grid gap-4 sm:grid-cols-2">
                 {[
                   "Points are stored safely",
                   "No automatic conversion",
@@ -236,28 +234,24 @@ export default function ResellerPage() {
                 ))}
               </div>
             </div>
-          </div>
 
-          <div className="mt-10 rounded-3xl border border-zinc-800 bg-gradient-to-br from-zinc-950 to-black p-8">
-            <div className="flex flex-col gap-8 xl:flex-row xl:items-center xl:justify-between">
-              <div className="max-w-2xl">
-                <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">
-                  Reseller Progression
-                </p>
+            <div className="rounded-3xl border border-zinc-800 bg-gradient-to-br from-zinc-950 to-black p-8">
+              <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">
+                Reseller Progression
+              </p>
 
-                <h2 className="text-4xl font-black">
-                  How reseller levels work
-                </h2>
+              <h2 className="text-4xl font-black">
+                How reseller levels work
+              </h2>
 
-                <p className="mt-5 text-zinc-400">
-                  Your reseller level is based on your total lifetime spending
-                  on Ascend Service. As your spending grows, your account
-                  unlocks stronger discounts, better support, and more exclusive
-                  reseller benefits.
-                </p>
-              </div>
+              <p className="mt-5 text-zinc-400">
+                Your reseller level is based on your total lifetime spending on
+                Ascend Service. As your spending grows, your account unlocks
+                stronger discounts, better support, and more exclusive reseller
+                benefits.
+              </p>
 
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="mt-8 grid gap-4 sm:grid-cols-2">
                 {[
                   "Add funds to wallet",
                   "Place client orders",
