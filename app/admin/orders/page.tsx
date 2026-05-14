@@ -31,6 +31,11 @@ export default function AdminOrdersPage() {
   const [refundEnabled, setRefundEnabled] = useState(true);
   const [message, setMessage] = useState("");
 
+  const [syncingOrders, setSyncingOrders] = useState(false);
+  const [savingOrder, setSavingOrder] = useState(false);
+  const [refundingOrder, setRefundingOrder] = useState(false);
+  const [providerActionLoading, setProviderActionLoading] = useState(false);
+
   async function loadOrders() {
     const { data, error } = await supabase
       .from("orders")
@@ -84,6 +89,9 @@ export default function AdminOrdersPage() {
   }
 
   async function syncOrderStatuses() {
+    if (syncingOrders) return;
+
+    setSyncingOrders(true);
     setMessage("Syncing order statuses...");
 
     try {
@@ -94,14 +102,22 @@ export default function AdminOrdersPage() {
       const result = await response.json();
 
       setMessage(result.message || "Orders synced.");
+      setSyncingOrders(false);
       loadOrders();
     } catch {
       setMessage("Failed to sync orders.");
+      setSyncingOrders(false);
     }
   }
 
   async function handleProviderAction(action: "sync" | "cancel" | "refill") {
-    if (!selectedOrder) return;
+    if (providerActionLoading) return;
+
+    setProviderActionLoading(true);
+    if (!selectedOrder) {
+      setProviderActionLoading(false);
+      return;
+    }
 
     setMessage(`Processing ${action} request...`);
 
@@ -121,18 +137,30 @@ export default function AdminOrdersPage() {
 
       setMessage(result.message || "Action completed.");
 
+      setProviderActionLoading(false);
+
       loadOrders();
     } catch {
       setMessage("Failed to process provider action.");
+      setProviderActionLoading(false);
     }
   }
 
   async function updateOrderStatus() {
-    if (!selectedOrder || !newStatus) return;
+    if (savingOrder) return;
+
+    setSavingOrder(true);
+    if (!selectedOrder || !newStatus) {
+      setSavingOrder(false);
+      return;
+    }
 
     const confirmUpdate = confirm(`Change order status to ${newStatus}?`);
 
-    if (!confirmUpdate) return;
+    if (!confirmUpdate) {
+      setSavingOrder(false);
+      return;
+    }
 
     const { error } = await supabase
       .from("orders")
@@ -145,6 +173,7 @@ export default function AdminOrdersPage() {
 
     if (error) {
       setMessage(error.message);
+      setSavingOrder(false);
       return;
     }
 
@@ -157,21 +186,30 @@ export default function AdminOrdersPage() {
     });
 
     setMessage("Order updated successfully.");
+    setSavingOrder(false);
     setSelectedOrder(null);
     setNewStatus("");
     loadOrders();
   }
 
   async function refundOrder() {
-    if (!selectedOrder) return;
+    if (refundingOrder) return;
+
+    setRefundingOrder(true);
+    if (!selectedOrder) {
+      setRefundingOrder(false);
+      return;
+    }
 
     if (!refundEnabled) {
       setMessage("Refunds are currently disabled.");
+      setRefundingOrder(false);
       return;
     }
 
     if (selectedOrder.status !== "pending") {
       setMessage("Only pending orders can be refunded.");
+      setRefundingOrder(false);
       return;
     }
 
@@ -181,7 +219,10 @@ export default function AdminOrdersPage() {
       )} back to the user's wallet?`
     );
 
-    if (!confirmRefund) return;
+    if (!confirmRefund) {
+      setRefundingOrder(false);
+      return;
+    }
 
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
@@ -191,6 +232,7 @@ export default function AdminOrdersPage() {
 
     if (profileError) {
       setMessage(profileError.message);
+      setRefundingOrder(false);
       return;
     }
 
@@ -207,6 +249,7 @@ export default function AdminOrdersPage() {
 
     if (balanceError) {
       setMessage(balanceError.message);
+      setRefundingOrder(false);
       return;
     }
 
@@ -219,6 +262,7 @@ export default function AdminOrdersPage() {
 
     if (orderError) {
       setMessage(orderError.message);
+      setRefundingOrder(false);
       return;
     }
 
@@ -233,6 +277,7 @@ export default function AdminOrdersPage() {
     });
 
     setMessage("Order refunded successfully.");
+    setRefundingOrder(false);
     setSelectedOrder(null);
     setNewStatus("");
     loadOrders();
@@ -256,9 +301,10 @@ export default function AdminOrdersPage() {
 
           <button
             onClick={syncOrderStatuses}
-            className="rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-semibold transition"
+            disabled={syncingOrders}
+            className="rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Sync Status
+            {syncingOrders ? "Syncing..." : "Sync Status"}
           </button>
         </div>
 
@@ -436,23 +482,26 @@ export default function AdminOrdersPage() {
                   <div className="grid md:grid-cols-3 gap-3">
                     <button
                       onClick={() => handleProviderAction("sync")}
-                      className="rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-3 text-sm font-semibold transition"
+                      disabled={providerActionLoading}
+                      className="rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-3 text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Sync This Order
+                      {providerActionLoading ? "Processing..." : "Sync This Order"}
                     </button>
 
                     <button
                       onClick={() => handleProviderAction("cancel")}
-                      className="rounded-xl bg-red-600 hover:bg-red-700 px-4 py-3 text-sm font-semibold transition"
+                      disabled={providerActionLoading}
+                      className="rounded-xl bg-red-600 hover:bg-red-700 px-4 py-3 text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Cancel Provider Order
+                      {providerActionLoading ? "Processing..." : "Cancel Provider Order"}
                     </button>
 
                     <button
                       onClick={() => handleProviderAction("refill")}
-                      className="rounded-xl bg-purple-600 hover:bg-purple-700 px-4 py-3 text-sm font-semibold transition"
+                      disabled={providerActionLoading}
+                      className="rounded-xl bg-purple-600 hover:bg-purple-700 px-4 py-3 text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Request Refill
+                      {providerActionLoading ? "Processing..." : "Request Refill"}
                     </button>
                   </div>
                 )}
@@ -526,9 +575,10 @@ export default function AdminOrdersPage() {
                   {refundEnabled && selectedOrder.status === "pending" && (
                     <button
                       onClick={refundOrder}
-                      className="border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl px-5 py-3 font-semibold transition"
+                      disabled={refundingOrder}
+                      className="border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl px-5 py-3 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Refund
+                      {refundingOrder ? "Refunding..." : "Refund"}
                     </button>
                   )}
                 </div>
@@ -546,9 +596,10 @@ export default function AdminOrdersPage() {
 
                   <button
                     onClick={updateOrderStatus}
-                    className="bg-blue-600 hover:bg-blue-700 rounded-xl px-5 py-3 font-semibold transition"
+                    disabled={savingOrder}
+                    className="bg-blue-600 hover:bg-blue-700 rounded-xl px-5 py-3 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Save Changes
+                    {savingOrder ? "Saving..." : "Save Changes"}
                   </button>
                 </div>
               </div>
