@@ -20,14 +20,19 @@ export default function ForgotPasswordPage() {
 
     setMessage("Sending reset link...");
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: "https://ascend-service.org/reset-password",
-    });
+const response = await fetch("/api/auth/request-password-reset", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    email,
+  }),
+});
 
-    if (error) {
-      setMessage(error.message);
-      return;
-    }
+const result = await response.json();
+
+setMessage(result.message || "Password reset link sent. Please check your email.");
 
     setMessage("Password reset link sent. Please check your email.");
   }
