@@ -70,63 +70,65 @@ export default function OrdersPage() {
         {message && <p className="text-sm text-blue-400 mb-4">{message}</p>}
 
         <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-black/60 text-zinc-500">
-              <tr>
-                <th className="text-left p-5">Service</th>
-                <th className="text-left p-5">Quantity</th>
-                <th className="text-left p-5">Charge</th>
-                <th className="text-left p-5">Progress</th>
-                <th className="text-left p-5">Status</th>
-                <th className="text-left p-5">Date</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {orders.map((order) => (
-                <tr key={order.id} className="border-t border-zinc-900">
-                  <td className="p-5">
-                    <p className="font-semibold">{order.service_name}</p>
-                    <p className="text-xs text-zinc-500 truncate max-w-xs">
-                      {order.link}
-                    </p>
-                  </td>
-
-                  <td className="p-5 text-zinc-300">{order.quantity}</td>
-
-                  <td className="p-5 text-blue-400 font-semibold">
-                    ₱{Number(order.price || 0).toFixed(2)}
-                  </td>
-
-                  <td className="p-5 text-zinc-400">
-                    {order.current_count || 0} / {order.quantity}
-                  </td>
-
-                  <td className="p-5">
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs capitalize ${getStatusStyle(
-                        order.status
-                      )}`}
-                    >
-                      {order.status}
-                    </span>
-                  </td>
-
-                  <td className="p-5 text-zinc-500">
-                    {new Date(order.created_at).toLocaleString()}
-                  </td>
-                </tr>
-              ))}
-
-              {orders.length <= 0 && (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px] text-sm">
+              <thead className="bg-black/60 text-zinc-500">
                 <tr>
-                  <td colSpan={6} className="p-10 text-center text-zinc-500">
-                    No orders yet.
-                  </td>
+                  <th className="text-left p-5">Service</th>
+                  <th className="text-left p-5">Quantity</th>
+                  <th className="text-left p-5">Charge</th>
+                  <th className="text-left p-5">Progress</th>
+                  <th className="text-left p-5">Status</th>
+                  <th className="text-left p-5">Date</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+
+              <tbody>
+                {orders.map((order) => (
+                  <tr key={order.id} className="border-t border-zinc-900">
+                    <td className="p-5">
+                      <p className="font-semibold">{order.service_name}</p>
+                      <p className="text-xs text-zinc-500 truncate max-w-xs">
+                        {order.link}
+                      </p>
+                    </td>
+
+                    <td className="p-5 text-zinc-300">{order.quantity}</td>
+
+                    <td className="p-5 text-blue-400 font-semibold">
+                      ₱{Number(order.price || 0).toFixed(2)}
+                    </td>
+
+                    <td className="p-5 text-zinc-400">
+                      {order.current_count || 0} / {order.quantity}
+                    </td>
+
+                    <td className="p-5">
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs capitalize ${getStatusStyle(
+                          order.status
+                        )}`}
+                      >
+                        {order.status}
+                      </span>
+                    </td>
+
+                    <td className="p-5 text-zinc-500">
+                      {new Date(order.created_at).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+
+                {orders.length <= 0 && (
+                  <tr>
+                    <td colSpan={6} className="p-10 text-center text-zinc-500">
+                      No orders yet.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </DashboardLayout>
     </DashboardGuard>

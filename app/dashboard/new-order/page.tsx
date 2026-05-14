@@ -4,6 +4,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useMemo, useState } from "react";
 import DashboardGuard from "@/components/DashboardGuard";
+import { useToast } from "@/components/ToastProvider";
 
 type Service = {
   id: string;
@@ -52,6 +53,7 @@ export default function NewOrderPage() {
   const [notes, setNotes] = useState("");
   const [message, setMessage] = useState("");
   const [placingOrder, setPlacingOrder] = useState(false);
+  const { showToast } = useToast();
 
   async function loadData() {
     const { data: serviceData } = await supabase
@@ -168,13 +170,13 @@ export default function NewOrderPage() {
     setPlacingOrder(true);
 
     if (!selectedService) {
-      setMessage("Please select a service.");
+      showToast("Please select a service.", "warning");
       setPlacingOrder(false);
       return;
     }
 
     if (!link) {
-      setMessage("Please enter a link.");
+      showToast("Please enter a link.", "warning");
       setPlacingOrder(false);
       return;
     }
@@ -185,19 +187,19 @@ export default function NewOrderPage() {
       qty < selectedService.min_quantity ||
       qty > selectedService.max_quantity
     ) {
-      setMessage(
-        `Quantity must be between ${selectedService.min_quantity} and ${selectedService.max_quantity}.`
-      );
+showToast(
+  `Quantity must be between ${selectedService.min_quantity} and ${selectedService.max_quantity}.`,
+  "warning"
+);
       setPlacingOrder(false);
       return;
     }
 
-    setMessage("Creating order...");
 
     const { data: authData } = await supabase.auth.getUser();
 
     if (!authData.user) {
-      setMessage("User not authenticated.");
+      showToast("User not authenticated.", "error");
       setPlacingOrder(false);
       return;
     }
@@ -219,12 +221,15 @@ export default function NewOrderPage() {
       const result = await response.json();
 
       if (!result.success) {
-        setMessage(result.message);
+        showToast(result.message, "error");
         setPlacingOrder(false);
         return;
       }
 
-      setMessage(result.message || "Order placed successfully.");
+      showToast(
+  result.message || "Order placed successfully.",
+  "success"
+);
 
       setNetwork("Everything");
       setCategory("");
@@ -238,7 +243,7 @@ export default function NewOrderPage() {
 
       loadData();
     } catch {
-      setMessage("Failed to create order.");
+      showToast("Failed to create order.", "error");
       setPlacingOrder(false);
     }
   }
@@ -268,7 +273,7 @@ export default function NewOrderPage() {
           </button>
         </div>
 
-        <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mb-8">
           {networks.map((item) => (
             <button
               key={item.name}
@@ -289,8 +294,8 @@ export default function NewOrderPage() {
           ))}
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 rounded-3xl border border-zinc-800 bg-zinc-950/80 p-8">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="xl:col-span-2 rounded-3xl border border-zinc-800 bg-zinc-950/80 p-4 lg:p-8">
             <h3 className="text-2xl font-black mb-6">Order Details</h3>
 
             <div className="flex flex-col gap-5">
@@ -332,7 +337,7 @@ export default function NewOrderPage() {
                   </div>
                 ) : filteredServices.length <= 0 ? (
                   <div className="px-4 py-4 text-sm text-zinc-500">
-                    No services found.
+                    No matching services found for this category.
                   </div>
                 ) : (
                   <div className="max-h-80 overflow-y-auto">
@@ -432,7 +437,7 @@ export default function NewOrderPage() {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 p-8">
+          <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 p-4 lg:p-8 xl:sticky xl:top-6 h-fit">
             <h3 className="text-2xl font-black mb-6">Service Info</h3>
 
             {selectedService ? (

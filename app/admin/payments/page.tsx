@@ -299,7 +299,8 @@ export default function AdminPaymentsPage() {
       {message && <p className="text-sm text-blue-400 mb-4">{message}</p>}
 
       <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 overflow-hidden">
-        <table className="w-full text-sm">
+  <div className="overflow-x-auto">
+    <table className="w-full min-w-[1000px] text-sm">
           <thead className="bg-black/60 text-zinc-500">
             <tr>
               <th className="text-left p-5">Paid Amount</th>
@@ -371,12 +372,13 @@ export default function AdminPaymentsPage() {
               </tr>
             )}
           </tbody>
-        </table>
-      </div>
+</table>
+  </div>
+</div>
 
       {selectedDeposit && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
-          <div className="w-full max-w-4xl rounded-3xl border border-zinc-800 bg-zinc-950 overflow-hidden">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-start lg:items-center justify-center p-3 lg:p-6 overflow-y-auto">
+          <div className="w-full max-w-4xl my-10 rounded-3xl border border-zinc-800 bg-zinc-950 overflow-hidden">
             <div className="p-6 border-b border-zinc-800 flex items-center justify-between">
               <div>
                 <h3 className="text-2xl font-black">Review Deposit</h3>
@@ -399,7 +401,7 @@ export default function AdminPaymentsPage() {
               </button>
             </div>
 
-            <div className="grid lg:grid-cols-2 gap-6 p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4 lg:p-6">
               <div className="space-y-5">
                 <div>
                   <p className="text-sm text-zinc-500">Paid Amount</p>
@@ -514,7 +516,7 @@ export default function AdminPaymentsPage() {
               </div>
             </div>
 
-            <div className="p-6 border-t border-zinc-800 flex justify-end gap-3">
+            <div className="p-4 lg:p-6 border-t border-zinc-800 flex flex-col lg:flex-row justify-end gap-3">
               <button
                 onClick={() => {
                   setSelectedDeposit(null);

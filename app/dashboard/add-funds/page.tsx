@@ -4,6 +4,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import DashboardGuard from "@/components/DashboardGuard";
+import { useToast } from "@/components/ToastProvider";
 
 type PaymentMethod = {
   id: string;
@@ -36,6 +37,7 @@ export default function AddFundsPage() {
   const [message, setMessage] = useState("");
   const [submittingDeposit, setSubmittingDeposit] = useState(false);
   const [showQrDetails, setShowQrDetails] = useState(false);
+  const { showToast } = useToast();
 
   async function loadPaymentMethods() {
     const { data } = await supabase
@@ -76,7 +78,6 @@ export default function AddFundsPage() {
     if (submittingDeposit) return;
 
     setSubmittingDeposit(true);
-    setMessage("Submitting deposit request...");
 
     if (
       !amount ||
@@ -85,7 +86,10 @@ export default function AddFundsPage() {
       !reference ||
       !proofFile
     ) {
-      setMessage("Please complete all fields and upload proof.");
+      showToast(
+  "Please complete all fields and upload proof.",
+  "warning"
+);
       setSubmittingDeposit(false);
       return;
     }
@@ -93,7 +97,7 @@ export default function AddFundsPage() {
     const { data: authData } = await supabase.auth.getUser();
 
     if (!authData.user) {
-      setMessage("You must be logged in.");
+      showToast("You must be logged in.", "error");
       setSubmittingDeposit(false);
       return;
     }
@@ -107,7 +111,7 @@ export default function AddFundsPage() {
       .upload(fileName, proofFile);
 
     if (uploadError) {
-      setMessage(uploadError.message);
+      showToast(uploadError.message, "error");
       setSubmittingDeposit(false);
       return;
     }
@@ -131,7 +135,7 @@ export default function AddFundsPage() {
       });
 
     if (insertError) {
-      setMessage(insertError.message);
+      showToast(insertError.message, "error");
       setSubmittingDeposit(false);
       return;
     }
@@ -183,9 +187,10 @@ export default function AddFundsPage() {
 
     setShowQrDetails(false);
 
-    setMessage(
-      "Deposit request submitted successfully!"
-    );
+showToast(
+  "Deposit request submitted successfully!",
+  "success"
+);
     setSubmittingDeposit(false);
   }
 
@@ -201,14 +206,14 @@ export default function AddFundsPage() {
           your available payment methods.
         </p>
 
-        <div className="grid lg:grid-cols-2 gap-6">
-          <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 p-8">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 p-4 lg:p-8">
             <h3 className="text-2xl font-black mb-6">
               Deposit Details
             </h3>
 
             <div className="flex flex-col gap-6">
-              <div className="grid grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-sm text-zinc-400 mb-2">
                     Amount
@@ -332,12 +337,6 @@ export default function AddFundsPage() {
                 />
               </div>
 
-              {message && (
-                <p className="text-sm text-blue-400">
-                  {message}
-                </p>
-              )}
-
               <button
                 onClick={handleSubmit}
                 disabled={!methodId || submittingDeposit}
@@ -348,7 +347,7 @@ export default function AddFundsPage() {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 p-8">
+          <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 p-4 lg:p-8 xl:sticky xl:top-6 h-fit">
             <h3 className="text-2xl font-black mb-6">
               Payment Method Instruction
             </h3>
@@ -373,7 +372,7 @@ export default function AddFundsPage() {
                       <img
                         src={selectedMethod.qr_url}
                         alt={`${selectedMethod.name} QR Code`}
-                        className="w-64 h-64 object-contain rounded-2xl border border-zinc-800 bg-white p-3"
+                        className="w-52 h-52 sm:w-64 sm:h-64 object-contain rounded-2xl border border-zinc-800 bg-white p-3"
                       />
                     </div>
 

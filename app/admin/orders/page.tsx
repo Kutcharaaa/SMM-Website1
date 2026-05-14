@@ -2,6 +2,7 @@
 
 import AdminLayout from "@/components/AdminLayout";
 import AdminGuard from "@/components/AdminGuard";
+import { useConfirm } from "@/components/ConfirmProvider";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 
@@ -35,6 +36,7 @@ export default function AdminOrdersPage() {
   const [savingOrder, setSavingOrder] = useState(false);
   const [refundingOrder, setRefundingOrder] = useState(false);
   const [providerActionLoading, setProviderActionLoading] = useState(false);
+  const { confirmAction } = useConfirm();
 
   async function loadOrders() {
     const { data, error } = await supabase
@@ -119,6 +121,20 @@ export default function AdminOrdersPage() {
       return;
     }
 
+if (action === "cancel") {
+  const confirmCancel = await confirmAction({
+    title: "Cancel Provider Order",
+    message: "Are you sure you want to send a cancel request to the provider?",
+    confirmText: "Cancel Provider Order",
+    variant: "danger",
+  });
+
+  if (!confirmCancel) {
+    setProviderActionLoading(false);
+    return;
+  }
+}
+
     setMessage(`Processing ${action} request...`);
 
     try {
@@ -155,7 +171,11 @@ export default function AdminOrdersPage() {
       return;
     }
 
-    const confirmUpdate = confirm(`Change order status to ${newStatus}?`);
+    const confirmUpdate = await confirmAction({
+  title: "Update Order Status",
+  message: `Change this order status to "${newStatus}"?`,
+  confirmText: "Update Status",
+});
 
     if (!confirmUpdate) {
       setSavingOrder(false);
@@ -213,11 +233,14 @@ export default function AdminOrdersPage() {
       return;
     }
 
-    const confirmRefund = confirm(
-      `Refund ₱${Number(selectedOrder.price || 0).toFixed(
-        2
-      )} back to the user's wallet?`
-    );
+const confirmRefund = await confirmAction({
+  title: "Refund Order",
+  message: `Refund ₱${Number(selectedOrder.price || 0).toFixed(
+    2
+  )} back to the user's wallet? This will cancel the order.`,
+  confirmText: "Refund",
+  variant: "danger",
+});
 
     if (!confirmRefund) {
       setRefundingOrder(false);
@@ -308,8 +331,9 @@ export default function AdminOrdersPage() {
           </button>
         </div>
 
-        <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 overflow-hidden">
+  <div className="overflow-x-auto">
+          <table className="w-full min-w-[1100px] text-sm">
             <thead className="bg-black/60 text-zinc-500">
               <tr>
                 <th className="text-left p-5">Service</th>
@@ -394,10 +418,11 @@ export default function AdminOrdersPage() {
             </tbody>
           </table>
         </div>
+        </div>
 
         {selectedOrder && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
-            <div className="w-full max-w-3xl rounded-3xl border border-zinc-800 bg-zinc-950 overflow-hidden">
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-start lg:items-center justify-center p-3 lg:p-6 overflow-y-auto">
+            <div className="w-full max-w-3xl my-10 rounded-3xl border border-zinc-800 bg-zinc-950 overflow-hidden">
               <div className="p-6 border-b border-zinc-800 flex items-center justify-between">
                 <div>
                   <h3 className="text-2xl font-black">Manage Order</h3>
@@ -479,7 +504,7 @@ export default function AdminOrdersPage() {
                 )}
 
                 {selectedOrder.provider_order_id && (
-                  <div className="grid md:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <button
                       onClick={() => handleProviderAction("sync")}
                       disabled={providerActionLoading}
@@ -570,7 +595,7 @@ export default function AdminOrdersPage() {
                 )}
               </div>
 
-              <div className="p-6 border-t border-zinc-800 flex justify-between gap-3">
+              <div className="p-6 border-t border-zinc-800 flex flex-col lg:flex-row justify-between gap-3">
                 <div>
                   {refundEnabled && selectedOrder.status === "pending" && (
                     <button
@@ -583,7 +608,7 @@ export default function AdminOrdersPage() {
                   )}
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex flex-col lg:flex-row gap-3">
                   <button
                     onClick={() => {
                       setSelectedOrder(null);

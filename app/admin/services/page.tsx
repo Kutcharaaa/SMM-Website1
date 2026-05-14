@@ -2,6 +2,7 @@
 
 import AdminLayout from "@/components/AdminLayout";
 import AdminGuard from "@/components/AdminGuard";
+import { useConfirm } from "@/components/ConfirmProvider";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 
@@ -52,6 +53,7 @@ export default function AdminServicesPage() {
   const [providerId, setProviderId] = useState("");
   const [autoOrder, setAutoOrder] = useState(false);
   const [status, setStatus] = useState("active");
+  const { confirmAction } = useConfirm();
 
   async function loadServices() {
     const { data, error } = await supabase
@@ -139,11 +141,17 @@ export default function AdminServicesPage() {
       return;
     }
 
-    const confirmDelete = confirm(
-      `Delete ${selectedIds.length} selected services? This cannot be undone.`
-    );
+const confirmDelete = await confirmAction({
+  title: "Delete Selected Services",
+  message: `Delete ${selectedIds.length} selected services? This action cannot be undone.`,
+  confirmText: "Delete Services",
+  variant: "danger",
+});
 
-    if (!confirmDelete) return;
+if (!confirmDelete) {
+  setDeletingServices(false);
+  return;
+}
 
     setDeletingServices(true);
 
@@ -179,17 +187,30 @@ export default function AdminServicesPage() {
   async function deleteAllServices() {
     if (deletingServices) return;
 
-    const confirmDelete = confirm(
-      "Delete ALL services? This cannot be undone."
-    );
+const confirmDelete = await confirmAction({
+  title: "Delete All Services",
+  message: "Delete ALL services? This action cannot be undone.",
+  confirmText: "Delete All",
+  variant: "danger",
+});
 
-    if (!confirmDelete) return;
+if (!confirmDelete) {
+  setDeletingServices(false);
+  return;
+}
 
-    const doubleConfirm = confirm(
-      "Are you 100% sure? This will remove every service from your panel."
-    );
+const doubleConfirm = await confirmAction({
+  title: "Final Confirmation",
+  message:
+    "Are you 100% sure? This will remove every service from your panel.",
+  confirmText: "Yes, Delete Everything",
+  variant: "danger",
+});
 
-    if (!doubleConfirm) return;
+if (!doubleConfirm) {
+  setDeletingServices(false);
+  return;
+}
 
     setDeletingServices(true);
 
@@ -299,14 +320,17 @@ export default function AdminServicesPage() {
       return;
     }
 
-    const confirmDelete = confirm(
-      `Delete service "${selectedService.name}"? This cannot be undone.`
-    );
+const confirmDelete = await confirmAction({
+  title: "Delete Service",
+  message: `Delete "${selectedService.name}"? This cannot be undone.`,
+  confirmText: "Delete Service",
+  variant: "danger",
+});
 
-    if (!confirmDelete) {
-      setDeletingServices(false);
-      return;
-    }
+if (!confirmDelete) {
+  setDeletingServices(false);
+  return;
+}
 
     const { error } = await supabase
       .from("services")
@@ -385,7 +409,7 @@ export default function AdminServicesPage() {
         </div>
 
         <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[1200px] text-sm">
             <thead className="bg-black/60 text-zinc-500">
               <tr>
                 <th className="text-left p-5">Select</th>
@@ -482,8 +506,8 @@ export default function AdminServicesPage() {
         </div>
 
         {(showAddModal || selectedService) && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
-            <div className="w-full max-w-2xl rounded-3xl border border-zinc-800 bg-zinc-950 overflow-hidden">
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-start lg:items-center justify-center p-3 lg:p-6 overflow-y-auto">
+            <div className="w-full max-w-2xl my-10 rounded-3xl border border-zinc-800 bg-zinc-950 overflow-hidden">
               <div className="p-6 border-b border-zinc-800 flex items-center justify-between">
                 <div>
                   <h3 className="text-2xl font-black">
@@ -509,7 +533,7 @@ export default function AdminServicesPage() {
                 </button>
               </div>
 
-              <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+              <div className="p-4 lg:p-6 space-y-4 max-h-[70vh] overflow-y-auto">
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -531,7 +555,7 @@ export default function AdminServicesPage() {
                   placeholder="Description"
                 />
 
-                <div className="grid md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <input
                     value={price}
                     onChange={(e) => setPrice(e.target.value)}
@@ -557,7 +581,7 @@ export default function AdminServicesPage() {
                   />
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <select
                     value={providerId}
                     onChange={(e) => setProviderId(e.target.value)}
@@ -603,7 +627,7 @@ export default function AdminServicesPage() {
                 )}
               </div>
 
-              <div className="p-6 border-t border-zinc-800 flex justify-between gap-3">
+              <div className="p-4 lg:p-6 border-t border-zinc-800 flex flex-col lg:flex-row justify-between gap-3">
                 <div>
                   {selectedService && (
                     <button
@@ -618,7 +642,7 @@ export default function AdminServicesPage() {
                   )}
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex flex-col lg:flex-row gap-3">
                   <button
                     onClick={() => {
                       setShowAddModal(false);

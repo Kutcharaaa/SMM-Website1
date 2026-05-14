@@ -160,7 +160,8 @@ export default function AdminUsersPage() {
         </div>
 
         <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 overflow-hidden">
-          <table className="w-full text-sm">
+  <div className="overflow-x-auto">
+    <table className="w-full min-w-[1000px] text-sm">
             <thead className="bg-black/60 text-zinc-500">
               <tr>
                 <th className="text-left p-5">Username</th>
@@ -222,12 +223,13 @@ export default function AdminUsersPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
-        </div>
+</table>
+  </div>
+</div>
 
         {selectedUser && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
-            <div className="w-full max-w-2xl rounded-3xl border border-zinc-800 bg-zinc-950 overflow-hidden">
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-start lg:items-center justify-center p-3 lg:p-6 overflow-y-auto">
+            <div className="w-full max-w-2xl my-10 rounded-3xl border border-zinc-800 bg-zinc-950 overflow-hidden">
               <div className="p-6 border-b border-zinc-800 flex items-center justify-between">
                 <div>
                   <h3 className="text-2xl font-black">
@@ -252,7 +254,7 @@ export default function AdminUsersPage() {
                 </button>
               </div>
 
-              <div className="p-6 space-y-5">
+              <div className="p-4 lg:p-6 space-y-5">
                 <div>
                   <p className="text-sm text-zinc-500">Username</p>
                   <p className="font-semibold">{selectedUser.username}</p>
@@ -316,7 +318,7 @@ export default function AdminUsersPage() {
                 )}
               </div>
 
-              <div className="p-6 border-t border-zinc-800 flex justify-end gap-3">
+              <div className="p-4 lg:p-6 border-t border-zinc-800 flex flex-col lg:flex-row justify-end gap-3">
                 <button
                   onClick={() => setSelectedUser(null)}
                   className="border border-zinc-800 hover:border-zinc-600 rounded-xl px-5 py-3 font-semibold transition"
