@@ -1,18 +1,27 @@
 "use client";
 
-import { supabase } from "@/lib/supabase";
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
+  const searchParams = useSearchParams();
+
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
 
   async function handleUpdatePassword(e: React.FormEvent) {
     e.preventDefault();
+
+    const token = searchParams.get("token");
+
+    if (!token) {
+      setMessage("Invalid reset link. Please request a new one.");
+      return;
+    }
 
     if (!password || !confirmPassword) {
       setMessage("Please complete both password fields.");
@@ -31,12 +40,21 @@ export default function ResetPasswordPage() {
 
     setMessage("Updating password...");
 
-    const { error } = await supabase.auth.updateUser({
-      password,
+    const response = await fetch("/api/auth/reset-password", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        token,
+        password,
+      }),
     });
 
-    if (error) {
-      setMessage(error.message);
+    const result = await response.json();
+
+    if (!result.success) {
+      setMessage(result.message || "Failed to reset password.");
       return;
     }
 
@@ -90,5 +108,13 @@ export default function ResetPasswordPage() {
 
       <Footer />
     </main>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={null}>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }
