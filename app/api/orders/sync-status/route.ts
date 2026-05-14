@@ -10,8 +10,32 @@ function normalizeStatus(providerStatus: string) {
   if (status.includes("pending")) return "pending";
   if (status.includes("partial")) return "partial";
   if (status.includes("cancel")) return "canceled";
+  if (status.includes("fail")) return "failed";
+  if (status.includes("reject")) return "rejected";
 
-  return status;
+  return status || "pending";
+}
+
+function calculateCurrentCount({
+  nextStatus,
+  quantity,
+  remains,
+  fallback,
+}: {
+  nextStatus: string;
+  quantity: number;
+  remains: number;
+  fallback: number;
+}) {
+  if (nextStatus === "completed") {
+    return quantity;
+  }
+
+  if (nextStatus === "canceled" || nextStatus === "failed" || nextStatus === "rejected") {
+    return fallback;
+  }
+
+  return Math.max(0, quantity - remains);
 }
 
 export async function POST(req: Request) {
@@ -30,7 +54,7 @@ export async function POST(req: Request) {
       .select("*")
       .not("provider_order_id", "is", null)
       .in("status", ["pending", "processing", "partial"])
-      .limit(50);
+      .limit(100);
 
     if (ordersError) {
       return NextResponse.json({
@@ -48,56 +72,103 @@ export async function POST(req: Request) {
     }
 
     let synced = 0;
+    let failed = 0;
 
     for (const order of orders) {
-      const { data: provider } = await supabaseAdmin
-        .from("providers")
-        .select("*")
-        .eq("name", order.provider_name)
-        .single();
+      try {
+        let provider = null;
 
-      if (!provider) continue;
+        if (order.provider_id) {
+          const { data } = await supabaseAdmin
+            .from("providers")
+            .select("*")
+            .eq("id", order.provider_id)
+            .single();
 
-      const formData = new FormData();
-      formData.append("key", provider.api_key);
-      formData.append("action", "status");
-      formData.append("order", String(order.provider_order_id));
+          provider = data;
+        }
 
-      const response = await fetch(provider.api_url, {
-        method: "POST",
-        body: formData,
-      });
+        if (!provider && order.provider_name) {
+          const { data } = await supabaseAdmin
+            .from("providers")
+            .select("*")
+            .eq("name", order.provider_name)
+            .single();
 
-      const result = await response.json();
+          provider = data;
+        }
 
-      if (!response.ok || result.error) continue;
+        if (!provider) {
+          failed++;
+          continue;
+        }
 
-      const nextStatus = normalizeStatus(String(result.status || order.status));
+        const formData = new FormData();
+        formData.append("key", provider.api_key);
+        formData.append("action", "status");
+        formData.append("order", String(order.provider_order_id));
 
-      await supabaseAdmin
-        .from("orders")
-        .update({
-          status: nextStatus,
-          start_count: Number(result.start_count || order.start_count || 0),
-          current_count:
-            nextStatus === "completed"
-              ? Number(order.quantity || 0)
-              : Math.max(
-                0,
-                Number(order.quantity || 0) - Number(result.remains || 0)
-              ),
-        })
-        .eq("id", order.id);
+        const response = await fetch(provider.api_url, {
+          method: "POST",
+          body: formData,
+        });
 
-      synced++;
+        const result = await response.json();
+
+        if (!response.ok || result.error) {
+          await supabaseAdmin
+            .from("orders")
+            .update({
+              provider_response: result,
+              provider_status: "sync_failed",
+              synced_at: new Date().toISOString(),
+            })
+            .eq("id", order.id);
+
+          failed++;
+          continue;
+        }
+
+        const nextStatus = normalizeStatus(String(result.status || order.status));
+        const quantity = Number(order.quantity || 0);
+        const remains = Number(result.remains || 0);
+        const fallback = Number(order.current_count || 0);
+
+        const nextCurrentCount = calculateCurrentCount({
+          nextStatus,
+          quantity,
+          remains,
+          fallback,
+        });
+
+        await supabaseAdmin
+          .from("orders")
+          .update({
+            status: nextStatus,
+            provider_status: String(result.status || nextStatus),
+            provider_response: result,
+            start_count: Number(result.start_count || order.start_count || 0),
+            current_count: nextCurrentCount,
+            synced_at: new Date().toISOString(),
+          })
+          .eq("id", order.id);
+
+        synced++;
+      } catch (error) {
+        console.error("ORDER_SYNC_ITEM_ERROR:", error);
+        failed++;
+      }
     }
 
     return NextResponse.json({
       success: true,
-      message: `${synced} orders synced successfully.`,
+      message: `${synced} orders synced. ${failed} failed.`,
       synced,
+      failed,
     });
-  } catch {
+  } catch (error) {
+    console.error("ORDER_SYNC_ERROR:", error);
+
     return NextResponse.json({
       success: false,
       message: "Failed to sync order statuses.",
