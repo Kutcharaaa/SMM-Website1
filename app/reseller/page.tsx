@@ -15,7 +15,7 @@ const resellerLevels = [
   },
 
   {
-    name: "Power Reseller",
+    name: "Active Reseller",
     tag: "Growing Reseller",
     required: "$500",
     discount: "1%",
@@ -52,7 +52,7 @@ const resellerLevels = [
   },
 
   {
-    name: "Premium Partner",
+    name: "Elite Partner",
     tag: "Premium Partner",
     required: "$30,000",
     discount: "4%",
@@ -66,7 +66,7 @@ const resellerLevels = [
   },
 
   {
-    name: "Elite Partner",
+    name: "Ascend Partner",
     tag: "Top Tier Partner",
     required: "$50,000",
     discount: "5%",
