@@ -3,7 +3,6 @@ import Footer from "@/components/Footer";
 import Link from "next/link";
 import GetStartedButton from "@/components/GetStartedButton";
 
-
 const resellerLevels = [
   {
     name: "New Reseller",
@@ -93,32 +92,32 @@ export default function ResellerPage() {
       <Navbar />
 
       <section className="relative overflow-hidden px-6 py-24">
-        <div className="absolute left-1/2 top-0 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-blue-600/20 blur-3xl" />
+        <div className="absolute left-1/2 top-0 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-fuchsia-600/20 blur-3xl" />
 
         <div className="relative mx-auto max-w-7xl">
           <div className="mx-auto max-w-3xl text-center">
-            <p className="mb-4 inline-flex rounded-full border border-blue-500/20 bg-blue-500/10 px-5 py-2 text-sm font-semibold text-blue-400">
+            <p className="mb-4 inline-flex rounded-full border border-fuchsia-500/20 bg-fuchsia-500/10 px-5 py-2 text-sm font-semibold text-fuchsia-400">
               Ascend Reseller Program
             </p>
 
             <h1 className="text-5xl font-black tracking-tight md:text-7xl">
-              Scale More. Spend Smarter. Unlock Better Rates.
+              Unlock Higher Reseller Benefits
             </h1>
 
             <p className="mt-6 text-lg text-zinc-400">
-              Your reseller level grows with your total spending. Higher levels
-              unlock better discounts, stronger support, and exclusive platform
-              advantages.
+              Grow your reseller level through lifetime spending and unlock
+              better discounts, stronger support, exclusive perks, and reseller
+              rewards.
             </p>
 
             <div className="mt-10 flex flex-col justify-center gap-4 sm:flex-row">
-<GetStartedButton className="rounded-2xl bg-blue-600 px-8 py-4 font-bold transition hover:bg-blue-700">
-  Start Reselling
-</GetStartedButton>
+              <GetStartedButton className="rounded-2xl bg-fuchsia-600 px-8 py-4 font-bold transition hover:bg-fuchsia-700">
+                Start Reselling
+              </GetStartedButton>
 
               <Link
                 href="/services"
-                className="rounded-2xl border border-zinc-800 px-8 py-4 font-bold transition hover:border-blue-500"
+                className="rounded-2xl border border-zinc-800 px-8 py-4 font-bold transition hover:border-fuchsia-500"
               >
                 View Services
               </Link>
@@ -129,7 +128,7 @@ export default function ResellerPage() {
             {resellerLevels.map((level, index) => (
               <div
                 key={level.name}
-                className="group relative overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950/80 p-6 transition hover:-translate-y-1 hover:border-blue-500/40"
+                className="group relative overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950/80 p-6 transition hover:-translate-y-1 hover:border-fuchsia-500/40"
               >
                 <div
                   className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${level.accent}`}
@@ -151,21 +150,36 @@ export default function ResellerPage() {
                   </div>
 
                   <div className="rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-right">
-                    <p className="text-xs text-zinc-500">Discount</p>
-                    <p className="text-2xl font-black text-blue-400">
-                      {level.discount}
+                    <p className="text-xs text-zinc-500">
+                      Required Spent
+                    </p>
+
+                    <p className="text-2xl font-black text-fuchsia-400">
+                      {level.required}
                     </p>
                   </div>
                 </div>
 
-                <div className="mt-8 rounded-2xl border border-zinc-800 bg-black/60 p-5">
-                  <p className="text-sm text-zinc-500">
-                    Required total spending
-                  </p>
+                <div className="mt-8 grid grid-cols-2 gap-4">
+                  <div className="rounded-2xl border border-zinc-800 bg-black px-4 py-4">
+                    <p className="text-xs text-zinc-500">
+                      Discount
+                    </p>
 
-                  <p className="mt-2 text-4xl font-black">
-                    {level.required}
-                  </p>
+                    <p className="mt-2 text-2xl font-black text-blue-400">
+                      {level.discount}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-zinc-800 bg-black px-4 py-4">
+                    <p className="text-xs text-zinc-500">
+                      Every 100 points
+                    </p>
+
+                    <p className="mt-2 text-2xl font-black text-fuchsia-400">
+                      {level.points}
+                    </p>
+                  </div>
                 </div>
 
                 <div className="mt-6 space-y-3">
@@ -174,7 +188,7 @@ export default function ResellerPage() {
                       key={perk}
                       className="flex items-start gap-3 text-sm text-zinc-300"
                     >
-                      <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-xs text-blue-400">
+                      <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-fuchsia-500/10 text-xs text-fuchsia-400">
                         ✓
                       </span>
 
@@ -186,6 +200,48 @@ export default function ResellerPage() {
             ))}
           </div>
 
+          <div className="mt-20 rounded-3xl border border-zinc-800 bg-zinc-950/80 p-8 md:p-12">
+            <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
+              <div>
+                <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-fuchsia-400">
+                  Point System
+                </p>
+
+                <h2 className="text-4xl font-black">
+                  Earn Points From Orders
+                </h2>
+
+                <p className="mt-5 text-zinc-400">
+                  Every completed order can earn reseller points depending on
+                  your reseller level. Higher levels unlock better point
+                  conversion rates and reseller benefits.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                {[
+                  "Points are stored in your account",
+                  "Points are NOT automatically converted",
+                  "You can manually convert points anytime",
+                  "Converted points become wallet balance",
+                ].map((item) => (
+                  <div
+                    key={item}
+                    className="flex items-center gap-4 rounded-2xl border border-zinc-800 bg-black p-4"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-fuchsia-600 font-black">
+                      ✓
+                    </div>
+
+                    <p className="font-semibold">
+                      {item}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
           <div className="mt-20 rounded-3xl border border-zinc-800 bg-gradient-to-br from-zinc-950 to-black p-8 md:p-12">
             <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
               <div>
@@ -194,9 +250,9 @@ export default function ResellerPage() {
                 </h2>
 
                 <p className="mt-4 text-zinc-400">
-                  Your level is based on your lifetime spending on Ascend
-                  Service. As your volume grows, your account can unlock better
-                  rates and priority benefits.
+                  Your reseller level is based on your lifetime spending on
+                  Ascend Service. Higher spending unlocks stronger reseller
+                  perks and better conversion rewards.
                 </p>
               </div>
 
@@ -204,18 +260,20 @@ export default function ResellerPage() {
                 {[
                   "Deposit funds into your wallet",
                   "Place orders for your clients",
-                  "Grow your total spending volume",
+                  "Earn reseller points from completed orders",
                   "Unlock higher reseller benefits",
                 ].map((step, index) => (
                   <div
                     key={step}
                     className="flex items-center gap-4 rounded-2xl border border-zinc-800 bg-black p-4"
                   >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 font-black">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-fuchsia-600 font-black">
                       {index + 1}
                     </div>
 
-                    <p className="font-semibold">{step}</p>
+                    <p className="font-semibold">
+                      {step}
+                    </p>
                   </div>
                 ))}
               </div>
