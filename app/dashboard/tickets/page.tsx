@@ -2,6 +2,7 @@
 
 import DashboardSidebar from "@/components/DashboardSidebar";
 import DashboardTopbar from "@/components/DashboardTopbar";
+import DashboardGuard from "@/components/DashboardGuard";
 
 import { supabase } from "@/lib/supabase";
 
@@ -107,7 +108,8 @@ export default function TicketsPage() {
     return "bg-yellow-500/10 text-yellow-400";
   }
 
-  return (
+return (
+  <DashboardGuard>
     <main className="min-h-screen bg-black text-white">
       <DashboardSidebar />
 
@@ -182,7 +184,7 @@ export default function TicketsPage() {
                 <button
                   onClick={createTicket}
                   disabled={loading}
-                  className="bg-blue-600 hover:bg-blue-700 rounded-xl py-3 font-semibold transition disabled:opacity-50"
+                  className="bg-blue-600 hover:bg-blue-700 rounded-xl py-3 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading
                     ? "Creating..."
@@ -254,5 +256,6 @@ export default function TicketsPage() {
         </div>
       </section>
     </main>
-  );
+  </DashboardGuard>
+);
 }

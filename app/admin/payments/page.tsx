@@ -29,7 +29,9 @@ export default function AdminPaymentsPage() {
   const [showRejectBox, setShowRejectBox] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [message, setMessage] = useState("");
+
   const [approving, setApproving] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
 
   async function loadDeposits() {
     const { data, error } = await supabase
@@ -76,7 +78,10 @@ export default function AdminPaymentsPage() {
     return data as Profile;
   }
 
-  async function sendDepositEmail(depositId: string, status: "approved" | "rejected") {
+  async function sendDepositEmail(
+    depositId: string,
+    status: "approved" | "rejected"
+  ) {
     await fetch("/api/email/deposit-status", {
       method: "POST",
       headers: {
@@ -90,24 +95,32 @@ export default function AdminPaymentsPage() {
   }
 
   async function approveDeposit(deposit: Deposit) {
+    if (approving || rejecting) return;
 
-  if (approving) return;
+    if (deposit.status === "approved") {
+      setMessage("Deposit already approved.");
+      return;
+    }
 
-  setApproving(true);
+    const creditAmount = Number(deposit.wallet_credit || deposit.amount || 0);
+
+    if (creditAmount <= 0) {
+      setMessage("Invalid deposit amount.");
+      return;
+    }
+
+    const confirmApprove = confirm(
+      `Approve this deposit and add ₱${creditAmount.toFixed(
+        2
+      )} to the user's wallet?`
+    );
+
+    if (!confirmApprove) return;
+
+    setApproving(true);
+    setMessage("Approving deposit...");
 
     try {
-      if (deposit.status === "approved") {
-        setMessage("Deposit already approved.");
-        return;
-      }
-
-      const amount = Number(deposit.amount || 0);
-
-      if (amount <= 0) {
-        setMessage("Invalid deposit amount.");
-        return;
-      }
-
       const { data: paymentMethod } = await supabase
         .from("payment_methods")
         .select("cash_account_id")
@@ -119,76 +132,110 @@ export default function AdminPaymentsPage() {
       if (paymentMethod?.cash_account_id) {
         cashAccountId = paymentMethod.cash_account_id;
 
-        const { data: cashAccount } = await supabase
+        const { data: cashAccount, error: cashAccountError } = await supabase
           .from("cash_accounts")
           .select("balance")
           .eq("id", cashAccountId)
           .single();
 
-        const currentBalance = Number(
-          cashAccount?.balance || 0
-        );
+        if (cashAccountError) {
+          setMessage(cashAccountError.message);
+          setApproving(false);
+          return;
+        }
 
-        const newBalance = currentBalance + amount;
+        const currentCashBalance = Number(cashAccount?.balance || 0);
+        const newCashBalance = currentCashBalance + creditAmount;
 
-        await supabase
+        const { error: cashUpdateError } = await supabase
           .from("cash_accounts")
           .update({
-            balance: newBalance,
+            balance: newCashBalance,
           })
           .eq("id", cashAccountId);
+
+        if (cashUpdateError) {
+          setMessage(cashUpdateError.message);
+          setApproving(false);
+          return;
+        }
 
         await supabase.from("cash_movements").insert({
           cash_account_id: cashAccountId,
           type: "deposit",
-          amount: amount,
+          amount: creditAmount,
           description: `Deposit approved (${deposit.method})`,
           reference_type: "deposit",
           reference_id: deposit.id,
         });
       }
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("balance")
-        .eq("id", deposit.user_id)
-        .single();
+      const profile = await getUserProfile(deposit.user_id);
 
-      const currentBalance = Number(profile?.balance || 0);
+      if (!profile) {
+        setApproving(false);
+        return;
+      }
 
-      const newBalance = currentBalance + amount;
+      const currentBalance = Number(profile.balance || 0);
+      const newBalance = currentBalance + creditAmount;
 
-      await supabase
+      const { error: balanceError } = await supabase
         .from("profiles")
         .update({
           balance: newBalance,
         })
         .eq("id", deposit.user_id);
 
-      await supabase
+      if (balanceError) {
+        setMessage(balanceError.message);
+        setApproving(false);
+        return;
+      }
+
+      const { error: depositError } = await supabase
         .from("deposits")
         .update({
           status: "approved",
+          reject_reason: null,
           cash_account_id: cashAccountId,
         })
         .eq("id", deposit.id);
 
-      setMessage(
-        "Deposit approved and cash account updated."
-      );
+      if (depositError) {
+        setMessage(depositError.message);
+        setApproving(false);
+        return;
+      }
 
-setSelectedDeposit(null);
-setRejectReason("");
-setApproving(false);
+      await supabase.from("notifications").insert({
+        user_id: deposit.user_id,
+        title: "Deposit Approved",
+        message: `Your deposit has been approved. ₱${creditAmount.toFixed(
+          2
+        )} has been added to your wallet.`,
+        type: "deposit_approved",
+        is_read: false,
+      });
+
+      await sendDepositEmail(deposit.id, "approved");
+
+      setMessage("Deposit approved and cash account updated.");
+      setSelectedDeposit(null);
+      setShowRejectBox(false);
+      setRejectReason("");
 
       loadDeposits();
     } catch {
-  setMessage("Failed to approve deposit.");
-  setApproving(false);
-}
+      setMessage("Failed to approve deposit.");
+    }
+
+    setApproving(false);
   }
 
   async function rejectDeposit() {
+    if (approving || rejecting) return;
+
     if (!selectedDeposit) return;
 
     if (!rejectReason.trim()) {
@@ -199,36 +246,45 @@ setApproving(false);
     const confirmReject = confirm("Reject this deposit request?");
     if (!confirmReject) return;
 
+    setRejecting(true);
     setMessage("Rejecting deposit...");
 
-    const { error: depositError } = await supabase
-      .from("deposits")
-      .update({
-        status: "rejected",
-        reject_reason: rejectReason,
-      })
-      .eq("id", selectedDeposit.id);
+    try {
+      const { error: depositError } = await supabase
+        .from("deposits")
+        .update({
+          status: "rejected",
+          reject_reason: rejectReason,
+        })
+        .eq("id", selectedDeposit.id);
 
-    if (depositError) {
-      setMessage(depositError.message);
-      return;
+      if (depositError) {
+        setMessage(depositError.message);
+        setRejecting(false);
+        return;
+      }
+
+      await supabase.from("notifications").insert({
+        user_id: selectedDeposit.user_id,
+        title: "Deposit Rejected",
+        message: `Your deposit request was rejected. Reason: ${rejectReason}`,
+        type: "deposit_rejected",
+        is_read: false,
+      });
+
+      await sendDepositEmail(selectedDeposit.id, "rejected");
+
+      setMessage("Deposit rejected successfully.");
+      setSelectedDeposit(null);
+      setShowRejectBox(false);
+      setRejectReason("");
+
+      loadDeposits();
+    } catch {
+      setMessage("Failed to reject deposit.");
     }
 
-    await supabase.from("notifications").insert({
-      user_id: selectedDeposit.user_id,
-      title: "Deposit Rejected",
-      message: `Your deposit request was rejected. Reason: ${rejectReason}`,
-      type: "deposit_rejected",
-      is_read: false,
-    });
-
-    await sendDepositEmail(selectedDeposit.id, "rejected");
-
-    setMessage("Deposit rejected successfully.");
-    setSelectedDeposit(null);
-    setShowRejectBox(false);
-    setRejectReason("");
-    loadDeposits();
+    setRejecting(false);
   }
 
   return (
@@ -324,6 +380,7 @@ setApproving(false);
             <div className="p-6 border-b border-zinc-800 flex items-center justify-between">
               <div>
                 <h3 className="text-2xl font-black">Review Deposit</h3>
+
                 <p className="text-sm text-zinc-500">
                   Verify payment details before approving or rejecting.
                 </p>
@@ -336,6 +393,7 @@ setApproving(false);
                   setRejectReason("");
                 }}
                 className="text-zinc-500 hover:text-white text-xl"
+                disabled={approving || rejecting}
               >
                 ×
               </button>
@@ -345,6 +403,7 @@ setApproving(false);
               <div className="space-y-5">
                 <div>
                   <p className="text-sm text-zinc-500">Paid Amount</p>
+
                   <p className="text-3xl font-black text-blue-400">
                     {selectedDeposit.currency || "PHP"}{" "}
                     {Number(selectedDeposit.amount || 0).toFixed(2)}
@@ -353,18 +412,20 @@ setApproving(false);
 
                 <div>
                   <p className="text-sm text-zinc-500">Wallet Credit</p>
+
                   <p className="text-3xl font-black text-green-400">
                     ₱
                     {Number(
                       selectedDeposit.wallet_credit ||
-                      selectedDeposit.amount ||
-                      0
+                        selectedDeposit.amount ||
+                        0
                     ).toFixed(2)}
                   </p>
                 </div>
 
                 <div>
                   <p className="text-sm text-zinc-500">Conversion Rate</p>
+
                   <p className="font-semibold">
                     1 {selectedDeposit.currency || "PHP"} = ₱
                     {Number(selectedDeposit.conversion_rate || 1).toFixed(2)}
@@ -373,6 +434,7 @@ setApproving(false);
 
                 <div>
                   <p className="text-sm text-zinc-500">User ID</p>
+
                   <p className="text-sm text-zinc-300 break-all">
                     {selectedDeposit.user_id}
                   </p>
@@ -380,11 +442,13 @@ setApproving(false);
 
                 <div>
                   <p className="text-sm text-zinc-500">Payment Method</p>
+
                   <p className="font-semibold">{selectedDeposit.method}</p>
                 </div>
 
                 <div>
                   <p className="text-sm text-zinc-500">Reference Number</p>
+
                   <p className="font-semibold">
                     {selectedDeposit.reference_number}
                   </p>
@@ -392,6 +456,7 @@ setApproving(false);
 
                 <div>
                   <p className="text-sm text-zinc-500">Status</p>
+
                   <span
                     className={`inline-block rounded-full px-3 py-1 text-xs capitalize ${getStatusStyle(
                       selectedDeposit.status
@@ -404,6 +469,7 @@ setApproving(false);
                 {selectedDeposit.reject_reason && (
                   <div>
                     <p className="text-sm text-zinc-500">Reject Reason</p>
+
                     <p className="text-red-400">
                       {selectedDeposit.reject_reason}
                     </p>
@@ -412,6 +478,7 @@ setApproving(false);
 
                 <div>
                   <p className="text-sm text-zinc-500">Submitted</p>
+
                   <p className="text-zinc-300">
                     {new Date(selectedDeposit.created_at).toLocaleString()}
                   </p>
@@ -454,7 +521,8 @@ setApproving(false);
                   setShowRejectBox(false);
                   setRejectReason("");
                 }}
-                className="border border-zinc-800 hover:border-zinc-600 rounded-xl px-5 py-3 font-semibold transition"
+                disabled={approving || rejecting}
+                className="border border-zinc-800 hover:border-zinc-600 rounded-xl px-5 py-3 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Close
               </button>
@@ -464,26 +532,28 @@ setApproving(false);
                   {!showRejectBox ? (
                     <button
                       onClick={() => setShowRejectBox(true)}
-                      className="border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl px-5 py-3 font-semibold transition"
+                      disabled={approving || rejecting}
+                      className="border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl px-5 py-3 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Reject
                     </button>
                   ) : (
                     <button
                       onClick={rejectDeposit}
-                      className="border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl px-5 py-3 font-semibold transition"
+                      disabled={approving || rejecting}
+                      className="border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl px-5 py-3 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Confirm Reject
+                      {rejecting ? "Rejecting..." : "Confirm Reject"}
                     </button>
                   )}
 
-<button
-  onClick={() => approveDeposit(selectedDeposit)}
-  disabled={approving}
-  className="bg-green-600 hover:bg-green-700 rounded-xl px-5 py-3 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
->
-  {approving ? "Approving..." : "Approve"}
-</button>
+                  <button
+                    onClick={() => approveDeposit(selectedDeposit)}
+                    disabled={approving || rejecting}
+                    className="bg-green-600 hover:bg-green-700 rounded-xl px-5 py-3 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {approving ? "Approving..." : "Approve"}
+                  </button>
                 </>
               )}
             </div>

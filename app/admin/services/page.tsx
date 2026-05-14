@@ -33,6 +33,10 @@ export default function AdminServicesPage() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [message, setMessage] = useState("");
 
+  const [savingService, setSavingService] = useState(false);
+  const [importingServices, setImportingServices] = useState(false);
+  const [deletingServices, setDeletingServices] = useState(false);
+
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -57,6 +61,7 @@ export default function AdminServicesPage() {
 
     if (error) {
       setMessage(error.message);
+      setSavingService(false);
       return;
     }
 
@@ -127,6 +132,8 @@ export default function AdminServicesPage() {
   }
 
   async function deleteSelectedServices() {
+    if (deletingServices) return;
+
     if (selectedIds.length <= 0) {
       setMessage("Please select at least one service.");
       return;
@@ -137,6 +144,8 @@ export default function AdminServicesPage() {
     );
 
     if (!confirmDelete) return;
+
+    setDeletingServices(true);
 
     try {
       const response = await fetch("/api/admin/services/bulk-delete", {
@@ -153,18 +162,23 @@ export default function AdminServicesPage() {
 
       if (!result.success) {
         setMessage(result.message);
+        setDeletingServices(false);
         return;
       }
 
       setMessage(result.message);
       setSelectedIds([]);
+      setDeletingServices(false);
       loadServices();
     } catch {
       setMessage("Failed to delete selected services.");
+      setDeletingServices(false);
     }
   }
 
 async function deleteAllServices() {
+  if (deletingServices) return;
+
   const confirmDelete = confirm(
     "Delete ALL services? This cannot be undone."
   );
@@ -177,6 +191,8 @@ async function deleteAllServices() {
 
   if (!doubleConfirm) return;
 
+  setDeletingServices(true);
+
   try {
     const response = await fetch("/api/admin/services/delete-all", {
       method: "POST",
@@ -186,20 +202,27 @@ async function deleteAllServices() {
 
     if (!result.success) {
       setMessage(result.message);
+      setDeletingServices(false);
       return;
     }
 
     setMessage(result.message);
     setSelectedIds([]);
+    setDeletingServices(false);
     loadServices();
   } catch {
     setMessage("Failed to delete all services.");
+    setDeletingServices(false);
   }
 }
 
   async function addService() {
+    if (savingService) return;
+
+    setSavingService(true);
     if (!name || !category || !price || !minQuantity || !maxQuantity) {
       setMessage("Please complete all required fields.");
+      setSavingService(false);
       return;
     }
 
@@ -219,17 +242,23 @@ async function deleteAllServices() {
 
     if (error) {
       setMessage(error.message);
+      setSavingService(false);
       return;
     }
 
     setMessage("Service added successfully.");
+    setSavingService(false);
     resetForm();
     setShowAddModal(false);
     loadServices();
   }
 
   async function updateService() {
+    if (savingService) return;
+
     if (!selectedService) return;
+
+    setSavingService(true);
 
     const { error } = await supabase
       .from("services")
@@ -250,35 +279,48 @@ async function deleteAllServices() {
 
     if (error) {
       setMessage(error.message);
+      setSavingService(false);
       return;
     }
 
     setMessage("Service updated successfully.");
+    setSavingService(false);
     setSelectedService(null);
     resetForm();
     loadServices();
   }
 
   async function deleteService() {
-    if (!selectedService) return;
+    if (deletingServices) return;
+
+    setDeletingServices(true);
+    if (!selectedService) {
+      setDeletingServices(false);
+      return;
+    }
 
     const confirmDelete = confirm(
       `Delete service "${selectedService.name}"? This cannot be undone.`
     );
 
-    if (!confirmDelete) return;
+    if (!confirmDelete) {
+      setDeletingServices(false);
+      return;
+    }
 
     const { error } = await supabase
       .from("services")
       .delete()
       .eq("id", selectedService.id);
 
-    if (error) {
-      setMessage(error.message);
-      return;
-    }
+if (error) {
+  setMessage(error.message);
+  setDeletingServices(false);
+  return;
+}
 
     setMessage("Service deleted successfully.");
+    setDeletingServices(false);
     setSelectedService(null);
     resetForm();
     loadServices();
@@ -312,31 +354,34 @@ async function deleteAllServices() {
             Add Service
           </button>
 
-<div className="flex flex-wrap gap-3">
-  <button
-    onClick={toggleSelectAll}
-    className="border border-zinc-800 hover:border-blue-500 rounded-xl px-5 py-3 font-semibold transition"
-  >
-    {selectedIds.length === services.length && services.length > 0
-      ? "Unselect All"
-      : "Select All"}
-  </button>
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={toggleSelectAll}
+              className="border border-zinc-800 hover:border-blue-500 rounded-xl px-5 py-3 font-semibold transition"
+            >
+              {selectedIds.length === services.length && services.length > 0
+                ? "Unselect All"
+                : "Select All"}
+            </button>
 
-  <button
-    onClick={deleteSelectedServices}
-    disabled={selectedIds.length <= 0}
-    className="border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl px-5 py-3 font-semibold transition disabled:opacity-40"
-  >
-    Delete Selected ({selectedIds.length})
-  </button>
+<button
+  onClick={deleteSelectedServices}
+  disabled={selectedIds.length <= 0 || deletingServices}
+  className="border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl px-5 py-3 font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed"
+>
+  {deletingServices
+    ? "Deleting..."
+    : `Delete Selected (${selectedIds.length})`}
+</button>
 
-  <button
-    onClick={deleteAllServices}
-    className="border border-red-600 bg-red-600/20 hover:bg-red-600/30 text-red-300 rounded-xl px-5 py-3 font-semibold transition"
-  >
-    Delete All Services
-  </button>
-</div>
+<button
+  onClick={deleteAllServices}
+  disabled={deletingServices}
+  className="border border-red-600 bg-red-600/20 hover:bg-red-600/30 text-red-300 rounded-xl px-5 py-3 font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed"
+>
+  {deletingServices ? "Deleting..." : "Delete All Services"}
+</button>
+          </div>
         </div>
 
         <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 overflow-x-auto">
@@ -389,8 +434,8 @@ async function deleteAllServices() {
                   <td className="p-5">
                     <span
                       className={`rounded-full px-3 py-1 text-xs ${service.auto_order
-                          ? "bg-purple-500/10 text-purple-400"
-                          : "bg-zinc-800 text-zinc-400"
+                        ? "bg-purple-500/10 text-purple-400"
+                        : "bg-zinc-800 text-zinc-400"
                         }`}
                     >
                       {service.auto_order ? "Auto" : "Manual"}
@@ -538,8 +583,8 @@ async function deleteAllServices() {
                 <button
                   onClick={() => setAutoOrder(!autoOrder)}
                   className={`rounded-xl px-4 py-3 text-sm font-semibold transition ${autoOrder
-                      ? "bg-purple-500/10 text-purple-400"
-                      : "bg-zinc-800 text-zinc-400"
+                    ? "bg-purple-500/10 text-purple-400"
+                    : "bg-zinc-800 text-zinc-400"
                     }`}
                 >
                   Auto Order: {autoOrder ? "Enabled" : "Disabled"}
@@ -562,10 +607,13 @@ async function deleteAllServices() {
                 <div>
                   {selectedService && (
                     <button
-                      onClick={deleteService}
-                      className="border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl px-5 py-3 font-semibold transition"
+                      onClick={deleteSelectedServices}
+                      disabled={selectedIds.length <= 0 || deletingServices}
+                      className="border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl px-5 py-3 font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                      Delete
+                      {deletingServices
+                        ? "Deleting..."
+                        : `Delete Selected (${selectedIds.length})`}
                     </button>
                   )}
                 </div>
@@ -584,9 +632,14 @@ async function deleteAllServices() {
 
                   <button
                     onClick={selectedService ? updateService : addService}
-                    className="bg-blue-600 hover:bg-blue-700 rounded-xl px-5 py-3 font-semibold transition"
+                    disabled={savingService}
+                    className="bg-blue-600 hover:bg-blue-700 rounded-xl px-5 py-3 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {selectedService ? "Save Changes" : "Create Service"}
+                    {savingService
+                      ? "Saving..."
+                      : selectedService
+                        ? "Save Changes"
+                        : "Create Service"}
                   </button>
                 </div>
               </div>

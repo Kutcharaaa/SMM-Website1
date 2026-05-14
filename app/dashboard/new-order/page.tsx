@@ -3,6 +3,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useMemo, useState } from "react";
+import DashboardGuard from "@/components/DashboardGuard";
 
 type Service = {
   id: string;
@@ -50,6 +51,7 @@ export default function NewOrderPage() {
   const [quantity, setQuantity] = useState("");
   const [notes, setNotes] = useState("");
   const [message, setMessage] = useState("");
+  const [placingOrder, setPlacingOrder] = useState(false);
 
   async function loadData() {
     const { data: serviceData } = await supabase
@@ -160,13 +162,20 @@ export default function NewOrderPage() {
   }
 
   async function handleOrder() {
+
+    if (placingOrder) return;
+
+    setPlacingOrder(true);
+
     if (!selectedService) {
       setMessage("Please select a service.");
+      setPlacingOrder(false);
       return;
     }
 
     if (!link) {
       setMessage("Please enter a link.");
+      setPlacingOrder(false);
       return;
     }
 
@@ -179,6 +188,7 @@ export default function NewOrderPage() {
       setMessage(
         `Quantity must be between ${selectedService.min_quantity} and ${selectedService.max_quantity}.`
       );
+      setPlacingOrder(false);
       return;
     }
 
@@ -188,6 +198,7 @@ export default function NewOrderPage() {
 
     if (!authData.user) {
       setMessage("User not authenticated.");
+      setPlacingOrder(false);
       return;
     }
 
@@ -209,6 +220,7 @@ export default function NewOrderPage() {
 
       if (!result.success) {
         setMessage(result.message);
+        setPlacingOrder(false);
         return;
       }
 
@@ -222,296 +234,302 @@ export default function NewOrderPage() {
       setQuantity("");
       setNotes("");
 
+      setPlacingOrder(false);
+
       loadData();
     } catch {
       setMessage("Failed to create order.");
+      setPlacingOrder(false);
     }
   }
 
   return (
-    <DashboardLayout>
-      <h2 className="text-4xl font-black mb-4">New Order</h2>
+    <DashboardGuard>
+      <DashboardLayout>
+        <h2 className="text-4xl font-black mb-4">New Order</h2>
 
-      <p className="text-zinc-400 mb-8">
-        Choose a social network, select a service, and place your order.
-      </p>
+        <p className="text-zinc-400 mb-8">
+          Choose a social network, select a service, and place your order.
+        </p>
 
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xl font-black">Choose a Social Network</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-black">Choose a Social Network</h3>
 
-        <button
-          onClick={() => {
-            setNetwork("Everything");
-            setCategory("");
-            setSelectedServiceId("");
-            setSearch("");
-          }}
-          className="rounded-xl border border-zinc-800 px-4 py-2 text-sm text-zinc-400 hover:border-blue-500 hover:text-white transition"
-        >
-          Clear Selection
-        </button>
-      </div>
-
-      <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3 mb-8">
-        {networks.map((item) => (
           <button
-            key={item.name}
             onClick={() => {
-              setNetwork(network === item.name ? "Everything" : item.name);
+              setNetwork("Everything");
               setCategory("");
               setSelectedServiceId("");
               setSearch("");
             }}
-            className={`rounded-2xl border px-5 py-4 font-semibold transition ${network === item.name
-              ? "border-blue-500 bg-blue-500/10 text-blue-400"
-              : "border-zinc-800 bg-zinc-950/80 text-zinc-400 hover:border-blue-500 hover:text-white"
-              }`}
+            className="rounded-xl border border-zinc-800 px-4 py-2 text-sm text-zinc-400 hover:border-blue-500 hover:text-white transition"
           >
-            <span className="mr-2">{item.icon}</span>
-            {item.name}
+            Clear Selection
           </button>
-        ))}
-      </div>
+        </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 rounded-3xl border border-zinc-800 bg-zinc-950/80 p-8">
-          <h3 className="text-2xl font-black mb-6">Order Details</h3>
-
-          <div className="flex flex-col gap-5">
-            <input
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
+        <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3 mb-8">
+          {networks.map((item) => (
+            <button
+              key={item.name}
+              onClick={() => {
+                setNetwork(network === item.name ? "Everything" : item.name);
+                setCategory("");
                 setSelectedServiceId("");
+                setSearch("");
               }}
-              placeholder="Search service name, category, or service ID..."
-              className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500"
-            />
-
-            <select
-              value={category}
-              onChange={(e) => {
-                setCategory(e.target.value);
-                setSelectedServiceId("");
-              }}
-              className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500"
+              className={`rounded-2xl border px-5 py-4 font-semibold transition ${network === item.name
+                ? "border-blue-500 bg-blue-500/10 text-blue-400"
+                : "border-zinc-800 bg-zinc-950/80 text-zinc-400 hover:border-blue-500 hover:text-white"
+                }`}
             >
-              <option value="">Select Category</option>
+              <span className="mr-2">{item.icon}</span>
+              {item.name}
+            </button>
+          ))}
+        </div>
 
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
+        <div className="grid lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 rounded-3xl border border-zinc-800 bg-zinc-950/80 p-8">
+            <h3 className="text-2xl font-black mb-6">Order Details</h3>
 
-            <div className="rounded-xl border border-zinc-800 bg-black overflow-hidden">
-              <div className="border-b border-zinc-800 px-4 py-3 text-sm text-zinc-500">
-                Select Service / Server
-              </div>
+            <div className="flex flex-col gap-5">
+              <input
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setSelectedServiceId("");
+                }}
+                placeholder="Search service name, category, or service ID..."
+                className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500"
+              />
 
-              {!category ? (
-                <div className="px-4 py-4 text-sm text-zinc-500">
-                  Please select a category first.
+              <select
+                value={category}
+                onChange={(e) => {
+                  setCategory(e.target.value);
+                  setSelectedServiceId("");
+                }}
+                className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500"
+              >
+                <option value="">Select Category</option>
+
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+
+              <div className="rounded-xl border border-zinc-800 bg-black overflow-hidden">
+                <div className="border-b border-zinc-800 px-4 py-3 text-sm text-zinc-500">
+                  Select Service / Server
                 </div>
-              ) : filteredServices.length <= 0 ? (
-                <div className="px-4 py-4 text-sm text-zinc-500">
-                  No services found.
-                </div>
-              ) : (
-                <div className="max-h-80 overflow-y-auto">
-                  {filteredServices.map((service) => {
-                    const tags = getServiceTags(service);
-                    const publicId = getPublicServiceId(service);
-                    const isSelected = selectedServiceId === service.id;
 
-                    return (
-                      <button
-                        key={service.id}
-                        type="button"
-                        onClick={() => setSelectedServiceId(service.id)}
-                        className={`w-full text-left px-4 py-3 border-b border-zinc-900 transition ${isSelected
-                          ? "bg-blue-600/15"
-                          : "hover:bg-zinc-900"
-                          }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <span className="mt-0.5 inline-flex min-w-[64px] justify-center rounded-lg bg-blue-600 px-3 py-1 text-xs font-black text-white shadow-sm">
-                            {publicId}
-                          </span>
+                {!category ? (
+                  <div className="px-4 py-4 text-sm text-zinc-500">
+                    Please select a category first.
+                  </div>
+                ) : filteredServices.length <= 0 ? (
+                  <div className="px-4 py-4 text-sm text-zinc-500">
+                    No services found.
+                  </div>
+                ) : (
+                  <div className="max-h-80 overflow-y-auto">
+                    {filteredServices.map((service) => {
+                      const tags = getServiceTags(service);
+                      const publicId = getPublicServiceId(service);
+                      const isSelected = selectedServiceId === service.id;
 
-                          <div className="flex-1">
-                            <p className="text-sm font-semibold text-white leading-relaxed">
-                              {service.name}
-                            </p>
+                      return (
+                        <button
+                          key={service.id}
+                          type="button"
+                          onClick={() => setSelectedServiceId(service.id)}
+                          className={`w-full text-left px-4 py-3 border-b border-zinc-900 transition ${isSelected
+                            ? "bg-blue-600/15"
+                            : "hover:bg-zinc-900"
+                            }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <span className="mt-0.5 inline-flex min-w-[64px] justify-center rounded-lg bg-blue-600 px-3 py-1 text-xs font-black text-white shadow-sm">
+                              {publicId}
+                            </span>
 
-                            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                              <span className="text-blue-400 font-bold">
-                                ₱{Number(service.price_per_1000 || 0).toFixed(2)} / 1000
-                              </span>
+                            <div className="flex-1">
+                              <p className="text-sm font-semibold text-white leading-relaxed">
+                                {service.name}
+                              </p>
 
-                              {tags.map((tag) => (
-                                <span
-                                  key={tag}
-                                  className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-zinc-400"
-                                >
-                                  {tag}
+                              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                                <span className="text-blue-400 font-bold">
+                                  ₱{Number(service.price_per_1000 || 0).toFixed(2)} / 1000
                                 </span>
-                              ))}
+
+                                {tags.map((tag) => (
+                                  <span
+                                    key={tag}
+                                    className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-zinc-400"
+                                  >
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              {filteredServices.length > 0 && category && (
+                <p className="text-xs text-zinc-500">
+                  Services sorted from cheapest to most expensive.
+                </p>
               )}
+
+              <input
+                type="url"
+                placeholder="Enter link"
+                value={link}
+                onChange={(e) => setLink(e.target.value)}
+                className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500"
+              />
+
+              <input
+                type="number"
+                placeholder="Quantity"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500"
+              />
+
+              {selectedService && (
+                <p className="text-xs text-zinc-500">
+                  Min: {selectedService.min_quantity} • Max:{" "}
+                  {selectedService.max_quantity}
+                </p>
+              )}
+
+              <textarea
+                placeholder="Notes / comments / usernames if needed"
+                rows={4}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500 resize-none"
+              />
+
+              {message && <p className="text-sm text-blue-400">{message}</p>}
+
+              <button
+                onClick={handleOrder}
+                disabled={placingOrder}
+                className="bg-blue-600 hover:bg-blue-700 rounded-xl py-3 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {placingOrder ? "Placing Order..." : "Place Order"}
+              </button>
             </div>
-            {filteredServices.length > 0 && category && (
-              <p className="text-xs text-zinc-500">
-                Services sorted from cheapest to most expensive.
+          </div>
+
+          <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 p-8">
+            <h3 className="text-2xl font-black mb-6">Service Info</h3>
+
+            {selectedService ? (
+              <div className="space-y-5 text-sm">
+                <div>
+                  <p className="text-zinc-500 mb-2">Service ID</p>
+
+                  <span className="inline-flex min-w-[64px] justify-center rounded-lg bg-blue-600 px-3 py-1 text-xs font-black text-white shadow-sm">
+                    {getPublicServiceId(selectedService)}
+                  </span>
+                </div>
+
+                <div>
+                  <p className="text-zinc-500">Selected Service</p>
+                  <p className="font-semibold">{selectedService.name}</p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {getServiceTags(selectedService).map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-xs font-bold text-blue-400"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-zinc-500">Start Time</p>
+                    <p className="font-semibold text-orange-400">
+                      {getDetail("Start Time")}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-zinc-500">Speed</p>
+                    <p className="font-semibold text-orange-400">
+                      {getDetail("Speed")}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-zinc-500">Refill</p>
+                    <p className="font-semibold text-orange-400">
+                      {getDetail("Refill")}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-zinc-500">Average Time</p>
+                    <p className="font-semibold text-orange-400">
+                      Depends on service
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-zinc-500">Minimum</p>
+                  <p className="font-semibold">{selectedService.min_quantity}</p>
+                </div>
+
+                <div>
+                  <p className="text-zinc-500">Maximum</p>
+                  <p className="font-semibold">{selectedService.max_quantity}</p>
+                </div>
+
+                <div>
+                  <p className="text-zinc-500">Price per 1,000</p>
+                  <p className="font-semibold">
+                    ₱{Number(selectedService.price_per_1000).toFixed(2)}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-zinc-500">Estimated Charge</p>
+                  <p className="text-3xl font-black text-blue-400">
+                    ₱{estimatedCharge.toFixed(2)}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-zinc-500">Wallet Balance</p>
+                  <p className="text-green-400 font-bold">
+                    ₱{Number(profile?.balance || 0).toFixed(2)}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <p className="text-zinc-500">
+                Select a category and service to view details.
               </p>
             )}
-
-            <input
-              type="url"
-              placeholder="Enter link"
-              value={link}
-              onChange={(e) => setLink(e.target.value)}
-              className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500"
-            />
-
-            <input
-              type="number"
-              placeholder="Quantity"
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500"
-            />
-
-            {selectedService && (
-              <p className="text-xs text-zinc-500">
-                Min: {selectedService.min_quantity} • Max:{" "}
-                {selectedService.max_quantity}
-              </p>
-            )}
-
-            <textarea
-              placeholder="Notes / comments / usernames if needed"
-              rows={4}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500 resize-none"
-            />
-
-            {message && <p className="text-sm text-blue-400">{message}</p>}
-
-            <button
-              onClick={handleOrder}
-              className="bg-blue-600 hover:bg-blue-700 rounded-xl py-3 font-semibold transition"
-            >
-              Place Order
-            </button>
           </div>
         </div>
-
-        <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 p-8">
-          <h3 className="text-2xl font-black mb-6">Service Info</h3>
-
-          {selectedService ? (
-            <div className="space-y-5 text-sm">
-              <div>
-                <p className="text-zinc-500 mb-2">Service ID</p>
-
-                <span className="inline-flex min-w-[64px] justify-center rounded-lg bg-blue-600 px-3 py-1 text-xs font-black text-white shadow-sm">
-                  {getPublicServiceId(selectedService)}
-                </span>
-              </div>
-
-              <div>
-                <p className="text-zinc-500">Selected Service</p>
-                <p className="font-semibold">{selectedService.name}</p>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {getServiceTags(selectedService).map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-xs font-bold text-blue-400"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-zinc-500">Start Time</p>
-                  <p className="font-semibold text-orange-400">
-                    {getDetail("Start Time")}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-zinc-500">Speed</p>
-                  <p className="font-semibold text-orange-400">
-                    {getDetail("Speed")}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-zinc-500">Refill</p>
-                  <p className="font-semibold text-orange-400">
-                    {getDetail("Refill")}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-zinc-500">Average Time</p>
-                  <p className="font-semibold text-orange-400">
-                    Depends on service
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-zinc-500">Minimum</p>
-                <p className="font-semibold">{selectedService.min_quantity}</p>
-              </div>
-
-              <div>
-                <p className="text-zinc-500">Maximum</p>
-                <p className="font-semibold">{selectedService.max_quantity}</p>
-              </div>
-
-              <div>
-                <p className="text-zinc-500">Price per 1,000</p>
-                <p className="font-semibold">
-                  ₱{Number(selectedService.price_per_1000).toFixed(2)}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-zinc-500">Estimated Charge</p>
-                <p className="text-3xl font-black text-blue-400">
-                  ₱{estimatedCharge.toFixed(2)}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-zinc-500">Wallet Balance</p>
-                <p className="text-green-400 font-bold">
-                  ₱{Number(profile?.balance || 0).toFixed(2)}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <p className="text-zinc-500">
-              Select a category and service to view details.
-            </p>
-          )}
-        </div>
-      </div>
-    </DashboardLayout>
+      </DashboardLayout>
+    </DashboardGuard>
   );
 }

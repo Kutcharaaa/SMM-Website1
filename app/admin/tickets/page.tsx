@@ -35,6 +35,9 @@ export default function AdminTicketsPage() {
   const [reply, setReply] = useState("");
   const [message, setMessage] = useState("");
 
+  const [sendingReply, setSendingReply] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+
   async function loadTickets() {
     const { data, error } = await supabase
       .from("tickets")
@@ -102,10 +105,17 @@ export default function AdminTicketsPage() {
   }
 
   async function sendAdminReply() {
-    if (!selectedTicket) return;
+    if (sendingReply) return;
+
+    setSendingReply(true);
+    if (!selectedTicket) {
+      setSendingReply(false);
+      return;
+    }
 
     if (!reply.trim()) {
       setMessage("Please enter a reply.");
+      setSendingReply(false);
       return;
     }
 
@@ -115,6 +125,7 @@ export default function AdminTicketsPage() {
 
     if (!user) {
       setMessage("Admin session not found.");
+      setSendingReply(false);
       return;
     }
 
@@ -127,6 +138,7 @@ export default function AdminTicketsPage() {
 
     if (replyError) {
       setMessage(replyError.message);
+      setSendingReply(false);
       return;
     }
 
@@ -149,12 +161,20 @@ export default function AdminTicketsPage() {
 
     setReply("");
     setMessage("Reply sent successfully.");
+    setSendingReply(false);
     loadReplies(selectedTicket.id);
     loadTickets();
   }
 
   async function updateTicketStatus(status: string) {
-    if (!selectedTicket) return;
+    if (updatingStatus) return;
+
+    setUpdatingStatus(true);
+
+    if (!selectedTicket) {
+      setUpdatingStatus(false);
+      return;
+    }
 
     const { error } = await supabase
       .from("tickets")
@@ -166,10 +186,12 @@ export default function AdminTicketsPage() {
 
     if (error) {
       setMessage(error.message);
+      setUpdatingStatus(false);
       return;
     }
 
     setMessage(`Ticket marked as ${status}.`);
+    setUpdatingStatus(false);
     loadTickets();
 
     setSelectedTicket({
@@ -301,11 +323,10 @@ export default function AdminTicketsPage() {
               {replies.map((item) => (
                 <div
                   key={item.id}
-                  className={`rounded-2xl border p-5 ${
-                    item.sender_role === "admin"
+                  className={`rounded-2xl border p-5 ${item.sender_role === "admin"
                       ? "border-blue-500/30 bg-blue-500/10"
                       : "border-zinc-800 bg-black"
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center justify-between mb-3">
                     <p className="font-bold capitalize">
@@ -328,23 +349,26 @@ export default function AdminTicketsPage() {
               <div className="flex flex-wrap gap-3">
                 <button
                   onClick={() => updateTicketStatus("open")}
-                  className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 text-yellow-400 px-4 py-2 text-sm font-semibold"
+                  disabled={updatingStatus}
+                  className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 text-yellow-400 px-4 py-2 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Mark Open
+                  {updatingStatus ? "Updating..." : "Mark Open"}
                 </button>
 
                 <button
                   onClick={() => updateTicketStatus("answered")}
-                  className="rounded-xl border border-green-500/30 bg-green-500/10 text-green-400 px-4 py-2 text-sm font-semibold"
+                  disabled={updatingStatus}
+                  className="rounded-xl border border-green-500/30 bg-green-500/10 text-green-400 px-4 py-2 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Mark Answered
+                  {updatingStatus ? "Updating..." : "Mark Answered"}
                 </button>
 
                 <button
                   onClick={() => updateTicketStatus("closed")}
-                  className="rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 px-4 py-2 text-sm font-semibold"
+                  disabled={updatingStatus}
+                  className="rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 px-4 py-2 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Close
+                  {updatingStatus ? "Updating..." : "Close"}
                 </button>
               </div>
 
@@ -357,12 +381,12 @@ export default function AdminTicketsPage() {
                     placeholder="Write support reply..."
                     className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500 resize-none"
                   />
-
                   <button
                     onClick={sendAdminReply}
-                    className="bg-blue-600 hover:bg-blue-700 rounded-xl px-5 py-3 font-semibold transition"
+                    disabled={sendingReply}
+                    className="bg-blue-600 hover:bg-blue-700 rounded-xl px-5 py-3 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Send Reply
+                    {sendingReply ? "Sending..." : "Send Reply"}
                   </button>
                 </>
               )}
