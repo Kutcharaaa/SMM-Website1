@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
@@ -17,23 +17,34 @@ export default function AdminGuard({
   const [loading, setLoading] = useState(true);
   const [allowed, setAllowed] = useState(false);
 
+  const rolesKey = useMemo(() => allowedRoles.join(","), [allowedRoles]);
+
   useEffect(() => {
     async function checkAccess() {
-      const { data: authData } = await supabase.auth.getUser();
+      setLoading(true);
 
-      if (!authData.user) {
-        router.push("/login");
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.replace("/login");
         return;
       }
 
-      const { data: profile } = await supabase
+      const { data: profile, error } = await supabase
         .from("profiles")
         .select("role")
-        .eq("id", authData.user.id)
+        .eq("id", user.id)
         .single();
 
-      if (!profile || !allowedRoles.includes(profile.role)) {
-        router.push("/admin");
+      if (error || !profile?.role) {
+        router.replace("/dashboard");
+        return;
+      }
+
+      if (!allowedRoles.includes(profile.role)) {
+        router.replace("/dashboard");
         return;
       }
 
@@ -42,13 +53,13 @@ export default function AdminGuard({
     }
 
     checkAccess();
-  }, [router, allowedRoles]);
+  }, [router, rolesKey]);
 
   if (loading) {
     return (
-      <div className="min-h-[400px] flex items-center justify-center">
+      <main className="min-h-screen bg-black text-white flex items-center justify-center">
         <p className="text-zinc-500">Checking permission...</p>
-      </div>
+      </main>
     );
   }
 
