@@ -10,10 +10,8 @@ const resellerLevels = [
     required: "$0",
     discount: "0%",
     points: "$1.00",
-    accent: "from-fuchsia-600 to-pink-600",
-    perks: [
-      "Community based support",
-    ],
+    accent: "from-slate-500 to-zinc-700",
+    perks: ["Community based support"],
   },
 
   {
@@ -22,10 +20,8 @@ const resellerLevels = [
     required: "$500",
     discount: "1%",
     points: "$1.00",
-    accent: "from-blue-600 to-cyan-600",
-    perks: [
-      "Priority ticket support by team",
-    ],
+    accent: "from-blue-500 to-cyan-500",
+    perks: ["Priority ticket support by team"],
   },
 
   {
@@ -34,7 +30,7 @@ const resellerLevels = [
     required: "$5,000",
     discount: "2%",
     points: "$1.25",
-    accent: "from-purple-600 to-fuchsia-600",
+    accent: "from-cyan-500 to-sky-500",
     perks: [
       "Whatsapp/Telegram support by team",
       "Free Child Panel - Lifetime",
@@ -47,7 +43,7 @@ const resellerLevels = [
     required: "$15,000",
     discount: "3%",
     points: "$1.50",
-    accent: "from-amber-500 to-orange-600",
+    accent: "from-indigo-500 to-blue-500",
     perks: [
       "Top priority support",
       "Free Child Panel - Lifetime",
@@ -61,7 +57,7 @@ const resellerLevels = [
     required: "$30,000",
     discount: "4%",
     points: "$1.75",
-    accent: "from-emerald-500 to-teal-600",
+    accent: "from-blue-400 to-cyan-400",
     perks: [
       "Dedicated account manager",
       "Free Child Panel - Lifetime",
@@ -75,7 +71,7 @@ const resellerLevels = [
     required: "$50,000",
     discount: "5%",
     points: "$2.00",
-    accent: "from-red-600 to-pink-600",
+    accent: "from-cyan-400 to-blue-600",
     perks: [
       "Admin handled support",
       "Free Child Panel - Lifetime",
@@ -92,11 +88,11 @@ export default function ResellerPage() {
       <Navbar />
 
       <section className="relative overflow-hidden px-6 py-24">
-        <div className="absolute left-1/2 top-0 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-fuchsia-600/20 blur-3xl" />
+        <div className="absolute left-1/2 top-0 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-blue-600/20 blur-3xl" />
 
         <div className="relative mx-auto max-w-7xl">
           <div className="mx-auto max-w-3xl text-center">
-            <p className="mb-4 inline-flex rounded-full border border-fuchsia-500/20 bg-fuchsia-500/10 px-5 py-2 text-sm font-semibold text-fuchsia-400">
+            <p className="mb-4 inline-flex rounded-full border border-blue-500/20 bg-blue-500/10 px-5 py-2 text-sm font-semibold text-blue-400">
               Ascend Reseller Program
             </p>
 
@@ -111,13 +107,13 @@ export default function ResellerPage() {
             </p>
 
             <div className="mt-10 flex flex-col justify-center gap-4 sm:flex-row">
-              <GetStartedButton className="rounded-2xl bg-fuchsia-600 px-8 py-4 font-bold transition hover:bg-fuchsia-700">
+              <GetStartedButton className="rounded-2xl bg-blue-600 px-8 py-4 font-bold transition hover:bg-blue-700">
                 Start Reselling
               </GetStartedButton>
 
               <Link
                 href="/services"
-                className="rounded-2xl border border-zinc-800 px-8 py-4 font-bold transition hover:border-fuchsia-500"
+                className="rounded-2xl border border-zinc-800 px-8 py-4 font-bold transition hover:border-blue-500"
               >
                 View Services
               </Link>
@@ -128,7 +124,7 @@ export default function ResellerPage() {
             {resellerLevels.map((level, index) => (
               <div
                 key={level.name}
-                className="group relative overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950/80 p-6 transition hover:-translate-y-1 hover:border-fuchsia-500/40"
+                className="group relative overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950/80 p-6 transition duration-300 hover:-translate-y-1 hover:border-blue-500/40"
               >
                 <div
                   className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${level.accent}`}
@@ -154,7 +150,7 @@ export default function ResellerPage() {
                       Required Spent
                     </p>
 
-                    <p className="text-2xl font-black text-fuchsia-400">
+                    <p className="text-2xl font-black text-blue-400">
                       {level.required}
                     </p>
                   </div>
@@ -166,7 +162,7 @@ export default function ResellerPage() {
                       Discount
                     </p>
 
-                    <p className="mt-2 text-2xl font-black text-blue-400">
+                    <p className="mt-2 text-2xl font-black text-cyan-400">
                       {level.discount}
                     </p>
                   </div>
@@ -176,7 +172,7 @@ export default function ResellerPage() {
                       Every 100 points
                     </p>
 
-                    <p className="mt-2 text-2xl font-black text-fuchsia-400">
+                    <p className="mt-2 text-2xl font-black text-blue-400">
                       {level.points}
                     </p>
                   </div>
@@ -188,7 +184,7 @@ export default function ResellerPage() {
                       key={perk}
                       className="flex items-start gap-3 text-sm text-zinc-300"
                     >
-                      <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-fuchsia-500/10 text-xs text-fuchsia-400">
+                      <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-xs text-blue-400">
                         ✓
                       </span>
 
@@ -203,7 +199,7 @@ export default function ResellerPage() {
           <div className="mt-20 rounded-3xl border border-zinc-800 bg-zinc-950/80 p-8 md:p-12">
             <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
               <div>
-                <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-fuchsia-400">
+                <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-blue-400">
                   Point System
                 </p>
 
@@ -229,7 +225,7 @@ export default function ResellerPage() {
                     key={item}
                     className="flex items-center gap-4 rounded-2xl border border-zinc-800 bg-black p-4"
                   >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-fuchsia-600 font-black">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 font-black">
                       ✓
                     </div>
 
@@ -267,7 +263,7 @@ export default function ResellerPage() {
                     key={step}
                     className="flex items-center gap-4 rounded-2xl border border-zinc-800 bg-black p-4"
                   >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-fuchsia-600 font-black">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 font-black">
                       {index + 1}
                     </div>
 
