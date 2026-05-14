@@ -217,7 +217,10 @@ export default function TicketsPage() {
                   {tickets.map((ticket) => (
                     <tr
                       key={ticket.id}
-                      className="border-t border-zinc-900"
+                      onClick={() => {
+                        window.location.href = `/dashboard/tickets/${ticket.id}`;
+                      }}
+                      className="border-t border-zinc-900 hover:bg-zinc-900/60 cursor-pointer transition"
                     >
                       <td className="p-5 font-medium">
                         {ticket.subject}
