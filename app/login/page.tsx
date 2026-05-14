@@ -119,6 +119,32 @@ function LoginContent() {
               className="bg-black border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500"
             />
 
+            <div className="flex items-center justify-between text-sm">
+              <label className="flex items-center gap-2 text-zinc-400">
+                <input type="checkbox" className="accent-blue-500" />
+                Remember me
+              </label>
+
+              <a
+                href="/forgot-password"
+                className="text-blue-400 hover:text-blue-300"
+              >
+                Forgot password?
+              </a>
+            </div>
+
+            <div className="bg-black border border-zinc-800 rounded-xl p-4 flex items-center justify-between">
+              <label className="flex items-center gap-3 text-zinc-300">
+                <input type="checkbox" className="w-5 h-5 accent-blue-500" />
+                I&apos;m not a robot
+              </label>
+
+              <div className="text-xs text-zinc-500 text-right">
+                <p>reCAPTCHA</p>
+                <p>Privacy - Terms</p>
+              </div>
+            </div>
+
             {message && <p className="text-sm text-blue-400">{message}</p>}
 
             <button
