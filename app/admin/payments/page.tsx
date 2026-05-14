@@ -171,6 +171,9 @@ export default function AdminPaymentsPage() {
         "Deposit approved and cash account updated."
       );
 
+      setSelectedDeposit(null);
+setRejectReason("");
+
       loadDeposits();
     } catch {
       setMessage("Failed to approve deposit.");
