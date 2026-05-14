@@ -196,40 +196,40 @@ export default function ResellerPage() {
             ))}
           </div>
 
-          <div className="mt-20 rounded-3xl border border-zinc-800 bg-zinc-950/80 p-8 md:p-12">
-            <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
-              <div>
+          <div className="mt-20 rounded-3xl border border-zinc-800 bg-zinc-950/80 p-8">
+            <div className="flex flex-col gap-8 xl:flex-row xl:items-center xl:justify-between">
+              <div className="max-w-2xl">
                 <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-blue-400">
                   Point System
                 </p>
 
                 <h2 className="text-4xl font-black">
-                  Earn Points From Orders
+                  Earn Rewards From Every Order
                 </h2>
 
                 <p className="mt-5 text-zinc-400">
-                  Every completed order can earn reseller points depending on
-                  your reseller level. Higher levels unlock better point
-                  conversion rates and reseller benefits.
+                  Every completed order can generate reseller points depending
+                  on your reseller level. Higher reseller levels unlock better
+                  point conversion values.
                 </p>
               </div>
 
-              <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {[
-                  "Points are stored in your account",
-                  "Points are NOT automatically converted",
-                  "You can manually convert points anytime",
-                  "Converted points become wallet balance",
+                  "Points are stored safely",
+                  "No automatic conversion",
+                  "Convert anytime you want",
+                  "Converted into wallet balance",
                 ].map((item) => (
                   <div
                     key={item}
-                    className="flex items-center gap-4 rounded-2xl border border-zinc-800 bg-black p-4"
+                    className="rounded-2xl border border-zinc-800 bg-black p-5"
                   >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 font-black">
+                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600 text-xl font-black">
                       ✓
                     </div>
 
-                    <p className="font-semibold">
+                    <p className="text-sm font-semibold text-zinc-300">
                       {item}
                     </p>
                   </div>
@@ -238,36 +238,41 @@ export default function ResellerPage() {
             </div>
           </div>
 
-          <div className="mt-20 rounded-3xl border border-zinc-800 bg-gradient-to-br from-zinc-950 to-black p-8 md:p-12">
-            <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
-              <div>
+          <div className="mt-10 rounded-3xl border border-zinc-800 bg-gradient-to-br from-zinc-950 to-black p-8">
+            <div className="flex flex-col gap-8 xl:flex-row xl:items-center xl:justify-between">
+              <div className="max-w-2xl">
+                <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">
+                  Reseller Progression
+                </p>
+
                 <h2 className="text-4xl font-black">
                   How reseller levels work
                 </h2>
 
-                <p className="mt-4 text-zinc-400">
-                  Your reseller level is based on your lifetime spending on
-                  Ascend Service. Higher spending unlocks stronger reseller
-                  perks and better conversion rewards.
+                <p className="mt-5 text-zinc-400">
+                  Your reseller level is based on your total lifetime spending
+                  on Ascend Service. As your spending grows, your account
+                  unlocks stronger discounts, better support, and more exclusive
+                  reseller benefits.
                 </p>
               </div>
 
-              <div className="grid gap-4">
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {[
-                  "Deposit funds into your wallet",
-                  "Place orders for your clients",
-                  "Earn reseller points from completed orders",
-                  "Unlock higher reseller benefits",
+                  "Add funds to wallet",
+                  "Place client orders",
+                  "Earn reseller points",
+                  "Unlock better reseller perks",
                 ].map((step, index) => (
                   <div
                     key={step}
-                    className="flex items-center gap-4 rounded-2xl border border-zinc-800 bg-black p-4"
+                    className="rounded-2xl border border-zinc-800 bg-black p-5"
                   >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 font-black">
+                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-600 text-xl font-black">
                       {index + 1}
                     </div>
 
-                    <p className="font-semibold">
+                    <p className="text-sm font-semibold text-zinc-300">
                       {step}
                     </p>
                   </div>
