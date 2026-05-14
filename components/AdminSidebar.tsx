@@ -182,90 +182,41 @@ export default function AdminSidebar() {
       title: "Management",
       icon: "📁",
       items: [
-        {
-          name: "Users",
-          href: "/admin/users",
-          icon: "👥",
-          roles: ["admin", "head_admin", "super_admin"],
-        },
-        {
-          name: "Orders",
-          href: "/admin/orders",
-          icon: "📦",
-          roles: ["admin", "head_admin", "super_admin"],
-        },
-        {
-          name: "Payments",
-          href: "/admin/payments",
-          icon: "💳",
-          roles: ["admin", "head_admin", "super_admin"],
-        },
-        {
-          name: "Tickets",
-          href: "/admin/tickets",
-          icon: "🎫",
-          roles: ["admin", "head_admin", "super_admin"],
-        },
+        { name: "Users", href: "/admin/users", icon: "👥", roles: ["admin", "head_admin", "super_admin"] },
+        { name: "Orders", href: "/admin/orders", icon: "📦", roles: ["admin", "head_admin", "super_admin"] },
+        { name: "Payments", href: "/admin/payments", icon: "💳", roles: ["admin", "head_admin", "super_admin"] },
+        { name: "Tickets", href: "/admin/tickets", icon: "🎫", roles: ["admin", "head_admin", "super_admin"] },
       ],
     },
     {
       title: "Catalog",
       icon: "🛒",
       items: [
-        {
-          name: "Services",
-          href: "/admin/services",
-          icon: "🛒",
-          roles: ["head_admin", "super_admin"],
-        },
-        {
-          name: "Providers",
-          href: "/admin/providers",
-          icon: "🔌",
-          roles: ["head_admin", "super_admin"],
-        },
+        { name: "Services", href: "/admin/services", icon: "🛒", roles: ["head_admin", "super_admin"] },
+        { name: "Providers", href: "/admin/providers", icon: "🔌", roles: ["head_admin", "super_admin"] },
       ],
     },
     {
       title: "Finance",
       icon: "💰",
       items: [
-        {
-          name: "Reports",
-          href: "/admin/reports",
-          icon: "📊",
-          roles: ["head_admin", "super_admin"],
-        },
-        {
-          name: "Payment Methods",
-          href: "/admin/payment-methods",
-          icon: "🏦",
-          roles: ["super_admin"],
-        },
-        {
-          name: "Currencies",
-          href: "/admin/currencies",
-          icon: "💱",
-          roles: ["super_admin"],
-        },
+        { name: "Analytics", href: "/admin/analytics", icon: "📊", roles: ["head_admin", "super_admin"] },
+        { name: "Cash Accounts", href: "/admin/cash-accounts", icon: "👛", roles: ["head_admin", "super_admin"] },
+        { name: "Cash Transfers", href: "/admin/cash-transfers", icon: "🔁", roles: ["head_admin", "super_admin"] },
+        { name: "Cash Movements", href: "/admin/cash-movements", icon: "🧾", roles: ["head_admin", "super_admin"] },
+        { name: "Expenses", href: "/admin/expenses", icon: "💸", roles: ["head_admin", "super_admin"] },
+        { name: "Withdrawals", href: "/admin/withdrawals", icon: "🏧", roles: ["head_admin", "super_admin"] },
+        { name: "Reports", href: "/admin/reports", icon: "📈", roles: ["head_admin", "super_admin"] },
+        { name: "Payment Methods", href: "/admin/payment-methods", icon: "🏦", roles: ["super_admin"] },
+        { name: "Currencies", href: "/admin/currencies", icon: "💱", roles: ["super_admin"] },
       ],
     },
     {
       title: "System",
       icon: "⚙️",
       items: [
-        {
-          name: "Settings",
-          href: "/admin/settings",
-          icon: "⚙️",
-          roles: ["super_admin"],
-        },
-        {
-          name: "Roles",
-          href: "/admin/roles",
-          icon: "🛡️",
-          roles: ["super_admin"],
-        },
+        { name: "Settings", href: "/admin/settings", icon: "⚙️", roles: ["super_admin"] },
+        { name: "Roles", href: "/admin/roles", icon: "🛡️", roles: ["super_admin"] },
       ],
     },
   ];
@@ -315,11 +266,7 @@ export default function AdminSidebar() {
         <div className="px-5 py-5">
           <div className="rounded-3xl border border-red-500/20 bg-gradient-to-br from-red-500/10 to-zinc-900 p-5 shadow-lg shadow-black/30">
             <p className="text-sm text-zinc-400">Admin Access</p>
-
-            <h2 className="text-3xl font-black mt-2 tracking-tight">
-              CONTROL
-            </h2>
-
+            <h2 className="text-3xl font-black mt-2 tracking-tight">CONTROL</h2>
             <p className={`text-xs mt-2 font-semibold ${getRoleColor()}`}>
               {getRoleLabel()}
             </p>
@@ -330,7 +277,6 @@ export default function AdminSidebar() {
       <nav
         className="
           flex-1 px-3 pb-4 overflow-y-auto space-y-3
-          scrollbar-thin scrollbar-track-transparent scrollbar-thumb-zinc-800
           [&::-webkit-scrollbar]:w-1.5
           [&::-webkit-scrollbar-track]:bg-transparent
           [&::-webkit-scrollbar-thumb]:rounded-full
@@ -359,11 +305,7 @@ export default function AdminSidebar() {
                     {group.title}
                   </span>
 
-                  <span
-                    className={`text-zinc-500 transition-transform duration-200 ${
-                      isOpen ? "rotate-90" : ""
-                    }`}
-                  >
+                  <span className={`text-zinc-500 transition-transform duration-200 ${isOpen ? "rotate-90" : ""}`}>
                     ›
                   </span>
                 </button>
@@ -398,81 +340,65 @@ export default function AdminSidebar() {
                       >
                         <div className="flex items-center gap-3">
                           <span className="text-lg">{item.icon}</span>
-
                           {!minimized && <span>{item.name}</span>}
                         </div>
 
-                        {!minimized &&
-                          item.name === "Payments" &&
-                          pendingPayments > 0 && (
-                            <div className="flex items-center gap-2">
-                              <span className="min-w-5 h-5 rounded-full bg-red-500/15 border border-red-500/20 px-1.5 text-[10px] font-bold text-red-400 flex items-center justify-center">
-                                {pendingPayments}
-                              </span>
-
-                              {hasNewPayments && (
-                                <span className="rounded-full bg-red-500/15 border border-red-500/20 px-2.5 py-0.5 text-[10px] font-bold text-red-400">
-                                  NEW
-                                </span>
-                              )}
-                            </div>
-                          )}
-
-                        {!minimized &&
-                          item.name === "Orders" &&
-                          pendingOrders > 0 && (
-                            <div className="flex items-center gap-2">
-                              <span className="min-w-5 h-5 rounded-full bg-blue-500/15 border border-blue-500/20 px-1.5 text-[10px] font-bold text-blue-400 flex items-center justify-center">
-                                {pendingOrders}
-                              </span>
-
-                              {hasNewOrders && (
-                                <span className="rounded-full bg-blue-500/15 border border-blue-500/20 px-2.5 py-0.5 text-[10px] font-bold text-blue-400">
-                                  NEW
-                                </span>
-                              )}
-                            </div>
-                          )}
-
-                        {!minimized &&
-                          item.name === "Tickets" &&
-                          openTickets > 0 && (
-                            <div className="flex items-center gap-2">
-                              <span className="min-w-5 h-5 rounded-full bg-purple-500/15 border border-purple-500/20 px-1.5 text-[10px] font-bold text-purple-400 flex items-center justify-center">
-                                {openTickets}
-                              </span>
-
-                              {hasNewTickets && (
-                                <span className="rounded-full bg-purple-500/15 border border-purple-500/20 px-2.5 py-0.5 text-[10px] font-bold text-purple-400">
-                                  NEW
-                                </span>
-                              )}
-                            </div>
-                          )}
-
-                        {minimized &&
-                          item.name === "Payments" &&
-                          pendingPayments > 0 && (
-                            <span className="absolute right-2 top-1 min-w-5 h-5 rounded-full bg-red-500 border border-red-400 px-1 text-[10px] font-bold text-white flex items-center justify-center">
+                        {!minimized && item.name === "Payments" && pendingPayments > 0 && (
+                          <div className="flex items-center gap-2">
+                            <span className="min-w-5 h-5 rounded-full bg-red-500/15 border border-red-500/20 px-1.5 text-[10px] font-bold text-red-400 flex items-center justify-center">
                               {pendingPayments}
                             </span>
-                          )}
+                            {hasNewPayments && (
+                              <span className="rounded-full bg-red-500/15 border border-red-500/20 px-2.5 py-0.5 text-[10px] font-bold text-red-400">
+                                NEW
+                              </span>
+                            )}
+                          </div>
+                        )}
 
-                        {minimized &&
-                          item.name === "Orders" &&
-                          pendingOrders > 0 && (
-                            <span className="absolute right-2 top-1 min-w-5 h-5 rounded-full bg-blue-500 border border-blue-400 px-1 text-[10px] font-bold text-white flex items-center justify-center">
+                        {!minimized && item.name === "Orders" && pendingOrders > 0 && (
+                          <div className="flex items-center gap-2">
+                            <span className="min-w-5 h-5 rounded-full bg-blue-500/15 border border-blue-500/20 px-1.5 text-[10px] font-bold text-blue-400 flex items-center justify-center">
                               {pendingOrders}
                             </span>
-                          )}
+                            {hasNewOrders && (
+                              <span className="rounded-full bg-blue-500/15 border border-blue-500/20 px-2.5 py-0.5 text-[10px] font-bold text-blue-400">
+                                NEW
+                              </span>
+                            )}
+                          </div>
+                        )}
 
-                        {minimized &&
-                          item.name === "Tickets" &&
-                          openTickets > 0 && (
-                            <span className="absolute right-2 top-1 min-w-5 h-5 rounded-full bg-purple-500 border border-purple-400 px-1 text-[10px] font-bold text-white flex items-center justify-center">
+                        {!minimized && item.name === "Tickets" && openTickets > 0 && (
+                          <div className="flex items-center gap-2">
+                            <span className="min-w-5 h-5 rounded-full bg-purple-500/15 border border-purple-500/20 px-1.5 text-[10px] font-bold text-purple-400 flex items-center justify-center">
                               {openTickets}
                             </span>
-                          )}
+                            {hasNewTickets && (
+                              <span className="rounded-full bg-purple-500/15 border border-purple-500/20 px-2.5 py-0.5 text-[10px] font-bold text-purple-400">
+                                NEW
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {minimized && item.name === "Payments" && pendingPayments > 0 && (
+                          <span className="absolute right-2 top-1 min-w-5 h-5 rounded-full bg-red-500 border border-red-400 px-1 text-[10px] font-bold text-white flex items-center justify-center">
+                            {pendingPayments}
+                          </span>
+                        )}
+
+                        {minimized && item.name === "Orders" && pendingOrders > 0 && (
+                          <span className="absolute right-2 top-1 min-w-5 h-5 rounded-full bg-blue-500 border border-blue-400 px-1 text-[10px] font-bold text-white flex items-center justify-center">
+                            {pendingOrders}
+                          </span>
+                        )}
+
+                        {minimized && item.name === "Tickets" && openTickets > 0 && (
+                          <span className="absolute right-2 top-1 min-w-5 h-5 rounded-full bg-purple-500 border border-purple-400 px-1 text-[10px] font-bold text-white flex items-center justify-center">
+                            {openTickets}
+                          </span>
+                        )}
                       </Link>
                     );
                   })}
