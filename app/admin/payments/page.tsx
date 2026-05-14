@@ -29,6 +29,7 @@ export default function AdminPaymentsPage() {
   const [showRejectBox, setShowRejectBox] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [message, setMessage] = useState("");
+  const [approving, setApproving] = useState(false);
 
   async function loadDeposits() {
     const { data, error } = await supabase
@@ -89,6 +90,11 @@ export default function AdminPaymentsPage() {
   }
 
   async function approveDeposit(deposit: Deposit) {
+
+  if (approving) return;
+
+  setApproving(true);
+
     try {
       if (deposit.status === "approved") {
         setMessage("Deposit already approved.");
@@ -171,13 +177,15 @@ export default function AdminPaymentsPage() {
         "Deposit approved and cash account updated."
       );
 
-      setSelectedDeposit(null);
+setSelectedDeposit(null);
 setRejectReason("");
+setApproving(false);
 
       loadDeposits();
     } catch {
-      setMessage("Failed to approve deposit.");
-    }
+  setMessage("Failed to approve deposit.");
+  setApproving(false);
+}
   }
 
   async function rejectDeposit() {
@@ -469,12 +477,13 @@ setRejectReason("");
                     </button>
                   )}
 
-                  <button
-                    onClick={() => approveDeposit(selectedDeposit)}
-                    className="bg-green-600 hover:bg-green-700 rounded-xl px-5 py-3 font-semibold transition"
-                  >
-                    Approve
-                  </button>
+<button
+  onClick={() => approveDeposit(selectedDeposit)}
+  disabled={approving}
+  className="bg-green-600 hover:bg-green-700 rounded-xl px-5 py-3 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+>
+  {approving ? "Approving..." : "Approve"}
+</button>
                 </>
               )}
             </div>
