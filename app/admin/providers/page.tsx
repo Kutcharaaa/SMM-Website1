@@ -35,6 +35,7 @@ export default function AdminProvidersPage() {
   const [name, setName] = useState("");
   const [apiUrl, setApiUrl] = useState("");
   const [apiKey, setApiKey] = useState("");
+  const [lowBalanceThreshold, setLowBalanceThreshold] = useState("1000");
 
   const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
   const [loading, setLoading] = useState(false);
@@ -91,7 +92,7 @@ export default function AdminProvidersPage() {
       mode: "manual",
       balance: 0,
       auto_disable_low_balance: false,
-      low_balance_threshold: 0,
+      low_balance_threshold: Number(lowBalanceThreshold || 0),
     });
 
     setLoading(false);
@@ -121,6 +122,7 @@ export default function AdminProvidersPage() {
         name,
         api_url: apiUrl,
         api_key: apiKey,
+        low_balance_threshold: Number(lowBalanceThreshold || 0),
       })
       .eq("id", editingProvider.id);
 
@@ -320,6 +322,7 @@ export default function AdminProvidersPage() {
     setName(provider.name);
     setApiUrl(provider.api_url);
     setApiKey(provider.api_key);
+    setLowBalanceThreshold(String(provider.low_balance_threshold || 1000));
 
     window.scrollTo({
       top: 0,
@@ -332,6 +335,7 @@ export default function AdminProvidersPage() {
     setName("");
     setApiUrl("");
     setApiKey("");
+    setLowBalanceThreshold("1000");
   }
 
   useEffect(() => {
@@ -388,6 +392,14 @@ export default function AdminProvidersPage() {
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                   placeholder="API Key"
+                  className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500"
+                />
+
+                <input
+                  type="number"
+                  value={lowBalanceThreshold}
+                  onChange={(e) => setLowBalanceThreshold(e.target.value)}
+                  placeholder="Low balance warning threshold"
                   className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500"
                 />
 
@@ -468,13 +480,13 @@ export default function AdminProvidersPage() {
 
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-medium ${
-                        provider.auto_disable_low_balance
+                        Number(provider.balance || 0) <=
+                        Number(provider.low_balance_threshold || 0)
                           ? "bg-orange-500/10 text-orange-400"
-                          : "bg-zinc-800 text-zinc-400"
+                          : "bg-green-500/10 text-green-400"
                       }`}
                     >
-                      Auto Disable{" "}
-                      {provider.auto_disable_low_balance ? "ON" : "OFF"}
+                      Threshold: ${Number(provider.low_balance_threshold || 0)}
                     </span>
                   </div>
 
