@@ -29,12 +29,14 @@ export default function AdminSidebar() {
   const [pendingOrders, setPendingOrders] = useState(0);
   const [hasNewOrders, setHasNewOrders] = useState(false);
 
+  const [openTickets, setOpenTickets] = useState(0);
+  const [hasNewTickets, setHasNewTickets] = useState(false);
+
   const [minimized, setMinimized] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   async function loadAdminData() {
     const { data: authData } = await supabase.auth.getUser();
-
     if (!authData.user) return;
 
     const { data: profile } = await supabase
@@ -43,9 +45,7 @@ export default function AdminSidebar() {
       .eq("id", authData.user.id)
       .single();
 
-    if (profile?.role) {
-      setRole(profile.role);
-    }
+    if (profile?.role) setRole(profile.role);
 
     const { data: pendingData, count } = await supabase
       .from("deposits")
@@ -92,31 +92,51 @@ export default function AdminSidebar() {
           new Date(lastOrdersOpenedAt).getTime()
       );
     }
+
+    const { data: openTicketData, count: ticketCount } = await supabase
+      .from("tickets")
+      .select("created_at", { count: "exact" })
+      .eq("status", "open")
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    setOpenTickets(ticketCount || 0);
+
+    const latestTicketCreatedAt = openTicketData?.[0]?.created_at;
+    const lastTicketsOpenedAt = localStorage.getItem("tickets_last_opened_at");
+
+    if (!latestTicketCreatedAt) {
+      setHasNewTickets(false);
+    } else if (!lastTicketsOpenedAt) {
+      setHasNewTickets(true);
+    } else {
+      setHasNewTickets(
+        new Date(latestTicketCreatedAt).getTime() >
+          new Date(lastTicketsOpenedAt).getTime()
+      );
+    }
   }
 
   useEffect(() => {
-    const savedMinimized = localStorage.getItem("admin_sidebar_minimized");
-    setMinimized(savedMinimized === "true");
+    setMinimized(localStorage.getItem("admin_sidebar_minimized") === "true");
 
     const savedGroups = localStorage.getItem("admin_sidebar_open_groups");
 
-    if (savedGroups) {
-      setOpenGroups(JSON.parse(savedGroups));
-    } else {
-      setOpenGroups({
-        Main: true,
-        Management: true,
-        Catalog: true,
-        Finance: true,
-        System: true,
-      });
-    }
+    setOpenGroups(
+      savedGroups
+        ? JSON.parse(savedGroups)
+        : {
+            Main: true,
+            Management: true,
+            Catalog: true,
+            Finance: true,
+            System: true,
+          }
+    );
 
     loadAdminData();
 
-    const interval = setInterval(() => {
-      loadAdminData();
-    }, 3000);
+    const interval = setInterval(loadAdminData, 3000);
 
     return () => clearInterval(interval);
   }, []);
@@ -145,6 +165,11 @@ export default function AdminSidebar() {
   function handleOrdersClick() {
     localStorage.setItem("orders_last_opened_at", new Date().toISOString());
     setHasNewOrders(false);
+  }
+
+  function handleTicketsClick() {
+    localStorage.setItem("tickets_last_opened_at", new Date().toISOString());
+    setHasNewTickets(false);
   }
 
   const groups: MenuGroup[] = [
@@ -358,6 +383,8 @@ export default function AdminSidebar() {
                             ? handlePaymentsClick
                             : item.name === "Orders"
                             ? handleOrdersClick
+                            : item.name === "Tickets"
+                            ? handleTicketsClick
                             : undefined
                         }
                         title={minimized ? item.name : undefined}
@@ -407,6 +434,22 @@ export default function AdminSidebar() {
                             </div>
                           )}
 
+                        {!minimized &&
+                          item.name === "Tickets" &&
+                          openTickets > 0 && (
+                            <div className="flex items-center gap-2">
+                              <span className="min-w-5 h-5 rounded-full bg-purple-500/15 border border-purple-500/20 px-1.5 text-[10px] font-bold text-purple-400 flex items-center justify-center">
+                                {openTickets}
+                              </span>
+
+                              {hasNewTickets && (
+                                <span className="rounded-full bg-purple-500/15 border border-purple-500/20 px-2.5 py-0.5 text-[10px] font-bold text-purple-400">
+                                  NEW
+                                </span>
+                              )}
+                            </div>
+                          )}
+
                         {minimized &&
                           item.name === "Payments" &&
                           pendingPayments > 0 && (
@@ -420,6 +463,14 @@ export default function AdminSidebar() {
                           pendingOrders > 0 && (
                             <span className="absolute right-2 top-1 min-w-5 h-5 rounded-full bg-blue-500 border border-blue-400 px-1 text-[10px] font-bold text-white flex items-center justify-center">
                               {pendingOrders}
+                            </span>
+                          )}
+
+                        {minimized &&
+                          item.name === "Tickets" &&
+                          openTickets > 0 && (
+                            <span className="absolute right-2 top-1 min-w-5 h-5 rounded-full bg-purple-500 border border-purple-400 px-1 text-[10px] font-bold text-white flex items-center justify-center">
+                              {openTickets}
                             </span>
                           )}
                       </Link>
