@@ -1,78 +1,88 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Link from "next/link";
+import GetStartedButton from "@/components/GetStartedButton";
+
 
 const resellerLevels = [
   {
-    name: "Starter",
-    tag: "Beginner Reseller",
+    name: "New Reseller",
+    tag: "Starter Level",
     required: "$0",
     discount: "0%",
-    accent: "from-zinc-700 to-zinc-900",
+    points: "$1.00",
+    accent: "from-fuchsia-600 to-pink-600",
     perks: [
-      "Access to all public services",
-      "Standard support queue",
-      "Basic reseller dashboard access",
+      "Community based support",
     ],
   },
+
   {
-    name: "Builder",
+    name: "Power Reseller",
     tag: "Growing Reseller",
     required: "$500",
     discount: "1%",
+    points: "$1.00",
     accent: "from-blue-600 to-cyan-600",
     perks: [
-      "Small reseller discount",
-      "Faster ticket handling",
-      "Better order monitoring priority",
+      "Priority ticket support by team",
     ],
   },
+
   {
-    name: "Operator",
-    tag: "Active Reseller",
+    name: "Pro Reseller",
+    tag: "Advanced Reseller",
     required: "$5,000",
     discount: "2%",
+    points: "$1.25",
     accent: "from-purple-600 to-fuchsia-600",
     perks: [
-      "Priority support access",
-      "Eligible for child panel setup",
-      "Early service update notices",
+      "Whatsapp/Telegram support by team",
+      "Free Child Panel - Lifetime",
     ],
   },
+
   {
-    name: "Partner",
+    name: "Master Reseller",
     tag: "High Volume Reseller",
     required: "$15,000",
     discount: "3%",
+    points: "$1.50",
     accent: "from-amber-500 to-orange-600",
     perks: [
-      "Higher discount rate",
-      "Priority issue checking",
-      "Private service recommendations",
+      "Top priority support",
+      "Free Child Panel - Lifetime",
+      "Early notification on new services",
     ],
   },
+
   {
-    name: "Executive",
+    name: "Premium Partner",
     tag: "Premium Partner",
     required: "$30,000",
     discount: "4%",
+    points: "$1.75",
     accent: "from-emerald-500 to-teal-600",
     perks: [
-      "Dedicated business support",
-      "Advanced reseller guidance",
-      "Access to selected private offers",
+      "Dedicated account manager",
+      "Free Child Panel - Lifetime",
+      "Track and resolve issues systematically",
     ],
   },
+
   {
-    name: "Ascend Elite",
+    name: "Elite Partner",
     tag: "Top Tier Partner",
     required: "$50,000",
     discount: "5%",
+    points: "$2.00",
     accent: "from-red-600 to-pink-600",
     perks: [
-      "Highest reseller discount",
-      "Elite priority support",
-      "Exclusive hidden service access",
+      "Admin handled support",
+      "Free Child Panel - Lifetime",
+      "Early notification on new services",
+      "Special discount by admin",
+      "Hidden services access",
     ],
   },
 ];
@@ -102,12 +112,9 @@ export default function ResellerPage() {
             </p>
 
             <div className="mt-10 flex flex-col justify-center gap-4 sm:flex-row">
-              <Link
-                href="/register"
-                className="rounded-2xl bg-blue-600 px-8 py-4 font-bold transition hover:bg-blue-700"
-              >
-                Start Reselling
-              </Link>
+<GetStartedButton className="rounded-2xl bg-blue-600 px-8 py-4 font-bold transition hover:bg-blue-700">
+  Start Reselling
+</GetStartedButton>
 
               <Link
                 href="/services"
