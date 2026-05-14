@@ -88,69 +88,93 @@ export default function AdminPaymentsPage() {
     });
   }
 
-  async function approveDeposit() {
-    if (!selectedDeposit) return;
+  async function approveDeposit(deposit: Deposit) {
+    try {
+      if (deposit.status === "approved") {
+        setMessage("Deposit already approved.");
+        return;
+      }
 
-    const creditAmount = Number(
-      selectedDeposit.wallet_credit || selectedDeposit.amount
-    );
+      const amount = Number(deposit.amount || 0);
 
-    const confirmApprove = confirm(
-      `Approve this deposit and add ₱${creditAmount.toFixed(
-        2
-      )} to the user's wallet?`
-    );
+      if (amount <= 0) {
+        setMessage("Invalid deposit amount.");
+        return;
+      }
 
-    if (!confirmApprove) return;
+      const { data: paymentMethod } = await supabase
+        .from("payment_methods")
+        .select("cash_account_id")
+        .eq("name", deposit.method)
+        .single();
 
-    setMessage("Approving deposit...");
+      let cashAccountId: string | null = null;
 
-    const profile = await getUserProfile(selectedDeposit.user_id);
-    if (!profile) return;
+      if (paymentMethod?.cash_account_id) {
+        cashAccountId = paymentMethod.cash_account_id;
 
-    const currentBalance = Number(profile.balance || 0);
-    const newBalance = currentBalance + creditAmount;
+        const { data: cashAccount } = await supabase
+          .from("cash_accounts")
+          .select("balance")
+          .eq("id", cashAccountId)
+          .single();
 
-    const { error: balanceError } = await supabase
-      .from("profiles")
-      .update({ balance: newBalance })
-      .eq("id", selectedDeposit.user_id);
+        const currentBalance = Number(
+          cashAccount?.balance || 0
+        );
 
-    if (balanceError) {
-      setMessage(balanceError.message);
-      return;
+        const newBalance = currentBalance + amount;
+
+        await supabase
+          .from("cash_accounts")
+          .update({
+            balance: newBalance,
+          })
+          .eq("id", cashAccountId);
+
+        await supabase.from("cash_movements").insert({
+          cash_account_id: cashAccountId,
+          type: "deposit",
+          amount: amount,
+          description: `Deposit approved (${deposit.method})`,
+          reference_type: "deposit",
+          reference_id: deposit.id,
+        });
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("balance")
+        .eq("id", deposit.user_id)
+        .single();
+
+      const currentBalance = Number(profile?.balance || 0);
+
+      const newBalance = currentBalance + amount;
+
+      await supabase
+        .from("profiles")
+        .update({
+          balance: newBalance,
+        })
+        .eq("id", deposit.user_id);
+
+      await supabase
+        .from("deposits")
+        .update({
+          status: "approved",
+          cash_account_id: cashAccountId,
+        })
+        .eq("id", deposit.id);
+
+      setMessage(
+        "Deposit approved and cash account updated."
+      );
+
+      loadDeposits();
+    } catch {
+      setMessage("Failed to approve deposit.");
     }
-
-    const { error: depositError } = await supabase
-      .from("deposits")
-      .update({
-        status: "approved",
-        reject_reason: null,
-      })
-      .eq("id", selectedDeposit.id);
-
-    if (depositError) {
-      setMessage(depositError.message);
-      return;
-    }
-
-    await supabase.from("notifications").insert({
-      user_id: selectedDeposit.user_id,
-      title: "Deposit Approved",
-      message: `Your deposit has been approved. ₱${creditAmount.toFixed(
-        2
-      )} has been added to your wallet.`,
-      type: "deposit_approved",
-      is_read: false,
-    });
-
-    await sendDepositEmail(selectedDeposit.id, "approved");
-
-    setMessage("Deposit approved successfully.");
-    setSelectedDeposit(null);
-    setShowRejectBox(false);
-    setRejectReason("");
-    loadDeposits();
   }
 
   async function rejectDeposit() {
@@ -443,7 +467,7 @@ export default function AdminPaymentsPage() {
                   )}
 
                   <button
-                    onClick={approveDeposit}
+                    onClick={() => approveDeposit(selectedDeposit)}
                     className="bg-green-600 hover:bg-green-700 rounded-xl px-5 py-3 font-semibold transition"
                   >
                     Approve
