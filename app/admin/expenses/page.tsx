@@ -225,6 +225,6 @@ export default function AdminExpensesPage() {
           </tbody>
         </table>
       </div>
-    </AdminLayout
+    </AdminLayout>
   );
 }
