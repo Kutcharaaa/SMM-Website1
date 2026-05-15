@@ -179,9 +179,7 @@ async function awardResellerRewards(order: Order) {
 
   if (orderPrice <= 0) return;
 
-  const usdPhpRate = 56;
-  const usdSpent = orderPrice / usdPhpRate;
-  const pointsEarned = Math.floor(usdSpent / 4);
+const pointsEarned = Math.floor(orderPrice / 200);
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
