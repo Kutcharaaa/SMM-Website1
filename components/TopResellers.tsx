@@ -1,9 +1,21 @@
+"use client";
+
+import { supabase } from "@/lib/supabase";
 import {
   Trophy,
   Crown,
   Gem,
   ShieldCheck,
 } from "lucide-react";
+import { useEffect, useState } from "react";
+
+type Reseller = {
+  id: string;
+  username: string;
+  reseller_level: string;
+  total_spent: number;
+  total_orders: number;
+};
 
 function maskName(name: string) {
   return name
@@ -21,33 +33,56 @@ function maskName(name: string) {
     .join(" ");
 }
 
-export default function TopResellers() {
-  const topResellers = [
-    {
-      name: "Rowelle Nuque",
-      level: "Ascend Partner",
-      spent: "₱125,500",
-      orders: "12,450",
+function getLevelConfig(level: string) {
+  if (level === "Elite Partner") {
+    return {
       icon: Trophy,
       color: "from-[#0038ff] to-[#00c6ff]",
-    },
-    {
-      name: "BoostKing",
-      level: "Elite Partner",
-      spent: "₱84,200",
-      orders: "8,240",
+    };
+  }
+
+  if (level === "Premium Partner") {
+    return {
       icon: Gem,
       color: "from-emerald-500 to-green-400",
-    },
-    {
-      name: "SocialFlow",
-      level: "Master Reseller",
-      spent: "₱55,800",
-      orders: "5,630",
+    };
+  }
+
+  if (level === "Master Reseller") {
+    return {
       icon: Crown,
       color: "from-amber-500 to-yellow-400",
-    },
-  ];
+    };
+  }
+
+  return {
+    icon: ShieldCheck,
+    color: "from-violet-500 to-purple-400",
+  };
+}
+
+export default function TopResellers() {
+  const [topResellers, setTopResellers] = useState<
+    Reseller[]
+  >([]);
+
+  async function loadTopResellers() {
+    const { data } = await supabase
+      .from("profiles")
+      .select(
+        "id, username, reseller_level, total_spent, total_orders"
+      )
+      .order("total_spent", {
+        ascending: false,
+      })
+      .limit(3);
+
+    setTopResellers(data || []);
+  }
+
+  useEffect(() => {
+    loadTopResellers();
+  }, []);
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -65,44 +100,63 @@ export default function TopResellers() {
       </div>
 
       <div className="mt-5 space-y-4">
-        {topResellers.map((reseller) => {
-          const Icon = reseller.icon;
+        {topResellers.length <= 0 ? (
+          <div className="rounded-2xl border border-slate-100 p-6 text-center text-sm text-slate-500">
+            No reseller rankings yet.
+          </div>
+        ) : (
+          topResellers.map((reseller) => {
+            const config = getLevelConfig(
+              reseller.reseller_level
+            );
 
-          return (
-            <div
-              key={reseller.name}
-              className="flex items-center justify-between rounded-2xl border border-slate-100 p-4 transition hover:bg-slate-50"
-            >
-              <div className="flex items-center gap-4">
-                <div
-                  className={`flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-r ${reseller.color} text-white shadow-lg`}
-                >
-                  <Icon size={26} />
+            const Icon = config.icon;
+
+            return (
+              <div
+                key={reseller.id}
+                className="flex items-center justify-between rounded-2xl border border-slate-100 p-4 transition hover:bg-slate-50"
+              >
+                <div className="flex items-center gap-4">
+                  <div
+                    className={`flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-r ${config.color} text-white shadow-lg`}
+                  >
+                    <Icon size={26} />
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-black text-slate-950">
+                      {maskName(
+                        reseller.username || "User"
+                      )}
+                    </h4>
+
+                    <p className="mt-1 text-xs font-semibold text-slate-500">
+                      {reseller.reseller_level ||
+                        "New Reseller"}
+                    </p>
+                  </div>
                 </div>
 
-                <div>
-                  <h4 className="text-sm font-black text-slate-950">
-                    {maskName(reseller.name)}
-                  </h4>
+                <div className="text-right">
+                  <h5 className="text-sm font-black text-slate-950">
+                    ₱
+                    {Number(
+                      reseller.total_spent || 0
+                    ).toLocaleString()}
+                  </h5>
 
-                  <p className="mt-1 text-xs font-semibold text-slate-500">
-                    {reseller.level}
+                  <p className="mt-1 text-xs font-semibold text-slate-400">
+                    {Number(
+                      reseller.total_orders || 0
+                    ).toLocaleString()}{" "}
+                    orders
                   </p>
                 </div>
               </div>
-
-              <div className="text-right">
-                <h5 className="text-sm font-black text-slate-950">
-                  {reseller.spent}
-                </h5>
-
-                <p className="mt-1 text-xs font-semibold text-slate-400">
-                  {reseller.orders} orders
-                </p>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
     </div>
   );

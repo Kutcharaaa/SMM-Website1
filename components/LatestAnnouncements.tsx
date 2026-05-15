@@ -1,29 +1,63 @@
-import { Bell, Settings, Sparkles } from "lucide-react";
+"use client";
 
-export default function LatestAnnouncements() {
-  const announcements = [
-    {
-      title: "New Payment Method",
-      desc: "We now accept GCash payments!",
-      time: "May 20, 2024",
-      icon: Bell,
-      color: "bg-blue-50 text-blue-600",
-    },
-    {
-      title: "System Update",
-      desc: "Minor updates have been applied.",
-      time: "May 18, 2024",
+import { supabase } from "@/lib/supabase";
+
+import {
+  Bell,
+  Settings,
+  Sparkles,
+} from "lucide-react";
+
+import { useEffect, useState } from "react";
+
+type Announcement = {
+  id: string;
+  title: string;
+  description: string;
+  type: string;
+  created_at: string;
+};
+
+function getAnnouncementStyle(type: string) {
+  if (type === "update") {
+    return {
       icon: Settings,
       color: "bg-slate-100 text-slate-700",
-    },
-    {
-      title: "New Services Added",
-      desc: "Check out our new Instagram services.",
-      time: "May 15, 2024",
+    };
+  }
+
+  if (type === "feature") {
+    return {
       icon: Sparkles,
-      color: "bg-slate-100 text-slate-700",
-    },
-  ];
+      color: "bg-purple-50 text-purple-600",
+    };
+  }
+
+  return {
+    icon: Bell,
+    color: "bg-blue-50 text-blue-600",
+  };
+}
+
+export default function LatestAnnouncements() {
+  const [announcements, setAnnouncements] =
+    useState<Announcement[]>([]);
+
+  async function loadAnnouncements() {
+    const { data } = await supabase
+      .from("announcements")
+      .select("*")
+      .order("created_at", {
+        ascending: false,
+      })
+      .limit(3);
+
+    setAnnouncements(data || []);
+  }
+
+  useEffect(() => {
+    loadAnnouncements();
+  }, []);
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -41,33 +75,52 @@ export default function LatestAnnouncements() {
       </div>
 
       <div className="mt-5 space-y-5">
-        {announcements.map((announcement) => {
-          const Icon = announcement.icon;
+        {announcements.length <= 0 ? (
+          <div className="rounded-2xl border border-slate-100 p-6 text-center text-sm text-slate-500">
+            No announcements yet.
+          </div>
+        ) : (
+          announcements.map((announcement) => {
+            const config =
+              getAnnouncementStyle(
+                announcement.type
+              );
 
-          return (
-            <div key={announcement.title} className="flex gap-4">
+            const Icon = config.icon;
+
+            return (
               <div
-                className={`mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${announcement.color}`}
+                key={announcement.id}
+                className="flex gap-4"
               >
-                <Icon size={18} strokeWidth={2.4} />
+                <div
+                  className={`mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${config.color}`}
+                >
+                  <Icon
+                    size={18}
+                    strokeWidth={2.4}
+                  />
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-black text-slate-900">
+                    {announcement.title}
+                  </h4>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    {announcement.description}
+                  </p>
+
+                  <p className="mt-1 text-xs font-medium text-slate-400">
+                    {new Date(
+                      announcement.created_at
+                    ).toLocaleDateString()}
+                  </p>
+                </div>
               </div>
-
-              <div>
-                <h4 className="text-sm font-black text-slate-900">
-                  {announcement.title}
-                </h4>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  {announcement.desc}
-                </p>
-
-                <p className="mt-1 text-xs font-medium text-slate-400">
-                  {announcement.time}
-                </p>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
     </div>
   );
