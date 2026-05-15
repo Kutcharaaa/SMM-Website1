@@ -27,17 +27,13 @@ export default function RecentPayments() {
           <h3 className="text-xl font-black text-slate-950">
             Recent Payments
           </h3>
-
-          <p className="mt-1 text-sm text-slate-500">
-            Latest add funds activity
-          </p>
         </div>
 
         <a
           href="/dashboard/payments"
-          className="text-xs font-black text-blue-600 hover:text-blue-700"
+          className="px-4 py-2 text-sm font-bold text-blue-600 transition hover:text-gray-800"
         >
-          View All
+          View All Payments
         </a>
       </div>
 
