@@ -9,13 +9,13 @@ function maskName(name: string) {
   return name
     .split(" ")
     .map((part) => {
-      if (part.length <= 4) {
+      if (part.length <= 2) {
         return part[0] + "***";
       }
 
       return (
-        part.slice(0, 4) +
-        "*".repeat(part.length - 4)
+        part.slice(0, 2) +
+        "*".repeat(part.length - 2)
       );
     })
     .join(" ");
@@ -47,22 +47,6 @@ export default function TopResellers() {
       icon: Crown,
       color: "from-amber-500 to-yellow-400",
     },
-    {
-      name: "TikTokHub",
-      level: "Pro Reseller",
-      spent: "₱24,500",
-      orders: "2,440",
-      icon: ShieldCheck,
-      color: "from-violet-500 to-purple-400",
-    },
-    {
-      name: "Ascend Media",
-      level: "Active Reseller",
-      spent: "₱14,200",
-      orders: "1,440",
-      icon: ShieldCheck,
-      color: "from-cyan-500 to-sky-400",
-    },
   ];
 
   return (
@@ -80,7 +64,7 @@ export default function TopResellers() {
         </a>
       </div>
 
-      <div className="mt-5 max-h-[250px] space-y-4 overflow-y-auto pr-1">
+      <div className="mt-5 space-y-4">
         {topResellers.map((reseller) => {
           const Icon = reseller.icon;
 
