@@ -2,7 +2,11 @@
 
 import NotificationsDropdown from "@/components/NotificationsDropdown";
 import UserProfile from "@/components/UserProfile";
+
 import { Menu } from "lucide-react";
+
+import { supabase } from "@/lib/supabase";
+import { useEffect, useState } from "react";
 
 type DashboardTopbarProps = {
   onMenuClick?: () => void;
@@ -11,6 +15,32 @@ type DashboardTopbarProps = {
 export default function DashboardTopbar({
   onMenuClick,
 }: DashboardTopbarProps) {
+  const [username, setUsername] = useState("User");
+  const [balance, setBalance] = useState(0);
+  const [plan, setPlan] = useState("Starter");
+
+  useEffect(() => {
+    async function loadProfile() {
+      const { data: authData } = await supabase.auth.getUser();
+
+      if (!authData.user) return;
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("username, balance, plan")
+        .eq("id", authData.user.id)
+        .single();
+
+      if (profile) {
+        setUsername(profile.username || "User");
+        setBalance(profile.balance || 0);
+        setPlan(profile.plan || "Starter");
+      }
+    }
+
+    loadProfile();
+  }, []);
+
   return (
     <header className="h-24 border-b border-slate-200 bg-[#f8fbff]">
       <div className="flex h-full items-center justify-between px-4 lg:px-8">
@@ -29,11 +59,11 @@ export default function DashboardTopbar({
 
             <div className="mt-1 flex items-center gap-3">
               <h1 className="text-xl font-black text-slate-950">
-                Juan Dela Cruz
+                {username}
               </h1>
 
               <span className="rounded-full bg-blue-600 px-3 py-1 text-[11px] font-bold text-white">
-                Pro Reseller
+                {plan}
               </span>
             </div>
           </div>
@@ -46,7 +76,7 @@ export default function DashboardTopbar({
             </p>
 
             <p className="mt-1 text-2xl font-black text-blue-600">
-              ₱2,450.00
+              ₱{Number(balance).toFixed(2)}
             </p>
           </div>
 
