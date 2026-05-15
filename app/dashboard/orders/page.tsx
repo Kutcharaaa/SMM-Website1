@@ -5,20 +5,38 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { useToast } from "@/components/ToastProvider";
 import { supabase } from "@/lib/supabase";
 import {
+  BadgeCheck,
+  Check,
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   Copy,
   ExternalLink,
   Eye,
+  Filter,
+  Gamepad2,
+  Globe2,
+  Grid3X3,
   Heart,
+  Info,
+  Link as LinkIcon,
+  MessageSquare,
+  Minus,
+  Music,
   Package,
   Plus,
   RefreshCw,
+  RotateCcw,
   Search,
+  ShieldCheck,
   ShoppingBag,
+  ShoppingCart,
   Sparkles,
   Star,
+  Tag,
   Wallet,
   X,
+  Zap,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -91,6 +109,7 @@ export default function OrdersPage() {
   const [notes, setNotes] = useState("");
   const [placingOrder, setPlacingOrder] = useState(false);
   const [favoriteServiceIds, setFavoriteServiceIds] = useState<string[]>([]);
+  const [serviceFilter, setServiceFilter] = useState("all");
 
   async function loadOrders() {
     const { data: authData } = await supabase.auth.getUser();
@@ -220,30 +239,70 @@ export default function OrdersPage() {
   const filteredServices = useMemo(() => {
     const keyword = serviceSearch.toLowerCase().trim();
 
-    return networkServices
-      .filter((service) => {
-        if (category) return service.category === category;
-        if (keyword) return true;
-        return favoriteServiceIds.includes(service.id);
-      })
-      .filter((service) => {
-        if (!keyword) return true;
+    let rows = networkServices.filter((service) => {
+      if (!category) return true;
+      return service.category === category;
+    });
+
+    if (keyword) {
+      rows = rows.filter((service) => {
+        const publicId = getPublicServiceId(service).toLowerCase();
 
         return (
+          publicId.includes(keyword) ||
           service.name.toLowerCase().includes(keyword) ||
           service.category.toLowerCase().includes(keyword) ||
           service.provider_service_id?.toLowerCase().includes(keyword)
         );
-      })
-      .sort((a, b) => {
+      });
+    }
+
+    if (serviceFilter === "favorites") {
+      rows = rows.filter((service) => favoriteServiceIds.includes(service.id));
+    }
+
+    if (serviceFilter === "fast") {
+      rows = rows.filter((service) => {
+        const text = `${service.name} ${service.description || ""}`.toLowerCase();
+        return text.includes("fast") || text.includes("instant");
+      });
+    }
+
+    if (serviceFilter === "refill") {
+      rows = rows.filter((service) => {
+        const text = `${service.name} ${service.description || ""}`.toLowerCase();
+        return text.includes("refill");
+      });
+    }
+
+    if (serviceFilter === "quality") {
+      rows = rows.filter((service) => {
+        const text = `${service.name} ${service.description || ""}`.toLowerCase();
+        return (
+          text.includes("hq") ||
+          text.includes("quality") ||
+          text.includes("real")
+        );
+      });
+    }
+
+    return rows.sort((a, b) => {
+      if (serviceFilter !== "cheapest") {
         const aFavorite = favoriteServiceIds.includes(a.id) ? 0 : 1;
         const bFavorite = favoriteServiceIds.includes(b.id) ? 0 : 1;
 
         if (aFavorite !== bFavorite) return aFavorite - bFavorite;
+      }
 
-        return Number(a.price_per_1000 || 0) - Number(b.price_per_1000 || 0);
-      });
-  }, [networkServices, category, serviceSearch, favoriteServiceIds]);
+      return Number(a.price_per_1000 || 0) - Number(b.price_per_1000 || 0);
+    });
+  }, [
+    networkServices,
+    category,
+    serviceSearch,
+    favoriteServiceIds,
+    serviceFilter,
+  ]);
 
   const selectedService =
     services.find((service) => service.id === selectedServiceId) || null;
@@ -304,6 +363,7 @@ export default function OrdersPage() {
     setLink("");
     setQuantity("");
     setNotes("");
+    setServiceFilter("all");
   }
 
   function toggleFavoriteService(serviceId: string) {
@@ -825,455 +885,512 @@ export default function OrdersPage() {
         </div>
 
         {orderModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
-            <div className="max-h-[94vh] w-full max-w-7xl overflow-hidden rounded-[28px] bg-[#f8fbff] shadow-2xl">
-              <div className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-5">
-                <div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-                      <ShoppingBag size={22} />
-                    </div>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm">
+            <div className="flex max-h-[94vh] w-full max-w-[1500px] flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-2xl">
+              <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                    <ShoppingCart size={28} />
+                  </div>
 
-                    <div>
-                      <h3 className="text-2xl font-black text-slate-950">
-                        Create New Order
-                      </h3>
-
-                      <p className="mt-1 text-sm font-semibold text-slate-500">
-                        Search by Service ID or name, favorite services, and
-                        place orders faster.
-                      </p>
-                    </div>
+                  <div>
+                    <h3 className="text-2xl font-black text-slate-950">
+                      Create New Order
+                    </h3>
+                    <p className="mt-1 text-sm font-semibold text-slate-500">
+                      Choose a service and place your order in a few simple steps.
+                    </p>
                   </div>
                 </div>
 
                 <button
                   onClick={() => setOrderModalOpen(false)}
-                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200"
+                  className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-50 text-slate-600 transition hover:bg-slate-100"
                 >
-                  <X size={20} />
+                  <X size={22} />
                 </button>
               </div>
 
-              <div className="grid max-h-[84vh] overflow-hidden xl:grid-cols-[1fr_380px]">
-                <div className="overflow-y-auto p-6">
-                  <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <div className="mb-5 flex items-center justify-between gap-4">
-                      <div>
-                        <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">
-                          Step 1
-                        </p>
-                        <h4 className="mt-1 text-lg font-black text-slate-950">
-                          Choose Platform
-                        </h4>
-                      </div>
+              <div className="grid min-h-0 flex-1 overflow-hidden xl:grid-cols-[1fr_430px]">
+                <div className="min-h-0 overflow-y-auto p-6">
+                  <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+                    <StepHeader step="1" title="Choose Platform" />
 
-                      <button
-                        onClick={resetOrderForm}
-                        className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-black text-slate-500 transition hover:border-blue-400 hover:text-blue-600"
-                      >
-                        Clear
-                      </button>
-                    </div>
+                    <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8">
+                      {networks
+                        .filter((item) => item.name !== "Website" && item.name !== "Reviews")
+                        .map((item) => {
+                          const active = network === item.name;
 
-                    <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
-                      {networks.map((item) => (
-                        <button
-                          key={item.name}
-                          onClick={() => {
-                            setNetwork(
-                              network === item.name ? "Everything" : item.name,
-                            );
-                            setCategory("");
-                            setSelectedServiceId("");
-                          }}
-                          className={`group rounded-2xl border px-3 py-4 text-center transition ${
-                            network === item.name
-                              ? "border-blue-500 bg-blue-50 shadow-sm"
-                              : "border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/40"
-                          }`}
-                        >
-                          <div className="text-2xl">{item.icon}</div>
-                          <p
-                            className={`mt-2 text-xs font-black ${
-                              network === item.name
-                                ? "text-blue-600"
-                                : "text-slate-600 group-hover:text-blue-600"
-                            }`}
-                          >
-                            {item.name}
-                          </p>
-                        </button>
-                      ))}
+                          return (
+                            <button
+                              key={item.name}
+                              onClick={() => {
+                                setNetwork(active ? "Everything" : item.name);
+                                setCategory("");
+                                setSelectedServiceId("");
+                                setServiceSearch("");
+                              }}
+                              className={`relative flex h-[92px] flex-col items-center justify-center gap-2 rounded-2xl border bg-white text-sm font-black transition ${
+                                active
+                                  ? "border-blue-600 bg-blue-50 text-blue-700 shadow-sm"
+                                  : "border-slate-200 text-slate-700 hover:border-blue-300 hover:bg-blue-50/40"
+                              }`}
+                            >
+                              {active && (
+                                <span className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg">
+                                  <Check size={14} strokeWidth={3} />
+                                </span>
+                              )}
+
+                              <PlatformIcon name={item.name} />
+                              <span>{item.name}</span>
+                            </button>
+                          );
+                        })}
                     </div>
                   </div>
 
-                  <div className="mt-5 grid gap-5 xl:grid-cols-[320px_1fr]">
-                    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                      <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">
-                        Step 2
-                      </p>
-                      <h4 className="mt-1 text-lg font-black text-slate-950">
-                        Filters
-                      </h4>
+                  <div className="mt-5 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+                    <StepHeader step="2" title="Find Your Service" />
 
-                      <div className="mt-5 space-y-4">
-                        <div>
-                          <label className="text-sm font-black text-slate-700">
-                            Category
-                          </label>
-                          <select
-                            value={category}
-                            onChange={(e) => {
-                              setCategory(e.target.value);
-                              setSelectedServiceId("");
-                            }}
-                            className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 outline-none transition focus:border-blue-500"
-                          >
-                            <option value="">All Categories</option>
-                            {categories.map((cat) => (
-                              <option key={cat} value={cat}>
-                                {cat}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="rounded-2xl bg-blue-50 p-4">
-                          <div className="flex items-center gap-3">
-                            <Star size={19} className="text-blue-600" />
-                            <div>
-                              <p className="text-sm font-black text-slate-950">
-                                Favorites First
-                              </p>
-                              <p className="mt-1 text-xs font-semibold text-slate-500">
-                                Star services to show them quickly next time.
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="rounded-2xl border border-slate-100 p-4">
-                          <p className="text-sm font-black text-slate-950">
-                            Selected Network
-                          </p>
-                          <p className="mt-1 text-sm font-semibold text-blue-600">
-                            {network}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                        <div>
-                          <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">
-                            Step 3
-                          </p>
-                          <h4 className="mt-1 text-lg font-black text-slate-950">
-                            Search & Select Service
-                          </h4>
-                          <p className="mt-1 text-sm font-semibold text-slate-500">
-                            Search directly by service ID or name. Category is
-                            optional.
-                          </p>
-                        </div>
-
-                        <div className="rounded-full bg-slate-100 px-4 py-2 text-xs font-black text-slate-500">
-                          {filteredServices.length} services
-                        </div>
-                      </div>
-
-                      <div className="relative mt-5">
+                    <div className="mt-5 flex flex-col gap-3 xl:flex-row">
+                      <div className="relative flex-1">
                         <Search
-                          size={18}
+                          size={20}
                           className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
                         />
+
                         <input
                           value={serviceSearch}
                           onChange={(e) => {
                             setServiceSearch(e.target.value);
                             setSelectedServiceId("");
                           }}
-                          placeholder="Search Service ID, name, category, or provider service ID..."
-                          className="h-14 w-full rounded-2xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-blue-500 focus:bg-white"
+                          placeholder="Search by Service ID, name, category, or provider service ID..."
+                          className="h-14 w-full rounded-2xl border border-slate-200 bg-white pl-12 pr-12 text-sm font-semibold text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
                         />
+
+                        {serviceSearch && (
+                          <button
+                            onClick={() => setServiceSearch("")}
+                            className="absolute right-4 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-slate-100 text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
+                          >
+                            <X size={15} />
+                          </button>
+                        )}
                       </div>
 
-                      <div className="mt-5 max-h-[410px] space-y-3 overflow-y-auto pr-1">
-                        {filteredServices.length <= 0 ? (
-                          <div className="rounded-3xl border border-dashed border-slate-200 p-10 text-center">
-                            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-                              <Search size={28} />
-                            </div>
-                            <h5 className="mt-4 text-lg font-black text-slate-950">
-                              Search services directly
-                            </h5>
-                            <p className="mt-2 text-sm font-semibold text-slate-500">
-                              Type a service ID or service name above. You can
-                              also select a category or use favorites.
-                            </p>
-                          </div>
-                        ) : (
-                          filteredServices.map((service) => {
-                            const tags = getServiceTags(service);
-                            const publicId = getPublicServiceId(service);
-                            const isSelected = selectedServiceId === service.id;
-                            const isFavorite = favoriteServiceIds.includes(
-                              service.id,
-                            );
+                      <select
+                        value={category}
+                        onChange={(e) => {
+                          setCategory(e.target.value);
+                          setSelectedServiceId("");
+                        }}
+                        className="h-14 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 outline-none transition focus:border-blue-500 xl:w-72"
+                      >
+                        <option value="">All Categories</option>
+                        {categories.map((cat) => (
+                          <option key={cat} value={cat}>
+                            {cat}
+                          </option>
+                        ))}
+                      </select>
 
-                            return (
-                              <div
-                                key={service.id}
-                                className={`rounded-3xl border p-4 transition ${
+                      <button className="flex h-14 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-600 transition hover:border-blue-300 hover:text-blue-600">
+                        <Filter size={18} />
+                        Filter
+                      </button>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <ServiceFilterChip
+                        active={serviceFilter === "favorites"}
+                        onClick={() => setServiceFilter(serviceFilter === "favorites" ? "all" : "favorites")}
+                        icon={Star}
+                        label="Favorites"
+                      />
+                      <ServiceFilterChip
+                        active={serviceFilter === "all"}
+                        onClick={() => setServiceFilter("all")}
+                        icon={Grid3X3}
+                        label="All Services"
+                      />
+                      <ServiceFilterChip
+                        active={serviceFilter === "cheapest"}
+                        onClick={() => setServiceFilter("cheapest")}
+                        icon={Tag}
+                        label="Cheapest"
+                      />
+                      <ServiceFilterChip
+                        active={serviceFilter === "fast"}
+                        onClick={() => setServiceFilter(serviceFilter === "fast" ? "all" : "fast")}
+                        icon={Zap}
+                        label="Fast"
+                      />
+                      <ServiceFilterChip
+                        active={serviceFilter === "refill"}
+                        onClick={() => setServiceFilter(serviceFilter === "refill" ? "all" : "refill")}
+                        icon={RotateCcw}
+                        label="Refill"
+                      />
+                      <ServiceFilterChip
+                        active={serviceFilter === "quality"}
+                        onClick={() => setServiceFilter(serviceFilter === "quality" ? "all" : "quality")}
+                        icon={ShieldCheck}
+                        label="High Quality"
+                      />
+                    </div>
+
+                    <div className="mt-5 max-h-[330px] space-y-3 overflow-y-auto pr-1">
+                      {filteredServices.length <= 0 ? (
+                        <div className="rounded-3xl border border-dashed border-slate-200 p-10 text-center">
+                          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                            <Search size={28} />
+                          </div>
+                          <h5 className="mt-4 text-lg font-black text-slate-950">
+                            No matching services found
+                          </h5>
+                          <p className="mt-2 text-sm font-semibold text-slate-500">
+                            Search directly by service ID or service name. Category is optional.
+                          </p>
+                        </div>
+                      ) : (
+                        filteredServices.slice(0, 12).map((service) => {
+                          const tags = getServiceTags(service);
+                          const publicId = getPublicServiceId(service);
+                          const isSelected = selectedServiceId === service.id;
+                          const isFavorite = favoriteServiceIds.includes(service.id);
+
+                          return (
+                            <div
+                              key={service.id}
+                              className={`group flex items-center gap-4 rounded-2xl border p-4 transition ${
+                                isSelected
+                                  ? "border-blue-600 bg-blue-50/70 shadow-sm"
+                                  : "border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/30"
+                              }`}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => setSelectedServiceId(service.id)}
+                                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition ${
                                   isSelected
-                                    ? "border-blue-500 bg-blue-50 shadow-sm"
-                                    : "border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/30"
+                                    ? "border-blue-600 bg-blue-600 text-white"
+                                    : "border-slate-200 bg-white text-transparent hover:border-blue-400"
                                 }`}
                               >
-                                <div className="flex gap-4">
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      toggleFavoriteService(service.id)
-                                    }
-                                    className={`mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl transition ${
-                                      isFavorite
-                                        ? "bg-yellow-50 text-yellow-500"
-                                        : "bg-slate-100 text-slate-400 hover:bg-yellow-50 hover:text-yellow-500"
-                                    }`}
-                                  >
-                                    <Star
-                                      size={18}
-                                      fill={
-                                        isFavorite ? "currentColor" : "none"
-                                      }
-                                    />
-                                  </button>
+                                <Check size={14} strokeWidth={3} />
+                              </button>
 
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setSelectedServiceId(service.id)
-                                    }
-                                    className="flex-1 text-left"
-                                  >
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      <span className="rounded-xl bg-blue-600 px-3 py-1 text-xs font-black text-white">
-                                        {publicId}
+                              <button
+                                type="button"
+                                onClick={() => setSelectedServiceId(service.id)}
+                                className="flex min-w-0 flex-1 items-center gap-4 text-left"
+                              >
+                                <span className="flex h-14 min-w-[82px] items-center justify-center rounded-2xl bg-blue-50 px-4 text-base font-black text-blue-600">
+                                  #{publicId}
+                                </span>
+
+                                <span className="min-w-0 flex-1">
+                                  <span className="block truncate text-base font-black text-slate-950">
+                                    {service.name}
+                                  </span>
+
+                                  <span className="mt-2 flex flex-wrap items-center gap-2">
+                                    {tags.map((tag) => (
+                                      <span
+                                        key={tag}
+                                        className={`rounded-md px-2 py-0.5 text-[10px] font-black ${
+                                          tag === "CHEAP"
+                                            ? "bg-green-100 text-green-700"
+                                            : tag === "FAST"
+                                              ? "bg-blue-100 text-blue-700"
+                                              : tag === "REFILL"
+                                                ? "bg-orange-100 text-orange-700"
+                                                : "bg-purple-100 text-purple-700"
+                                        }`}
+                                      >
+                                        {tag}
                                       </span>
+                                    ))}
 
-                                      {tags.map((tag) => (
-                                        <span
-                                          key={tag}
-                                          className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black text-slate-500"
-                                        >
-                                          {tag}
-                                        </span>
-                                      ))}
-                                    </div>
+                                    <span className="text-xs font-semibold text-slate-500">
+                                      Min {service.min_quantity} • Max {service.max_quantity}
+                                    </span>
+                                  </span>
+                                </span>
+                              </button>
 
-                                    <h5 className="mt-3 text-sm font-black leading-relaxed text-slate-950">
-                                      {service.name}
-                                    </h5>
+                              <button
+                                type="button"
+                                onClick={() => toggleFavoriteService(service.id)}
+                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition ${
+                                  isFavorite
+                                    ? "bg-yellow-50 text-yellow-500"
+                                    : "bg-slate-50 text-slate-400 hover:bg-yellow-50 hover:text-yellow-500"
+                                }`}
+                              >
+                                <Star size={19} fill={isFavorite ? "currentColor" : "none"} />
+                              </button>
 
-                                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                                      <p className="text-sm font-black text-blue-600">
-                                        ₱
-                                        {Number(
-                                          service.price_per_1000 || 0,
-                                        ).toFixed(2)}{" "}
-                                        / 1000
-                                      </p>
-
-                                      <p className="text-xs font-bold text-slate-400">
-                                        Min {service.min_quantity} • Max{" "}
-                                        {service.max_quantity}
-                                      </p>
-                                    </div>
-                                  </button>
-                                </div>
+                              <div className="hidden text-right sm:block">
+                                <p className="text-lg font-black text-blue-600">
+                                  ₱{Number(service.price_per_1000 || 0).toFixed(2)}
+                                  <span className="text-xs font-bold text-slate-400"> / 1000</span>
+                                </p>
                               </div>
-                            );
-                          })
-                        )}
+
+                              <ChevronRight size={20} className="hidden text-slate-400 sm:block" />
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    {filteredServices.length > 12 && (
+                      <div className="mt-4 flex justify-center border-t border-slate-100 pt-4">
+                        <p className="text-sm font-bold text-blue-600">
+                          Showing first 12 results. Use search to narrow services.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-5 grid gap-5 lg:grid-cols-2">
+                    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+                      <StepHeader step="3" title="Enter Link" />
+                      <div className="relative mt-4">
+                        <LinkIcon
+                          size={19}
+                          className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                        />
+                        <input
+                          type="url"
+                          placeholder="https://www.tiktok.com/@username"
+                          value={link}
+                          onChange={(e) => setLink(e.target.value)}
+                          className="h-14 w-full rounded-2xl border border-slate-200 pl-12 pr-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+                      <StepHeader step="4" title="Quantity" />
+                      <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
+                        <div className="flex h-14 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setQuantity(String(Math.max(0, Number(quantity || 0) - 100)))
+                            }
+                            className="flex w-14 items-center justify-center text-slate-700 transition hover:bg-slate-50"
+                          >
+                            <Minus size={20} />
+                          </button>
+
+                          <input
+                            type="number"
+                            value={quantity}
+                            onChange={(e) => setQuantity(e.target.value)}
+                            placeholder="1000"
+                            className="w-28 border-x border-slate-200 text-center text-lg font-black text-slate-950 outline-none"
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setQuantity(String(Number(quantity || 0) + 100))
+                            }
+                            className="flex w-14 items-center justify-center text-slate-700 transition hover:bg-slate-50"
+                          >
+                            <Plus size={20} />
+                          </button>
+                        </div>
+
+                        <div className="text-xs font-bold text-slate-500">
+                          <p>Min: {selectedService?.min_quantity || 0}</p>
+                          <p>Max: {selectedService?.max_quantity || 0}</p>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">
-                      Step 4
-                    </p>
-                    <h4 className="mt-1 text-lg font-black text-slate-950">
-                      Order Information
-                    </h4>
-
-                    <div className="mt-5 grid gap-4 lg:grid-cols-2">
-                      <div>
-                        <label className="text-sm font-black text-slate-700">
-                          Link
-                        </label>
-                        <input
-                          type="url"
-                          placeholder="https://..."
-                          value={link}
-                          onChange={(e) => setLink(e.target.value)}
-                          className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm font-semibold outline-none transition focus:border-blue-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-sm font-black text-slate-700">
-                          Quantity
-                        </label>
-                        <input
-                          type="number"
-                          placeholder="Example: 1000"
-                          value={quantity}
-                          onChange={(e) => setQuantity(e.target.value)}
-                          className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm font-semibold outline-none transition focus:border-blue-500"
-                        />
-
-                        {selectedService && (
-                          <p className="mt-2 text-xs font-bold text-slate-500">
-                            Min: {selectedService.min_quantity} • Max:{" "}
-                            {selectedService.max_quantity}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="lg:col-span-2">
-                        <label className="text-sm font-black text-slate-700">
-                          Notes
-                        </label>
-                        <textarea
-                          placeholder="Optional notes, comments, or usernames if needed"
-                          rows={3}
-                          value={notes}
-                          onChange={(e) => setNotes(e.target.value)}
-                          className="mt-2 w-full resize-none rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition focus:border-blue-500"
-                        />
-                      </div>
+                  <div className="mt-5 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+                    <StepHeader step="5" title="Notes" optional />
+                    <div className="relative mt-4">
+                      <MessageSquare
+                        size={19}
+                        className="absolute left-4 top-4 text-slate-400"
+                      />
+                      <textarea
+                        placeholder="Add any notes or special instructions..."
+                        rows={3}
+                        value={notes}
+                        maxLength={200}
+                        onChange={(e) => setNotes(e.target.value)}
+                        className="w-full resize-none rounded-2xl border border-slate-200 py-4 pl-12 pr-16 text-sm font-semibold text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                      />
+                      <span className="absolute bottom-4 right-4 text-xs font-bold text-slate-400">
+                        {notes.length} / 200
+                      </span>
                     </div>
+                  </div>
+
+                  <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-blue-100 bg-blue-50 px-5 py-4 text-sm font-semibold text-blue-700 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3">
+                      <Info size={19} />
+                      <span>
+                        Make sure your link is correct. We are not responsible for wrong links.
+                      </span>
+                    </div>
+
+                    <a
+                      href="/dashboard/tickets"
+                      className="font-black text-blue-700 hover:text-blue-800"
+                    >
+                      Need help? Contact Support
+                    </a>
                   </div>
                 </div>
 
-                <aside className="border-l border-slate-200 bg-white p-6">
+                <aside className="border-t border-slate-100 bg-white p-6 xl:border-l xl:border-t-0">
                   <div className="sticky top-0 space-y-5">
-                    <div>
-                      <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-600">
-                        Checkout
-                      </p>
-                      <h4 className="mt-1 text-2xl font-black text-slate-950">
-                        Order Summary
-                      </h4>
-                      <p className="mt-1 text-sm font-semibold text-slate-500">
-                        Review your order before placing it.
-                      </p>
+                    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xl font-black text-slate-950">
+                          Order Summary
+                        </h4>
+
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-50 text-purple-600">
+                          <Wallet size={22} />
+                        </div>
+                      </div>
+
+                      <div className="mt-6 space-y-4">
+                        <SummaryDetail
+                          label="Service"
+                          value={selectedService?.name || "Select a service"}
+                        />
+                        <SummaryDetail
+                          label="Service ID"
+                          value={selectedService ? `#${getPublicServiceId(selectedService)}` : "N/A"}
+                        />
+                        <SummaryDetail
+                          label="Quantity"
+                          value={Number(quantity || 0).toLocaleString()}
+                        />
+                        <SummaryDetail
+                          label="Price per 1000"
+                          value={
+                            selectedService
+                              ? `₱${Number(selectedService.price_per_1000 || 0).toFixed(2)}`
+                              : "₱0.00"
+                          }
+                        />
+                      </div>
+
+                      <div className="my-5 border-t border-dashed border-slate-200" />
+
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-black text-slate-950">
+                          Total Charge
+                        </p>
+                        <p className="text-2xl font-black text-blue-600">
+                          ₱{estimatedCharge.toFixed(2)}
+                        </p>
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-between">
+                        <p className="text-sm font-bold text-slate-500">
+                          Your Balance
+                        </p>
+                        <p className="text-lg font-black text-green-600">
+                          ₱{Number(profile?.balance || 0).toFixed(2)}
+                        </p>
+                      </div>
+
+                      <div
+                        className={`mt-5 flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold ${
+                          Number(profile?.balance || 0) >= estimatedCharge
+                            ? "bg-green-50 text-green-700"
+                            : "bg-red-50 text-red-600"
+                        }`}
+                      >
+                        <CheckCircle2 size={18} />
+                        {Number(profile?.balance || 0) >= estimatedCharge
+                          ? "You have sufficient balance to place this order."
+                          : "You may need to add funds before placing this order."}
+                      </div>
                     </div>
 
-                    <div className="rounded-3xl bg-gradient-to-r from-blue-600 to-sky-400 p-5 text-white shadow-lg shadow-blue-600/20">
-                      <p className="text-sm font-semibold text-blue-100">
-                        Estimated Charge
-                      </p>
-                      <h3 className="mt-2 text-4xl font-black">
-                        ₱{estimatedCharge.toFixed(2)}
-                      </h3>
-                      <p className="mt-2 text-xs font-bold text-blue-100">
-                        Wallet: ₱{Number(profile?.balance || 0).toFixed(2)}
-                      </p>
-                    </div>
-
-                    <div className="rounded-3xl border border-slate-200 p-5">
-                      <h5 className="font-black text-slate-950">
-                        Selected Service
-                      </h5>
+                    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xl font-black text-slate-950">
+                          Service Details
+                        </h4>
+                        <Info size={19} className="text-blue-600" />
+                      </div>
 
                       {selectedService ? (
-                        <div className="mt-4 space-y-4">
-                          <div className="rounded-2xl bg-slate-50 p-4">
-                            <div className="flex items-center justify-between gap-3">
-                              <span className="rounded-xl bg-blue-600 px-3 py-1 text-xs font-black text-white">
-                                {getPublicServiceId(selectedService)}
-                              </span>
-
-                              <button
-                                onClick={() =>
-                                  toggleFavoriteService(selectedService.id)
-                                }
-                                className={`flex h-9 w-9 items-center justify-center rounded-xl ${
-                                  favoriteServiceIds.includes(
-                                    selectedService.id,
-                                  )
-                                    ? "bg-yellow-50 text-yellow-500"
-                                    : "bg-white text-slate-400"
-                                }`}
-                              >
-                                <Star
-                                  size={17}
-                                  fill={
-                                    favoriteServiceIds.includes(
-                                      selectedService.id,
-                                    )
-                                      ? "currentColor"
-                                      : "none"
-                                  }
-                                />
-                              </button>
-                            </div>
-
-                            <p className="mt-3 text-sm font-black leading-relaxed text-slate-950">
-                              {selectedService.name}
-                            </p>
-                          </div>
-
-                          <SummaryDetail
-                            label="Price / 1,000"
-                            value={`₱${Number(selectedService.price_per_1000 || 0).toFixed(2)}`}
-                          />
-                          <SummaryDetail
-                            label="Minimum"
-                            value={String(selectedService.min_quantity)}
-                          />
-                          <SummaryDetail
-                            label="Maximum"
-                            value={String(selectedService.max_quantity)}
-                          />
+                        <div className="mt-5 space-y-4">
                           <SummaryDetail
                             label="Start Time"
                             value={getDetail("Start Time")}
                           />
+                          <SummaryDetail label="Speed" value={getDetail("Speed")} />
+                          <SummaryDetail label="Refill" value={getDetail("Refill")} />
                           <SummaryDetail
-                            label="Speed"
-                            value={getDetail("Speed")}
+                            label="Quality"
+                            value={getServiceTags(selectedService).includes("HQ") ? "High Quality" : "N/A"}
                           />
                           <SummaryDetail
-                            label="Refill"
-                            value={getDetail("Refill")}
+                            label="Type"
+                            value={network === "Everything" ? "All Platforms" : network}
                           />
+                          <SummaryDetail
+                            label="Max Quantity"
+                            value={Number(selectedService.max_quantity || 0).toLocaleString()}
+                          />
+
+                          <div className="pt-2">
+                            <div className="mb-3 flex items-center gap-2">
+                              <p className="text-sm font-black text-blue-600">
+                                Progress Preview
+                              </p>
+                              <Info size={15} className="text-blue-600" />
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
+                                <div className="h-full w-[28%] rounded-full bg-blue-600" />
+                              </div>
+                              <span className="text-xs font-black text-slate-400">0%</span>
+                            </div>
+                          </div>
                         </div>
                       ) : (
-                        <div className="mt-4 rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm font-semibold text-slate-500">
+                        <div className="mt-5 rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm font-semibold text-slate-500">
                           Select a service to preview details.
                         </div>
                       )}
                     </div>
 
-                    <button
-                      onClick={handleOrder}
-                      disabled={placingOrder || !canPlaceOrder}
-                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-4 text-sm font-black text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {placingOrder ? "Placing Order..." : "Place Order"}
-                      <Sparkles size={17} />
-                    </button>
+                    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+                      <button
+                        onClick={handleOrder}
+                        disabled={placingOrder || !canPlaceOrder}
+                        className="flex w-full items-center justify-center gap-3 rounded-2xl bg-blue-600 py-4 text-lg font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <ShoppingCart size={24} />
+                        {placingOrder ? "Placing Order..." : "Place Order"}
+                      </button>
 
-                    <p className="text-center text-xs font-semibold text-slate-400">
-                      Your balance will be deducted after successful order
-                      creation.
-                    </p>
+                      <p className="mt-3 flex items-center justify-center gap-2 text-center text-xs font-semibold text-slate-400">
+                        <ShieldCheck size={14} />
+                        Your order will be processed securely.
+                      </p>
+                    </div>
                   </div>
                 </aside>
               </div>
@@ -1284,6 +1401,98 @@ export default function OrdersPage() {
     </DashboardGuard>
   );
 }
+
+function StepHeader({
+  step,
+  title,
+  optional = false,
+}: {
+  step: string;
+  title: string;
+  optional?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-sm font-black text-white">
+        {step}
+      </span>
+      <h4 className="text-lg font-black text-slate-950">{title}</h4>
+      {optional && (
+        <span className="text-sm font-semibold text-slate-500">(Optional)</span>
+      )}
+    </div>
+  );
+}
+
+function ServiceFilterChip({
+  active,
+  onClick,
+  icon: Icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: any;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-black transition ${
+        active
+          ? "border-blue-600 bg-blue-50 text-blue-600"
+          : "border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-600"
+      }`}
+    >
+      <Icon size={16} />
+      {label}
+    </button>
+  );
+}
+
+function PlatformIcon({ name }: { name: string }) {
+  const simpleIcons: Record<string, string> = {
+    TikTok: "tiktok",
+    Instagram: "instagram",
+    YouTube: "youtube",
+    Facebook: "facebook",
+    Telegram: "telegram",
+    Twitter: "x",
+    Spotify: "spotify",
+    Twitch: "twitch",
+    Discord: "discord",
+    Google: "google",
+  };
+
+  if (simpleIcons[name]) {
+    return (
+      <img
+        src={`https://cdn.simpleicons.org/${simpleIcons[name]}`}
+        alt={`${name} icon`}
+        className="h-8 w-8 object-contain"
+      />
+    );
+  }
+
+  if (name === "Website") return <Globe2 size={31} />;
+  if (name === "Others") return <MoreIcon />;
+  if (name === "Everything") return <Grid3X3 size={30} />;
+  if (name === "Reviews") return <Star size={30} />;
+
+  return <Globe2 size={30} />;
+}
+
+function MoreIcon() {
+  return (
+    <div className="flex items-center gap-1 text-slate-700">
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+    </div>
+  );
+}
+
 
 function StatCard({
   icon: Icon,
