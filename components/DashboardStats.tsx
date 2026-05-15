@@ -1,33 +1,84 @@
+"use client";
+
+import { supabase } from "@/lib/supabase";
 import {
-  ShoppingCart,
   Wallet,
   BarChart3,
   Ticket,
+  TrendingUp,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export default function DashboardStats() {
+  const [balance, setBalance] = useState(0);
+  const [totalSpent, setTotalSpent] = useState(0);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const [openTickets, setOpenTickets] = useState(0);
+
+  async function loadStats() {
+    const { data: authData } = await supabase.auth.getUser();
+
+    if (!authData.user) return;
+
+    const userId = authData.user.id;
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("balance,total_spent")
+      .eq("id", userId)
+      .single();
+
+    setBalance(Number(profile?.balance || 0));
+    setTotalSpent(Number(profile?.total_spent || 0));
+
+    const { count: orderCount } = await supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId);
+
+    setTotalOrders(orderCount || 0);
+
+    const { count: ticketCount } = await supabase
+      .from("tickets")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("status", "open");
+
+    setOpenTickets(ticketCount || 0);
+  }
+
+  useEffect(() => {
+    loadStats();
+
+    const interval = setInterval(() => {
+      loadStats();
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   const stats = [
     {
       title: "Total Spent",
-      value: "₱0.00",
+      value: `₱${totalSpent.toFixed(2)}`,
       subtitle: "Lifetime",
-      icon: Wallet,
+      icon: TrendingUp,
     },
     {
       title: "Available Balance",
-      value: "₱0.00",
+      value: `₱${balance.toFixed(2)}`,
       subtitle: "Wallet",
       icon: Wallet,
     },
     {
       title: "Total Orders",
-      value: "0",
+      value: String(totalOrders),
       subtitle: "All Time",
       icon: BarChart3,
     },
     {
       title: "Open Tickets",
-      value: "0",
+      value: String(openTickets),
       subtitle: "Awaiting Reply",
       icon: Ticket,
     },
