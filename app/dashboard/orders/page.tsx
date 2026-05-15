@@ -912,7 +912,7 @@ export default function OrdersPage() {
               </div>
 
               <div className="grid min-h-0 flex-1 overflow-hidden xl:grid-cols-[1fr_430px]">
-                <div className="min-h-0 overflow-y-auto p-6">
+                <div className="min-h-0 overflow-y-auto p-6 pb-10">
                   <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                     <StepHeader step="1" title="Choose Platform" />
 
@@ -1254,8 +1254,9 @@ export default function OrdersPage() {
                   </div>
                 </div>
 
-                <aside className="border-t border-slate-100 bg-white p-6 xl:border-l xl:border-t-0">
-                  <div className="sticky top-0 space-y-5">
+                <aside className="flex min-h-0 flex-col border-t border-slate-100 bg-white p-6 xl:border-l xl:border-t-0">
+                  <div className="flex min-h-0 flex-1 flex-col">
+                    <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-1 pb-5">
                     <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                       <div className="flex items-center justify-between">
                         <h4 className="text-xl font-black text-slate-950">
@@ -1376,20 +1377,24 @@ export default function OrdersPage() {
                       )}
                     </div>
 
-                    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-                      <button
-                        onClick={handleOrder}
-                        disabled={placingOrder || !canPlaceOrder}
-                        className="flex w-full items-center justify-center gap-3 rounded-2xl bg-blue-600 py-4 text-lg font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        <ShoppingCart size={24} />
-                        {placingOrder ? "Placing Order..." : "Place Order"}
-                      </button>
+                    </div>
 
-                      <p className="mt-3 flex items-center justify-center gap-2 text-center text-xs font-semibold text-slate-400">
-                        <ShieldCheck size={14} />
-                        Your order will be processed securely.
-                      </p>
+                    <div className="shrink-0 border-t border-slate-100 bg-white pt-5">
+                      <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+                        <button
+                          onClick={handleOrder}
+                          disabled={placingOrder || !canPlaceOrder}
+                          className="flex w-full items-center justify-center gap-3 rounded-2xl bg-blue-600 py-4 text-lg font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <ShoppingCart size={24} />
+                          {placingOrder ? "Placing Order..." : "Place Order"}
+                        </button>
+
+                        <p className="mt-3 flex items-center justify-center gap-2 text-center text-xs font-semibold text-slate-400">
+                          <ShieldCheck size={14} />
+                          Your order will be processed securely.
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </aside>
