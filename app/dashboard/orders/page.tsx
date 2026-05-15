@@ -5,13 +5,16 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { useToast } from "@/components/ToastProvider";
 import { supabase } from "@/lib/supabase";
 import {
+  Calendar,
+  CheckCircle2,
+  Copy,
+  ExternalLink,
   Eye,
-  Filter,
   Package,
   Plus,
   RefreshCw,
   Search,
-  ShoppingCart,
+  ShoppingBag,
   Wallet,
   X,
 } from "lucide-react";
@@ -107,6 +110,11 @@ export default function OrdersPage() {
     }
 
     setOrders(data || []);
+
+    if (!selectedOrder && data && data.length > 0) {
+      setSelectedOrder(data[0]);
+    }
+
     setLoading(false);
   }
 
@@ -145,16 +153,9 @@ export default function OrdersPage() {
   }, []);
 
   const totalOrders = orders.length;
-  const completedOrders = orders.filter(
-    (order) => order.status === "completed"
-  ).length;
-  const processingOrders = orders.filter(
-    (order) => order.status === "processing"
-  ).length;
-  const totalSpent = orders.reduce(
-    (sum, order) => sum + Number(order.price || 0),
-    0
-  );
+  const completedOrders = orders.filter((o) => o.status === "completed").length;
+  const processingOrders = orders.filter((o) => o.status === "processing").length;
+  const totalSpent = orders.reduce((sum, order) => sum + Number(order.price || 0), 0);
 
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
@@ -272,6 +273,11 @@ export default function OrdersPage() {
     setNotes("");
   }
 
+  async function copyText(text: string) {
+    await navigator.clipboard.writeText(text);
+    showToast("Copied to clipboard.", "success");
+  }
+
   async function handleOrder() {
     if (placingOrder) return;
 
@@ -344,82 +350,80 @@ export default function OrdersPage() {
     }
   }
 
+  const sideOrder =
+    selectedOrder ||
+    filteredOrders[0] ||
+    orders[0] ||
+    null;
+
+  const sideProgress =
+    sideOrder && Number(sideOrder.quantity || 0) > 0
+      ? Math.min(
+          100,
+          (Number(sideOrder.current_count || 0) / Number(sideOrder.quantity || 1)) *
+            100
+        )
+      : 0;
+
   return (
     <DashboardGuard>
       <DashboardLayout>
-        <div className="space-y-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h1 className="text-3xl font-black text-slate-950">Orders</h1>
-              <p className="mt-2 text-sm font-semibold text-slate-500">
-                Track your orders, progress, and create new orders.
-              </p>
-            </div>
-
-            <button
-              onClick={() => setOrderModalOpen(true)}
-              className="flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-6 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
-            >
-              <Plus size={18} />
-              New Order
-            </button>
-          </div>
-
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-            <StatCard
-              icon={Package}
-              title="Total Orders"
-              value={String(totalOrders)}
-              subtitle="All time"
-            />
-
-            <StatCard
-              icon={ShoppingCart}
-              title="Completed"
-              value={String(completedOrders)}
-              subtitle="Successful orders"
-            />
-
-            <StatCard
-              icon={RefreshCw}
-              title="Processing"
-              value={String(processingOrders)}
-              subtitle="Currently active"
-            />
-
-            <StatCard
-              icon={Wallet}
-              title="Total Spent"
-              value={`₱${totalSpent.toFixed(2)}`}
-              subtitle="Lifetime"
-            />
-          </div>
-
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="flex flex-col gap-4 border-b border-slate-100 p-5 xl:flex-row xl:items-center xl:justify-between">
+        <div className="-m-8 grid min-h-screen bg-[#f6f9fc] lg:grid-cols-[1fr_390px]">
+          <section className="p-6 lg:p-8">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <h3 className="text-lg font-black text-slate-950">
-                  Order History
-                </h3>
-                <p className="mt-1 text-sm text-slate-500">
-                  View and manage your latest order activity.
+                <h1 className="text-3xl font-black text-slate-950">Orders</h1>
+                <p className="mt-2 text-sm font-semibold text-slate-500">
+                  Track and monitor all your orders in real-time.
                 </p>
               </div>
 
-              <div className="flex flex-col gap-3 md:flex-row md:items-center">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none focus:border-blue-500"
-                >
-                  <option value="all">All Status</option>
-                  <option value="pending">Pending</option>
-                  <option value="processing">Processing</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
+              <button
+                onClick={() => setOrderModalOpen(true)}
+                className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
+              >
+                <Plus size={18} />
+                New Order
+              </button>
+            </div>
 
-                <div className="relative">
+            <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+              <StatCard
+                icon={Package}
+                title="Total Orders"
+                value={String(totalOrders)}
+                subtitle="All time orders"
+                color="bg-blue-50 text-blue-600"
+              />
+
+              <StatCard
+                icon={CheckCircle2}
+                title="Completed"
+                value={String(completedOrders)}
+                subtitle={`${totalOrders > 0 ? ((completedOrders / totalOrders) * 100).toFixed(1) : "0"}% of total`}
+                color="bg-green-50 text-green-600"
+              />
+
+              <StatCard
+                icon={RefreshCw}
+                title="Processing"
+                value={String(processingOrders)}
+                subtitle={`${totalOrders > 0 ? ((processingOrders / totalOrders) * 100).toFixed(1) : "0"}% of total`}
+                color="bg-orange-50 text-orange-500"
+              />
+
+              <StatCard
+                icon={Wallet}
+                title="Total Spent"
+                value={`₱${totalSpent.toFixed(2)}`}
+                subtitle="All time spending"
+                color="bg-purple-50 text-purple-600"
+              />
+            </div>
+
+            <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                <div className="relative flex-1">
                   <Search
                     size={18}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
@@ -428,192 +432,344 @@ export default function OrdersPage() {
                   <input
                     value={orderSearch}
                     onChange={(e) => setOrderSearch(e.target.value)}
-                    placeholder="Search orders..."
-                    className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 pr-11 text-sm outline-none focus:border-blue-500 md:w-80"
+                    placeholder="Search by service, link, or order ID..."
+                    className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 pr-11 text-sm font-semibold outline-none transition focus:border-blue-500"
                   />
                 </div>
 
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 outline-none transition focus:border-blue-500 xl:w-52"
+                >
+                  <option value="all">Status: All</option>
+                  <option value="pending">Pending</option>
+                  <option value="processing">Processing</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+
                 <button
                   onClick={loadOrders}
-                  className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-blue-400 hover:text-blue-600"
+                  className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition hover:bg-blue-100"
                 >
-                  <Filter size={18} />
+                  <RefreshCw size={19} />
                 </button>
               </div>
             </div>
 
-            {loading ? (
-              <div className="p-10 text-center text-sm text-slate-500">
-                Loading orders...
-              </div>
-            ) : filteredOrders.length <= 0 ? (
-              <div className="p-10 text-center">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-                  <Package size={30} />
-                </div>
-
-                <h3 className="mt-4 text-lg font-black text-slate-950">
-                  No orders found
-                </h3>
-
-                <p className="mt-2 text-sm text-slate-500">
-                  Your orders will appear here once you place your first order.
-                </p>
-              </div>
-            ) : (
+            <div className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1000px] text-sm">
+                <table className="w-full min-w-[950px] text-sm">
                   <thead className="bg-slate-50 text-slate-500">
                     <tr>
-                      <th className="p-5 text-left font-black">ORDER</th>
-                      <th className="p-5 text-left font-black">SERVICE</th>
-                      <th className="p-5 text-left font-black">QUANTITY</th>
-                      <th className="p-5 text-left font-black">CHARGE</th>
-                      <th className="p-5 text-left font-black">PROGRESS</th>
-                      <th className="p-5 text-left font-black">STATUS</th>
-                      <th className="p-5 text-left font-black">DATE</th>
-                      <th className="p-5 text-left font-black">ACTION</th>
+                      <th className="p-5 text-left font-black">Order ID</th>
+                      <th className="p-5 text-left font-black">Service</th>
+                      <th className="p-5 text-left font-black">Quantity</th>
+                      <th className="p-5 text-left font-black">Charge</th>
+                      <th className="p-5 text-left font-black">Progress</th>
+                      <th className="p-5 text-left font-black">Status</th>
+                      <th className="p-5 text-left font-black">Date</th>
+                      <th className="p-5 text-left font-black">Action</th>
                     </tr>
                   </thead>
 
                   <tbody>
-                    {filteredOrders.map((order) => {
-                      const progress =
-                        Number(order.quantity || 0) > 0
-                          ? Math.min(
-                              100,
-                              (Number(order.current_count || 0) /
-                                Number(order.quantity || 1)) *
-                                100
-                            )
-                          : 0;
-
-                      return (
-                        <tr
-                          key={order.id}
-                          className="border-t border-slate-100 transition hover:bg-slate-50"
-                        >
-                          <td className="p-5 font-black text-slate-500">
-                            #{order.id.slice(0, 8)}
-                          </td>
-
-                          <td className="p-5">
-                            <p className="max-w-xs truncate font-black text-slate-950">
-                              {order.service_name}
-                            </p>
-                            <p className="mt-1 max-w-xs truncate text-xs text-slate-500">
-                              {order.link}
-                            </p>
-                          </td>
-
-                          <td className="p-5 font-semibold text-slate-600">
-                            {Number(order.quantity || 0).toLocaleString()}
-                          </td>
-
-                          <td className="p-5 font-black text-blue-600">
-                            ₱{Number(order.price || 0).toFixed(2)}
-                          </td>
-
-                          <td className="p-5">
-                            <div className="w-32">
-                              <div className="mb-2 flex items-center justify-between text-xs font-bold text-slate-500">
-                                <span>
-                                  {Number(order.current_count || 0).toLocaleString()}
-                                </span>
-                                <span>{progress.toFixed(0)}%</span>
-                              </div>
-
-                              <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                                <div
-                                  style={{ width: `${progress}%` }}
-                                  className="h-full rounded-full bg-blue-600"
-                                />
-                              </div>
+                    {loading ? (
+                      <tr>
+                        <td colSpan={8} className="p-10 text-center text-slate-500">
+                          Loading orders...
+                        </td>
+                      </tr>
+                    ) : filteredOrders.length <= 0 ? (
+                      <tr>
+                        <td colSpan={8} className="p-16">
+                          <div className="flex flex-col items-center justify-center text-center">
+                            <div className="flex h-28 w-28 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                              <ShoppingBag size={50} />
                             </div>
-                          </td>
 
-                          <td className="p-5">
-                            <span
-                              className={`rounded-full px-3 py-1 text-xs font-black capitalize ${getStatusStyle(
-                                order.status
-                              )}`}
-                            >
-                              {order.status}
-                            </span>
-                          </td>
+                            <h3 className="mt-6 text-xl font-black text-slate-950">
+                              No orders found
+                            </h3>
 
-                          <td className="p-5 text-slate-500">
-                            {new Date(order.created_at).toLocaleDateString()}
-                          </td>
+                            <p className="mt-2 text-sm font-medium text-slate-500">
+                              You haven&apos;t placed any orders yet.
+                            </p>
 
-                          <td className="p-5">
                             <button
-                              onClick={() => setSelectedOrder(order)}
-                              className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:border-blue-400 hover:text-blue-600"
+                              onClick={() => setOrderModalOpen(true)}
+                              className="mt-6 flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-black text-white transition hover:bg-blue-700"
                             >
-                              <Eye size={17} />
+                              <Plus size={18} />
+                              New Order
                             </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredOrders.map((order) => {
+                        const progress =
+                          Number(order.quantity || 0) > 0
+                            ? Math.min(
+                                100,
+                                (Number(order.current_count || 0) /
+                                  Number(order.quantity || 1)) *
+                                  100
+                              )
+                            : 0;
+
+                        return (
+                          <tr
+                            key={order.id}
+                            onClick={() => setSelectedOrder(order)}
+                            className={`cursor-pointer border-t border-slate-100 transition hover:bg-blue-50/40 ${
+                              selectedOrder?.id === order.id ? "bg-blue-50/60" : ""
+                            }`}
+                          >
+                            <td className="p-5 font-black text-blue-600">
+                              #{order.id.slice(0, 8)}
+                            </td>
+
+                            <td className="p-5">
+                              <p className="max-w-xs truncate font-black text-slate-950">
+                                {order.service_name}
+                              </p>
+                              <p className="mt-1 max-w-xs truncate text-xs font-medium text-slate-500">
+                                {order.link}
+                              </p>
+                            </td>
+
+                            <td className="p-5 font-bold text-slate-700">
+                              {Number(order.quantity || 0).toLocaleString()}
+                            </td>
+
+                            <td className="p-5 font-black text-blue-600">
+                              ₱{Number(order.price || 0).toFixed(2)}
+                            </td>
+
+                            <td className="p-5">
+                              <div className="w-32">
+                                <div className="mb-2 flex items-center justify-between text-xs font-bold text-slate-500">
+                                  <span>
+                                    {Number(order.current_count || 0).toLocaleString()}
+                                  </span>
+                                  <span>{progress.toFixed(0)}%</span>
+                                </div>
+
+                                <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                                  <div
+                                    style={{ width: `${progress}%` }}
+                                    className={`h-full rounded-full ${
+                                      order.status === "completed"
+                                        ? "bg-green-500"
+                                        : "bg-blue-600"
+                                    }`}
+                                  />
+                                </div>
+                              </div>
+                            </td>
+
+                            <td className="p-5">
+                              <span
+                                className={`rounded-full px-3 py-1 text-xs font-black capitalize ${getStatusStyle(
+                                  order.status
+                                )}`}
+                              >
+                                {order.status}
+                              </span>
+                            </td>
+
+                            <td className="p-5 text-slate-500">
+                              {new Date(order.created_at).toLocaleDateString()}
+                            </td>
+
+                            <td className="p-5">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedOrder(order);
+                                }}
+                                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-blue-600 transition hover:border-blue-400 hover:bg-blue-50"
+                              >
+                                <Eye size={17} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
-            )}
-          </div>
-        </div>
 
-        {selectedOrder && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl">
-              <div className="flex items-center justify-between border-b border-slate-100 p-6">
-                <div>
-                  <h3 className="text-2xl font-black text-slate-950">
-                    Order Details
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-500">
-                    #{selectedOrder.id.slice(0, 8)}
-                  </p>
-                </div>
+              <div className="flex items-center justify-between border-t border-slate-100 p-5">
+                <p className="text-sm font-medium text-slate-500">
+                  Showing {filteredOrders.length} of {orders.length} orders
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <aside className="hidden border-l border-slate-200 bg-white p-6 lg:block">
+            <div className="sticky top-6">
+              <div className="mb-6 flex items-center justify-between">
+                <h3 className="text-xl font-black text-slate-950">
+                  Order Details
+                </h3>
 
                 <button
                   onClick={() => setSelectedOrder(null)}
-                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-500"
                 >
-                  <X size={20} />
+                  <X size={18} />
                 </button>
               </div>
 
-              <div className="grid gap-5 p-6 md:grid-cols-2">
-                <Detail label="Service" value={selectedOrder.service_name} />
-                <Detail
-                  label="Quantity"
-                  value={Number(selectedOrder.quantity || 0).toLocaleString()}
-                />
-                <Detail
-                  label="Charge"
-                  value={`₱${Number(selectedOrder.price || 0).toFixed(2)}`}
-                />
-                <Detail label="Status" value={selectedOrder.status} />
-                <Detail
-                  label="Progress"
-                  value={`${selectedOrder.current_count || 0} / ${
-                    selectedOrder.quantity
-                  }`}
-                />
-                <Detail
-                  label="Date"
-                  value={new Date(selectedOrder.created_at).toLocaleString()}
-                />
+              {sideOrder ? (
+                <div className="space-y-5">
+                  <div className="rounded-2xl border border-slate-200 p-5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-bold text-slate-500">
+                          Order ID
+                        </p>
 
-                <div className="md:col-span-2">
-                  <Detail label="Link" value={selectedOrder.link} />
+                        <div className="mt-2 flex items-center gap-2">
+                          <p className="font-black text-slate-950">
+                            #{sideOrder.id.slice(0, 8)}
+                          </p>
+
+                          <button onClick={() => copyText(sideOrder.id)}>
+                            <Copy size={15} className="text-slate-400" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-black capitalize ${getStatusStyle(
+                          sideOrder.status
+                        )}`}
+                      >
+                        {sideOrder.status}
+                      </span>
+                    </div>
+
+                    <div className="mt-6 rounded-2xl border border-slate-100 p-4">
+                      <h4 className="font-black text-slate-950">
+                        {sideOrder.service_name}
+                      </h4>
+
+                      <p className="mt-1 text-sm text-slate-500">
+                        Service order details
+                      </p>
+
+                      <div className="mt-4 border-t border-slate-100 pt-4">
+                        <p className="text-sm font-bold text-slate-500">Link</p>
+
+                        <div className="mt-2 flex items-center gap-2">
+                          <p className="max-w-[260px] truncate text-sm font-bold text-blue-600">
+                            {sideOrder.link}
+                          </p>
+
+                          <button onClick={() => copyText(sideOrder.link)}>
+                            <Copy size={15} className="text-slate-400" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 space-y-4">
+                      <SideDetail
+                        label="Quantity"
+                        value={Number(sideOrder.quantity || 0).toLocaleString()}
+                      />
+
+                      <SideDetail
+                        label="Charge"
+                        value={`₱${Number(sideOrder.price || 0).toFixed(2)}`}
+                      />
+
+                      <SideDetail
+                        label="Start Count"
+                        value={String(sideOrder.start_count || 0)}
+                      />
+
+                      <SideDetail
+                        label="Current Count"
+                        value={String(sideOrder.current_count || 0)}
+                      />
+
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-bold text-slate-500">
+                            Progress
+                          </p>
+
+                          <p className="text-sm font-black text-slate-700">
+                            {Number(sideOrder.current_count || 0).toLocaleString()} /{" "}
+                            {Number(sideOrder.quantity || 0).toLocaleString()}
+                          </p>
+                        </div>
+
+                        <div className="mt-3 flex items-center gap-3">
+                          <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
+                            <div
+                              style={{ width: `${sideProgress}%` }}
+                              className={`h-full rounded-full ${
+                                sideOrder.status === "completed"
+                                  ? "bg-green-500"
+                                  : "bg-blue-600"
+                              }`}
+                            />
+                          </div>
+
+                          <span className="text-xs font-black text-slate-500">
+                            {sideProgress.toFixed(0)}%
+                          </span>
+                        </div>
+                      </div>
+
+                      <SideDetail
+                        label="Order Date"
+                        value={new Date(sideOrder.created_at).toLocaleString()}
+                      />
+
+                      <SideDetail label="Note" value="No note provided" />
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl bg-blue-50 p-5 text-sm font-semibold text-slate-600">
+                    Keep this page open to receive live updates on your order
+                    progress.
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setSelectedOrder(null)}
+                      className="rounded-xl border border-slate-200 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50"
+                    >
+                      Close
+                    </button>
+
+                    <a
+                      href={sideOrder.link}
+                      target="_blank"
+                      className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-sm font-black text-white transition hover:bg-blue-700"
+                    >
+                      Go to Service
+                      <ExternalLink size={15} />
+                    </a>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="rounded-2xl border border-slate-200 p-8 text-center text-sm text-slate-500">
+                  Select an order to view details.
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          </aside>
+        </div>
 
         {orderModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
@@ -896,16 +1052,20 @@ function StatCard({
   title,
   value,
   subtitle,
+  color,
 }: {
   icon: any;
   title: string;
   value: string;
   subtitle: string;
+  color: string;
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="flex items-center gap-5">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+        <div
+          className={`flex h-14 w-14 items-center justify-center rounded-2xl ${color}`}
+        >
           <Icon size={26} />
         </div>
 
@@ -928,6 +1088,15 @@ function Detail({ label, value }: { label: string; value: string }) {
       <p className="mt-1 break-words text-sm font-bold text-slate-800">
         {value || "N/A"}
       </p>
+    </div>
+  );
+}
+
+function SideDetail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-5">
+      <p className="text-sm font-bold text-slate-500">{label}</p>
+      <p className="text-right text-sm font-black text-slate-900">{value}</p>
     </div>
   );
 }
