@@ -14,8 +14,8 @@ function maskName(name: string) {
       }
 
       return (
-        part.slice(0, 2) +
-        "*".repeat(part.length - 2)
+        part.slice(0, 0) +
+        "*".repeat(part.length - 0)
       );
     })
     .join(" ");
