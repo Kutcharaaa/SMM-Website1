@@ -42,7 +42,7 @@ const levels = [
         required: 60000,
         discount: "2%",
         points: "$1.25",
-        child: false,
+        child: true,
         icon: ShieldCheck,
         gradient: "from-violet-600 to-purple-400",
     },
@@ -304,7 +304,7 @@ export default function ResellerLevelCard() {
                                                         </p>
 
                                                         <h5 className="mt-2 text-lg font-black text-slate-950">
-                                                            {level.points}
+                                                            100 pts = {level.points}
                                                         </h5>
                                                     </div>
 
