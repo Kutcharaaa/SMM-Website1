@@ -4,12 +4,17 @@ import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import {
+  Settings,
+  Wallet,
+  LogOut,
+  ChevronDown,
+} from "lucide-react";
+
 export default function UserProfile() {
   const router = useRouter();
 
-  const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
-  const [plan, setPlan] = useState("Starter");
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -18,17 +23,14 @@ export default function UserProfile() {
 
       if (!authData.user) return;
 
-      setEmail(authData.user.email || "");
-
       const { data: profile } = await supabase
         .from("profiles")
-        .select("*")
+        .select("username")
         .eq("id", authData.user.id)
         .single();
 
       if (profile) {
         setUsername(profile.username || "User");
-        setPlan(profile.plan || "Starter");
       }
     }
 
@@ -50,61 +52,59 @@ export default function UserProfile() {
         onClick={() => setOpen(!open)}
         className="flex items-center gap-3"
       >
-        <div className="hidden xl:block text-right">
-          <p className="text-sm font-semibold text-white">
+        <div className="hidden lg:block text-right">
+          <p className="text-sm font-bold text-slate-900">
             {username || "User"}
           </p>
-
-          <p className="text-xs text-zinc-500">
-            {email || "Loading..."}
-          </p>
-
-          <p className="text-xs text-blue-400 capitalize">
-            {plan} Account
-          </p>
         </div>
 
-        <div className="w-11 h-11 rounded-full bg-white text-black flex items-center justify-center font-bold text-sm">
+        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-sm font-black text-slate-900 shadow-sm ring-1 ring-slate-200">
           {initial}
         </div>
+
+        <ChevronDown
+          size={16}
+          className="hidden text-slate-400 lg:block"
+        />
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-4 w-72 rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl overflow-hidden z-50">
-          <div className="p-4 border-b border-zinc-800">
-            <p className="font-semibold text-white">
+        <div className="absolute right-0 z-50 mt-4 w-64 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+          <div className="border-b border-slate-100 p-5">
+            <p className="text-base font-black text-slate-900">
               {username || "User"}
             </p>
 
-            <p className="text-xs text-zinc-500 truncate">
-              {email}
-            </p>
-
-            <p className="text-xs text-blue-400 mt-1 capitalize">
-              {plan} Account
+            <p className="mt-1 text-xs text-slate-500">
+              Ascend Service User
             </p>
           </div>
 
-          <a
-            href="/dashboard/settings"
-            className="block px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-900"
-          >
-            Settings
-          </a>
+          <div className="p-2">
+            <a
+              href="/dashboard/settings"
+              className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+            >
+              <Settings size={18} />
+              Settings
+            </a>
 
-          <a
-            href="/dashboard/wallet"
-            className="block px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-900"
-          >
-            Wallet
-          </a>
+            <a
+              href="/dashboard/wallet"
+              className="mt-1 flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+            >
+              <Wallet size={18} />
+              Wallet
+            </a>
 
-          <button
-            onClick={handleLogout}
-            className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-red-500/10"
-          >
-            Logout
-          </button>
+            <button
+              onClick={handleLogout}
+              className="mt-1 flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-red-500 transition hover:bg-red-50"
+            >
+              <LogOut size={18} />
+              Logout
+            </button>
+          </div>
         </div>
       )}
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { supabase } from "@/lib/supabase";
+import { Bell } from "lucide-react";
 import { useEffect, useState } from "react";
 
 type Notification = {
@@ -72,44 +73,47 @@ export default function NotificationsDropdown() {
     <div className="relative">
       <button
         onClick={toggleDropdown}
-        className="relative text-xl hover:text-zinc-400 transition"
+        className="relative flex h-11 w-11 items-center justify-center rounded-full text-slate-600 transition hover:bg-blue-50 hover:text-blue-600"
       >
-        🔔
+        <Bell size={22} strokeWidth={2} />
 
         {unreadCount > 0 && (
-          <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center">
-            {unreadCount}
-          </span>
+          <span className="absolute right-2 top-2 flex h-2.5 w-2.5 rounded-full bg-blue-600 ring-2 ring-white" />
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-4 w-96 rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl overflow-hidden z-50">
-          <div className="p-4 border-b border-zinc-800">
-            <h3 className="font-bold text-white">Notifications</h3>
-            <p className="text-xs text-zinc-500">Latest account updates</p>
+        <div className="absolute right-0 z-50 mt-4 w-[22rem] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+          <div className="border-b border-slate-100 p-5">
+            <h3 className="font-black text-slate-900">
+              Notifications
+            </h3>
+
+            <p className="mt-1 text-xs text-slate-500">
+              Latest account updates
+            </p>
           </div>
 
           <div className="max-h-96 overflow-y-auto">
             {notifications.length === 0 ? (
-              <p className="p-4 text-sm text-zinc-500">
+              <p className="p-5 text-sm text-slate-500">
                 No notifications yet.
               </p>
             ) : (
               notifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className="p-4 border-b border-zinc-900 hover:bg-zinc-900/70"
+                  className="border-b border-slate-100 p-5 transition hover:bg-slate-50"
                 >
-                  <p className="font-semibold text-white">
+                  <p className="font-bold text-slate-900">
                     {notification.title}
                   </p>
 
-                  <p className="text-sm text-zinc-400 mt-1">
+                  <p className="mt-1 text-sm text-slate-500">
                     {notification.message}
                   </p>
 
-                  <p className="text-xs text-zinc-600 mt-2">
+                  <p className="mt-3 text-xs text-slate-400">
                     {new Date(notification.created_at).toLocaleString()}
                   </p>
                 </div>
