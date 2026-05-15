@@ -9,12 +9,12 @@ function maskName(name: string) {
   return name
     .split(" ")
     .map((part) => {
-      if (part.length <= 2) {
+      if (part.length <= 4) {
         return part[0] + "***";
       }
 
       return (
-        part.slice(0, 0) +
+        part.slice(0, 4) +
         "*".repeat(part.length - 0)
       );
     })
