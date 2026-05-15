@@ -34,14 +34,14 @@ export default function DashboardStats() {
   ];
 
   return (
-    <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
       {stats.map((stat) => {
         const Icon = stat.icon;
 
         return (
           <div
             key={stat.title}
-            className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+            className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:shadow-md"
           >
             <div className="flex items-start justify-between">
               <div>
@@ -49,7 +49,7 @@ export default function DashboardStats() {
                   {stat.title}
                 </p>
 
-                <h3 className="mt-4 text-4xl font-black text-slate-950">
+                <h3 className="mt-4 text-3xl font-black text-slate-950">
                   {stat.value}
                 </h3>
 
@@ -58,8 +58,8 @@ export default function DashboardStats() {
                 </p>
               </div>
 
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-                <Icon size={24} strokeWidth={2.2} />
+              <div className="flex h-13 w-13 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                <Icon size={23} strokeWidth={2.2} />
               </div>
             </div>
           </div>
