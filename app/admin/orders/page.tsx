@@ -19,6 +19,7 @@ type Order = {
   created_at: string;
   provider_order_id?: string | null;
   provider_name?: string | null;
+  reseller_points_awarded?: boolean;
 };
 
 export default function AdminOrdersPage() {
@@ -162,6 +163,62 @@ if (action === "cancel") {
     }
   }
 
+function getResellerLevel(totalSpent: number) {
+  if (totalSpent >= 500000) return "Ascend Partner";
+  if (totalSpent >= 250000) return "Elite Partner";
+  if (totalSpent >= 150000) return "Master Reseller";
+  if (totalSpent >= 60000) return "Pro Reseller";
+  if (totalSpent >= 20000) return "Power Reseller";
+  return "New Reseller";
+}
+
+async function awardResellerRewards(order: Order) {
+  if (order.reseller_points_awarded) return;
+
+  const orderPrice = Number(order.price || 0);
+
+  if (orderPrice <= 0) return;
+
+  const usdPhpRate = 56;
+  const usdSpent = orderPrice / usdPhpRate;
+  const pointsEarned = Math.floor(usdSpent / 4);
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("total_spent, reseller_points")
+    .eq("id", order.user_id)
+    .single();
+
+  if (profileError) {
+    setMessage(profileError.message);
+    return;
+  }
+
+  const newTotalSpent =
+    Number(profile?.total_spent || 0) + orderPrice;
+
+  const newPoints =
+    Number(profile?.reseller_points || 0) + pointsEarned;
+
+  const newLevel = getResellerLevel(newTotalSpent);
+
+  await supabase
+    .from("profiles")
+    .update({
+      total_spent: newTotalSpent,
+      reseller_points: newPoints,
+      reseller_level: newLevel,
+    })
+    .eq("id", order.user_id);
+
+  await supabase
+    .from("orders")
+    .update({
+      reseller_points_awarded: true,
+    })
+    .eq("id", order.id);
+}
+
   async function updateOrderStatus() {
     if (savingOrder) return;
 
@@ -196,6 +253,14 @@ if (action === "cancel") {
       setSavingOrder(false);
       return;
     }
+
+    if (
+  newStatus === "completed" &&
+  selectedOrder.status !== "completed" &&
+  !selectedOrder.reseller_points_awarded
+) {
+  await awardResellerRewards(selectedOrder);
+}
 
     await supabase.from("notifications").insert({
       user_id: selectedOrder.user_id,

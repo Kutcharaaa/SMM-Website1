@@ -60,7 +60,7 @@ const levels = [
         level: 5,
         name: "Elite Partner",
         required: 250000,
-        discount: "5%",
+        discount: "4%",
         points: "$1.75",
         child: true,
         icon: Gem,
@@ -70,7 +70,7 @@ const levels = [
         level: 6,
         name: "Ascend Partner",
         required: 500000,
-        discount: "8%",
+        discount: "5%",
         points: "$2",
         child: true,
         icon: Trophy,
@@ -300,11 +300,11 @@ export default function ResellerLevelCard() {
 
                                                     <div className="rounded-xl bg-slate-50 p-4">
                                                         <p className="text-xs font-bold text-slate-400">
-                                                            Points
+                                                            100 Points
                                                         </p>
 
                                                         <h5 className="mt-2 text-lg font-black text-slate-950">
-                                                            100 pts = {level.points}
+                                                             {level.points}
                                                         </h5>
                                                     </div>
 

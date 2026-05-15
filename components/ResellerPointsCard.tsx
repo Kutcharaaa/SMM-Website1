@@ -1,6 +1,47 @@
+"use client";
+
+import { supabase } from "@/lib/supabase";
 import { Star } from "lucide-react";
+import { useEffect, useState } from "react";
+
+function getPointValue(level: string) {
+  if (level === "New Reseller") return 1;
+  if (level === "Power Reseller") return 1;
+  if (level === "Pro Reseller") return 1.25;
+  if (level === "Master Reseller") return 1.5;
+  if (level === "Premium Partner") return 1.75;
+  if (level === "Elite Partner") return 2;
+  return 1;
+}
 
 export default function ResellerPointsCard() {
+  const [points, setPoints] = useState(0);
+  const [level, setLevel] = useState("New Reseller");
+
+  useEffect(() => {
+    async function loadPoints() {
+      const { data: authData } = await supabase.auth.getUser();
+
+      if (!authData.user) return;
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("reseller_points, reseller_level")
+        .eq("id", authData.user.id)
+        .single();
+
+      if (profile) {
+        setPoints(Number(profile.reseller_points || 0));
+        setLevel(profile.reseller_level || "New Reseller");
+      }
+    }
+
+    loadPoints();
+  }, []);
+
+  const pointValueUsd = getPointValue(level);
+  const estimatedUsd = (points / 100) * pointValueUsd;
+
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between">
@@ -19,7 +60,7 @@ export default function ResellerPointsCard() {
         </p>
 
         <h4 className="mt-4 text-4xl font-black text-slate-950">
-          235
+          {points.toLocaleString()}
           <span className="ml-2 text-lg font-bold text-slate-400">
             pts
           </span>
@@ -34,11 +75,11 @@ export default function ResellerPointsCard() {
         </p>
 
         <h4 className="mt-3 text-3xl font-black text-blue-600">
-          ₱165.25
+          ${estimatedUsd.toFixed(2)}
         </h4>
 
         <p className="mt-2 text-xs font-semibold text-slate-400">
-          (100 pts = $1.25)
+          (100 pts = ${pointValueUsd.toFixed(2)})
         </p>
       </div>
 
