@@ -5,10 +5,26 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
+function maskName(name: string) {
+  return name
+    .split(" ")
+    .map((part) => {
+      if (part.length <= 4) {
+        return part[0] + "***";
+      }
+
+      return (
+        part.slice(0, 4) +
+        "*".repeat(part.length - 4)
+      );
+    })
+    .join(" ");
+}
+
 export default function TopResellers() {
   const topResellers = [
     {
-      name: "JohnResell",
+      name: "Rowelle Nuque",
       level: "Ascend Partner",
       spent: "₱125,500",
       orders: "12,450",
@@ -39,6 +55,14 @@ export default function TopResellers() {
       icon: ShieldCheck,
       color: "from-violet-500 to-purple-400",
     },
+    {
+      name: "Ascend Media",
+      level: "Active Reseller",
+      spent: "₱14,200",
+      orders: "1,440",
+      icon: ShieldCheck,
+      color: "from-cyan-500 to-sky-400",
+    },
   ];
 
   return (
@@ -56,7 +80,7 @@ export default function TopResellers() {
         </a>
       </div>
 
-      <div className="mt-5 space-y-4">
+      <div className="mt-5 max-h-[250px] space-y-4 overflow-y-auto pr-1">
         {topResellers.map((reseller) => {
           const Icon = reseller.icon;
 
@@ -74,7 +98,7 @@ export default function TopResellers() {
 
                 <div>
                   <h4 className="text-sm font-black text-slate-950">
-                    {reseller.name}
+                    {maskName(reseller.name)}
                   </h4>
 
                   <p className="mt-1 text-xs font-semibold text-slate-500">
