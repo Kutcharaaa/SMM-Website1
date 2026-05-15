@@ -32,7 +32,7 @@ export default function RecentOrders() {
 
         <a
           href="/dashboard/orders"
-          className="px-4 py-2 text-sm font-bold text-blue-600 transition hover:bg-blue-100"
+          className="px-4 py-2 text-sm font-bold text-blue-600 transition hover:text-gray-100"
         >
           View All Orders
         </a>
