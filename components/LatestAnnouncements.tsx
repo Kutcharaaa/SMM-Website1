@@ -4,6 +4,8 @@ import { supabase } from "@/lib/supabase";
 
 import {
   Bell,
+  Info,
+  Percent,
   Settings,
   Sparkles,
 } from "lucide-react";
@@ -13,16 +15,17 @@ import { useEffect, useState } from "react";
 type Announcement = {
   id: string;
   title: string;
-  description: string;
+  description: string | null;
   type: string;
+  status: string;
   created_at: string;
 };
 
 function getAnnouncementStyle(type: string) {
-  if (type === "update") {
+  if (type === "maintenance") {
     return {
       icon: Settings,
-      color: "bg-slate-100 text-slate-700",
+      color: "bg-orange-50 text-orange-500",
     };
   }
 
@@ -33,20 +36,34 @@ function getAnnouncementStyle(type: string) {
     };
   }
 
+  if (type === "promotion") {
+    return {
+      icon: Percent,
+      color: "bg-green-50 text-green-600",
+    };
+  }
+
+  if (type === "info") {
+    return {
+      icon: Info,
+      color: "bg-blue-50 text-blue-600",
+    };
+  }
+
   return {
     icon: Bell,
-    color: "bg-blue-50 text-blue-600",
+    color: "bg-green-50 text-green-600",
   };
 }
 
 export default function LatestAnnouncements() {
-  const [announcements, setAnnouncements] =
-    useState<Announcement[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
   async function loadAnnouncements() {
     const { data } = await supabase
       .from("announcements")
       .select("*")
+      .eq("status", "published")
       .order("created_at", {
         ascending: false,
       })
@@ -57,6 +74,10 @@ export default function LatestAnnouncements() {
 
   useEffect(() => {
     loadAnnouncements();
+
+    const interval = setInterval(loadAnnouncements, 10000);
+
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -81,25 +102,15 @@ export default function LatestAnnouncements() {
           </div>
         ) : (
           announcements.map((announcement) => {
-            const config =
-              getAnnouncementStyle(
-                announcement.type
-              );
-
+            const config = getAnnouncementStyle(announcement.type);
             const Icon = config.icon;
 
             return (
-              <div
-                key={announcement.id}
-                className="flex gap-4"
-              >
+              <div key={announcement.id} className="flex gap-4">
                 <div
                   className={`mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${config.color}`}
                 >
-                  <Icon
-                    size={18}
-                    strokeWidth={2.4}
-                  />
+                  <Icon size={18} strokeWidth={2.4} />
                 </div>
 
                 <div>
@@ -112,9 +123,7 @@ export default function LatestAnnouncements() {
                   </p>
 
                   <p className="mt-1 text-xs font-medium text-slate-400">
-                    {new Date(
-                      announcement.created_at
-                    ).toLocaleDateString()}
+                    {new Date(announcement.created_at).toLocaleDateString()}
                   </p>
                 </div>
               </div>
