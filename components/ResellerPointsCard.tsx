@@ -7,6 +7,15 @@ import { useEffect, useState } from "react";
 
 const USD_TO_PHP = 56;
 
+type ConversionHistory = {
+  id: string;
+  points_used: number;
+  usd_value: number;
+  php_value: number;
+  reseller_level: string;
+  created_at: string;
+};
+
 function getPointValue(level: string) {
   if (level === "New Reseller") return 1;
   if (level === "Power Reseller") return 1;
@@ -24,7 +33,13 @@ export default function ResellerPointsCard() {
   const [points, setPoints] = useState(0);
   const [balance, setBalance] = useState(0);
   const [level, setLevel] = useState("New Reseller");
+
   const [open, setOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [conversionHistory, setConversionHistory] = useState<
+    ConversionHistory[]
+  >([]);
+
   const [pointsToConvert, setPointsToConvert] = useState("");
   const [converting, setConverting] = useState(false);
 
@@ -46,6 +61,19 @@ export default function ResellerPointsCard() {
       setPoints(Number(profile.reseller_points || 0));
       setLevel(profile.reseller_level || "New Reseller");
     }
+  }
+
+  async function loadConversionHistory() {
+    if (!userId) return;
+
+    const { data } = await supabase
+      .from("point_conversions")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    setConversionHistory(data || []);
   }
 
   useEffect(() => {
@@ -120,15 +148,29 @@ export default function ResellerPointsCard() {
     setPointsToConvert("");
     setOpen(false);
     setConverting(false);
+
+    await loadConversionHistory();
   }
 
   return (
     <>
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between">
-          <h3 className="text-[17px] font-black text-slate-950">
-            Reseller Points
-          </h3>
+          <div>
+            <h3 className="text-[17px] font-black text-slate-950">
+              Reseller Points
+            </h3>
+
+            <button
+              onClick={async () => {
+                await loadConversionHistory();
+                setHistoryOpen(true);
+              }}
+              className="mt-1 text-xs font-black text-blue-600 hover:text-blue-700"
+            >
+              Conversion History
+            </button>
+          </div>
 
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-blue-600">
             <Star size={28} fill="currentColor" />
@@ -243,6 +285,80 @@ export default function ResellerPointsCard() {
               >
                 {converting ? "Converting..." : "Confirm Conversion"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {historyOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 p-6">
+              <div>
+                <h3 className="text-2xl font-black text-slate-950">
+                  Conversion History
+                </h3>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Your latest reseller point conversions
+                </p>
+              </div>
+
+              <button
+                onClick={() => setHistoryOpen(false)}
+                className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="max-h-[500px] overflow-y-auto">
+              {conversionHistory.length <= 0 ? (
+                <div className="p-10 text-center text-slate-500">
+                  No conversion history yet.
+                </div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 text-slate-500">
+                    <tr>
+                      <th className="p-5 text-left font-bold">Date</th>
+                      <th className="p-5 text-left font-bold">Points</th>
+                      <th className="p-5 text-left font-bold">USD</th>
+                      <th className="p-5 text-left font-bold">PHP</th>
+                      <th className="p-5 text-left font-bold">Level</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {conversionHistory.map((item) => (
+                      <tr
+                        key={item.id}
+                        className="border-t border-slate-100"
+                      >
+                        <td className="p-5 text-slate-500">
+                          {new Date(item.created_at).toLocaleString()}
+                        </td>
+
+                        <td className="p-5 font-black text-slate-950">
+                          {item.points_used} pts
+                        </td>
+
+                        <td className="p-5 font-semibold text-slate-700">
+                          ${Number(item.usd_value).toFixed(2)}
+                        </td>
+
+                        <td className="p-5 font-black text-blue-600">
+                          ₱{Number(item.php_value).toFixed(2)}
+                        </td>
+
+                        <td className="p-5 text-slate-500">
+                          {item.reseller_level}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
         </div>
