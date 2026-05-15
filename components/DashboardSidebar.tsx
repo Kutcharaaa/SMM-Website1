@@ -187,7 +187,7 @@ export default function DashboardSidebar({
             </p>
 
             <div className="mt-3">
-              <WalletBalance />
+              <WalletBalance compact />
             </div>
 
             <Link

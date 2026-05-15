@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode, useState } from "react";
+
 import DashboardSidebar from "@/components/DashboardSidebar";
 import DashboardTopbar from "@/components/DashboardTopbar";
 
@@ -14,13 +15,13 @@ export default function DashboardLayout({
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   return (
-    <main className="min-h-screen bg-black text-white">
+    <main className="min-h-screen bg-[#f4f7fb] text-slate-900">
       <DashboardSidebar
         mobileOpen={mobileSidebarOpen}
         onClose={() => setMobileSidebarOpen(false)}
       />
 
-      <section className="min-h-screen lg:ml-72">
+      <section className="min-h-screen lg:ml-[260px]">
         <DashboardTopbar
           onMenuClick={() => setMobileSidebarOpen(true)}
         />

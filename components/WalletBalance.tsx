@@ -3,7 +3,11 @@
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 
-export default function WalletBalance() {
+type WalletBalanceProps = {
+  compact?: boolean;
+};
+
+export default function WalletBalance({ compact = false }: WalletBalanceProps) {
   const [balance, setBalance] = useState(0);
   const [plan, setPlan] = useState("starter");
 
@@ -33,6 +37,20 @@ export default function WalletBalance() {
 
     return () => clearInterval(interval);
   }, []);
+
+  if (compact) {
+    return (
+      <div>
+        <h3 className="text-3xl font-black text-white">
+          ₱{Number(balance).toFixed(2)}
+        </h3>
+
+        <p className="mt-1 text-xs capitalize text-blue-100/70">
+          {plan} Plan
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-3xl border border-blue-500/30 bg-blue-500/10 p-5">
