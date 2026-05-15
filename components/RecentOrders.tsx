@@ -28,16 +28,13 @@ export default function RecentOrders() {
       <div className="flex items-center justify-between border-b border-slate-100 p-6">
         <div>
           <h3 className="text-xl font-black text-slate-950">Recent Orders</h3>
-          <p className="mt-1 text-sm text-slate-500">
-            Your latest order activity
-          </p>
         </div>
 
         <a
           href="/dashboard/orders"
-          className="rounded-xl bg-blue-50 px-4 py-2 text-sm font-bold text-blue-600 transition hover:bg-blue-100"
+          className="px-4 py-2 text-sm font-bold text-blue-600 transition hover:bg-blue-100"
         >
-          View All
+          View All Orders
         </a>
       </div>
 
