@@ -52,19 +52,6 @@ export default function UserProfile() {
         onClick={() => setOpen(!open)}
         className="flex items-center gap-3"
       >
-        <button
-          onClick={() => setOpen(!open)}
-          className="flex items-center gap-2"
-        >
-          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-sm font-black text-slate-900 shadow-sm ring-1 ring-slate-200">
-            {initial}
-          </div>
-
-          <ChevronDown
-            size={16}
-            className="text-slate-400"
-          />
-        </button>
 
         <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-sm font-black text-slate-900 shadow-sm ring-1 ring-slate-200">
           {initial}
