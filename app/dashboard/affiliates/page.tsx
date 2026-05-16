@@ -11,6 +11,7 @@ import {
   Crown,
   Diamond,
   Gift,
+  Info,
   Link2,
   Share2,
   ShieldCheck,
@@ -19,6 +20,7 @@ import {
   User,
   Users,
   Wallet,
+  X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -47,6 +49,13 @@ type CommissionRecord = {
   deposit_amount?: number | string | null;
   commission_amount?: number | string | null;
   status?: string | null;
+  created_at: string;
+};
+
+type TransferRecord = {
+  id: string;
+  amount: number | string;
+  status: string;
   created_at: string;
 };
 
@@ -97,13 +106,19 @@ const AFFILIATE_LEVELS: AffiliateLevel[] = [
 ];
 
 const QUALIFICATION_AMOUNT = 1000;
+const MIN_TRANSFER_AMOUNT = 10;
 
 export default function AffiliatesPage() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [referrals, setReferrals] = useState<ReferralRecord[]>([]);
   const [commissions, setCommissions] = useState<CommissionRecord[]>([]);
+  const [transferHistory, setTransferHistory] = useState<TransferRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+
+  const [showCommissionModal, setShowCommissionModal] = useState(false);
+  const [transferAmount, setTransferAmount] = useState("");
+  const [transferMessage, setTransferMessage] = useState("");
 
   async function loadAffiliateData() {
     setLoading(true);
@@ -116,6 +131,7 @@ export default function AffiliatesPage() {
       setProfile(null);
       setReferrals([]);
       setCommissions([]);
+      setTransferHistory([]);
       setLoading(false);
       return;
     }
@@ -154,6 +170,20 @@ export default function AffiliatesPage() {
       setCommissions([]);
     } else {
       setCommissions((commissionData || []) as CommissionRecord[]);
+    }
+
+    const { data: transferData, error: transferError } = await supabase
+      .from("affiliate_commission_transfers")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(5);
+
+    if (transferError) {
+      console.warn("AFFILIATE_TRANSFERS_NOT_READY:", transferError.message);
+      setTransferHistory([]);
+    } else {
+      setTransferHistory((transferData || []) as TransferRecord[]);
     }
 
     setLoading(false);
@@ -212,9 +242,14 @@ export default function AffiliatesPage() {
   const availableCommission = commissions
     .filter((item) => {
       const status = (item.status || "").toLowerCase();
-      return status === "available" || status === "pending" || status === "unpaid";
+      return status === "available";
     })
     .reduce((total, item) => total + toNumber(item.commission_amount), 0);
+
+  const amountToTransfer = toNumber(transferAmount);
+  const canTransfer =
+    amountToTransfer >= MIN_TRANSFER_AMOUNT &&
+    amountToTransfer <= availableCommission;
 
   async function copyReferralLink() {
     try {
@@ -240,8 +275,33 @@ export default function AffiliatesPage() {
     copyReferralLink();
   }
 
-  function useCommission() {
-    alert("Use Commission modal will be added next.");
+  function openCommissionModal() {
+    setTransferAmount("");
+    setTransferMessage("");
+    setShowCommissionModal(true);
+  }
+
+  function transferCommission() {
+    setTransferMessage("");
+
+    if (availableCommission <= 0) {
+      setTransferMessage("You do not have available commission yet.");
+      return;
+    }
+
+    if (amountToTransfer < MIN_TRANSFER_AMOUNT) {
+      setTransferMessage(`Minimum transfer amount is ₱${MIN_TRANSFER_AMOUNT}.00.`);
+      return;
+    }
+
+    if (amountToTransfer > availableCommission) {
+      setTransferMessage("Amount is higher than your available commission.");
+      return;
+    }
+
+    setTransferMessage(
+      "Transfer backend will be connected after we create the affiliate commission transfer table.",
+    );
   }
 
   return (
@@ -366,7 +426,7 @@ export default function AffiliatesPage() {
 
               <CommissionMetricCard
                 value={loading ? "..." : `₱${formatMoney(availableCommission)}`}
-                onUse={useCommission}
+                onUse={openCommissionModal}
               />
 
               <MetricCard
@@ -698,6 +758,196 @@ export default function AffiliatesPage() {
               </div>
             </section>
           </div>
+
+          {showCommissionModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+              <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+                <div className="flex items-start justify-between border-b border-slate-100 p-5">
+                  <div>
+                    <h3 className="text-xl font-black text-slate-950">
+                      Use Commission
+                    </h3>
+
+                    <p className="mt-1 text-sm font-semibold text-slate-500">
+                      Transfer your available commission to wallet balance.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowCommissionModal(false)}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="grid gap-5 overflow-y-auto p-5 lg:grid-cols-[0.95fr_1.05fr]">
+                  <section className="rounded-xl border border-slate-200 bg-white p-5">
+                    <h4 className="text-base font-black text-slate-950">
+                      Transfer Commission to Balance
+                    </h4>
+
+                    <div className="mt-5">
+                      <p className="text-xs font-black uppercase tracking-wide text-slate-500">
+                        Available Commission
+                      </p>
+
+                      <p className="mt-2 text-3xl font-black text-purple-600">
+                        ₱{formatMoney(availableCommission)}
+                      </p>
+
+                      <p className="mt-1 text-sm font-semibold text-slate-500">
+                        Ready to transfer
+                      </p>
+                    </div>
+
+                    <label className="mt-5 block text-sm font-black text-slate-700">
+                      Amount to transfer
+                    </label>
+
+                    <div className="mt-2 flex overflow-hidden rounded-xl border border-slate-200 bg-white">
+                      <div className="flex h-12 items-center border-r border-slate-200 px-4 text-sm font-black text-slate-500">
+                        ₱
+                      </div>
+
+                      <input
+                        value={transferAmount}
+                        onChange={(event) => setTransferAmount(event.target.value)}
+                        type="number"
+                        min={MIN_TRANSFER_AMOUNT}
+                        max={availableCommission}
+                        placeholder="Enter amount"
+                        className="h-12 flex-1 px-4 text-sm font-semibold outline-none"
+                      />
+
+                      <div className="flex h-12 items-center border-l border-slate-200 px-4 text-sm font-black text-slate-500">
+                        .00
+                      </div>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-4 gap-2">
+                      {[50, 100, 500].map((amount) => (
+                        <button
+                          key={amount}
+                          type="button"
+                          onClick={() => setTransferAmount(String(amount))}
+                          className="h-9 rounded-lg border border-blue-200 bg-blue-50 text-xs font-black text-blue-600 transition hover:bg-blue-600 hover:text-white"
+                        >
+                          ₱{amount}
+                        </button>
+                      ))}
+
+                      <button
+                        type="button"
+                        onClick={() => setTransferAmount(String(availableCommission))}
+                        className="h-9 rounded-lg border border-blue-200 bg-blue-50 text-xs font-black text-blue-600 transition hover:bg-blue-600 hover:text-white"
+                      >
+                        Max
+                      </button>
+                    </div>
+
+                    <div className="mt-5 rounded-xl border border-green-100 bg-green-50 p-4">
+                      <p className="text-sm font-semibold text-slate-600">
+                        You will receive
+                      </p>
+
+                      <p className="mt-1 text-3xl font-black text-green-600">
+                        ₱{formatMoney(canTransfer ? amountToTransfer : 0)}
+                      </p>
+
+                      <p className="mt-1 text-sm font-semibold text-green-700">
+                        Will be added to your wallet balance
+                      </p>
+                    </div>
+
+                    {transferMessage && (
+                      <p className="mt-3 rounded-xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-600">
+                        {transferMessage}
+                      </p>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={transferCommission}
+                      className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
+                    >
+                      Transfer to Balance
+                      <ArrowRight size={17} />
+                    </button>
+
+                    <p className="mt-3 text-center text-xs font-semibold text-slate-400">
+                      Minimum transfer amount is ₱{MIN_TRANSFER_AMOUNT}.00
+                    </p>
+                  </section>
+
+                  <section className="rounded-xl border border-slate-200 bg-white p-5">
+                    <h4 className="text-base font-black text-slate-950">
+                      Transfer History
+                    </h4>
+
+                    <div className="mt-5 overflow-hidden rounded-xl border border-slate-100">
+                      <table className="w-full text-sm">
+                        <thead className="bg-slate-50 text-slate-500">
+                          <tr>
+                            <th className="p-4 text-left font-black">Date</th>
+                            <th className="p-4 text-left font-black">Amount</th>
+                            <th className="p-4 text-left font-black">Status</th>
+                          </tr>
+                        </thead>
+
+                        <tbody>
+                          {transferHistory.length <= 0 ? (
+                            <tr>
+                              <td
+                                colSpan={3}
+                                className="p-10 text-center text-sm font-semibold text-slate-500"
+                              >
+                                No transfer history yet.
+                              </td>
+                            </tr>
+                          ) : (
+                            transferHistory.map((item) => (
+                              <tr key={item.id} className="border-t border-slate-100">
+                                <td className="p-4 font-semibold text-slate-500">
+                                  {formatFullDate(item.created_at)}
+                                </td>
+
+                                <td className="p-4 font-black text-slate-700">
+                                  ₱{formatMoney(toNumber(item.amount))}
+                                </td>
+
+                                <td className="p-4">
+                                  <span className="rounded-lg bg-green-100 px-3 py-1 text-xs font-black text-green-700">
+                                    {formatStatus(item.status)}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="mt-5 flex w-full items-center justify-center gap-2 text-sm font-black text-blue-600"
+                    >
+                      View All History
+                      <ArrowRight size={16} />
+                    </button>
+                  </section>
+                </div>
+
+                <div className="border-t border-slate-100 p-5">
+                  <div className="flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700">
+                    <Info size={17} />
+                    Commission becomes available after 3 days cooldown period.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </section>
       </main>
     </DashboardGuard>
@@ -899,4 +1149,21 @@ function formatDate(dateString: string) {
     day: "numeric",
     year: "numeric",
   });
+}
+
+function formatFullDate(dateString: string) {
+  return new Date(dateString).toLocaleString("en-PH", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function formatStatus(status: string) {
+  if (!status) return "Completed";
+
+  return status
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
