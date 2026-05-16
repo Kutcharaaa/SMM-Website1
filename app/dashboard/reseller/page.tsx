@@ -7,19 +7,22 @@ import { supabase } from "@/lib/supabase";
 import {
   ArrowRightLeft,
   CheckCircle2,
-  HelpCircle,
+  Flag,
   Info,
   Lock,
   Percent,
-  ShieldCheck,
   ShoppingCart,
   Star,
+  Tag,
+  Target,
+  TrendingUp,
   Trophy,
   Unlock,
   User,
   Wallet,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 type ProfileData = {
   id?: string;
@@ -107,13 +110,13 @@ const MIN_CONVERT_POINTS = 100;
 
 export default function ResellerPage() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [history, setHistory] = useState<ConversionRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [converting, setConverting] = useState(false);
   const [pointsInput, setPointsInput] = useState("100");
   const [message, setMessage] = useState("");
-  const [history, setHistory] = useState<ConversionRecord[]>([]);
 
-  async function loadProfile() {
+  async function loadData() {
     setLoading(true);
     setMessage("");
 
@@ -128,21 +131,21 @@ export default function ResellerPage() {
       return;
     }
 
-    const { data, error } = await supabase
+    const { data: profileData, error: profileError } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", user.id)
       .single();
 
-    if (error) {
-      console.error("RESELLER_PROFILE_ERROR:", error.message);
+    if (profileError) {
+      console.error("RESELLER_PROFILE_ERROR:", profileError.message);
       setProfile(null);
       setHistory([]);
       setLoading(false);
       return;
     }
 
-    setProfile((data || null) as ProfileData);
+    setProfile((profileData || null) as ProfileData);
 
     const { data: historyData, error: historyError } = await supabase
       .from("reseller_point_conversions")
@@ -151,17 +154,17 @@ export default function ResellerPage() {
       .order("created_at", { ascending: false })
       .limit(5);
 
-    if (!historyError && historyData) {
-      setHistory(historyData as ConversionRecord[]);
-    } else {
+    if (historyError) {
       setHistory([]);
+    } else {
+      setHistory((historyData || []) as ConversionRecord[]);
     }
 
     setLoading(false);
   }
 
   useEffect(() => {
-    loadProfile();
+    loadData();
   }, []);
 
   const totalSpend = toNumber(profile?.total_spent);
@@ -170,6 +173,7 @@ export default function ResellerPage() {
 
   const currentLevel = getCurrentLevel(totalSpend);
   const nextLevel = getNextLevel(currentLevel.level);
+
   const requiredSpend = nextLevel?.requiredSpend || currentLevel.requiredSpend;
   const remainingSpend = nextLevel
     ? Math.max(0, nextLevel.requiredSpend - totalSpend)
@@ -248,14 +252,8 @@ export default function ResellerPage() {
     setMessage(`Converted ${pointsToConvert} points to ₱${formatMoney(phpCredit)}.`);
     setPointsInput("100");
     setConverting(false);
-    loadProfile();
+    loadData();
   }
-
-  const displayName =
-    profile?.firstname ||
-    profile?.username ||
-    profile?.full_name ||
-    "Reseller";
 
   return (
     <DashboardGuard>
@@ -266,20 +264,17 @@ export default function ResellerPage() {
           <DashboardTopbar />
 
           <div className="p-4 lg:p-8">
-            <div className="mb-6">
-              <h1 className="text-3xl font-black text-slate-950">
-                Reseller
-              </h1>
-
+            <div>
+              <h1 className="text-3xl font-black text-slate-950">Reseller</h1>
               <p className="mt-2 text-sm font-semibold text-slate-500">
                 Track your progress, convert points, and unlock more benefits as you grow.
               </p>
             </div>
 
-            <section className="overflow-hidden rounded-2xl border border-blue-950/10 bg-gradient-to-r from-[#061c42] via-[#102a7a] to-[#6d28d9] p-6 text-white shadow-sm lg:p-8">
-              <div className="grid gap-8 lg:grid-cols-[1.15fr_1fr_220px] lg:items-center">
+            <section className="mt-6 overflow-hidden rounded-2xl bg-gradient-to-r from-[#1557f6] via-[#3155f5] to-[#7c2df0] p-6 text-white shadow-sm lg:p-8">
+              <div className="grid gap-8 lg:grid-cols-[1.1fr_1.1fr_220px] lg:items-center">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-100">
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-100">
                     Current Level
                   </p>
 
@@ -293,32 +288,32 @@ export default function ResellerPage() {
                     </span>
                   </div>
 
-                  <p className="mt-4 max-w-xl text-sm font-semibold leading-7 text-blue-50">
+                  <p className="mt-4 max-w-md text-base font-semibold leading-7 text-blue-50">
                     {nextLevel
-                      ? "Great start! Keep growing and reach the next level to unlock better rewards and benefits."
+                      ? "You're just getting started! Keep growing your spend to unlock more rewards."
                       : "You reached the highest reseller level. All premium rewards are active."}
                   </p>
                 </div>
 
-                <div className="border-white/10 lg:border-l lg:pl-8">
-                  <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-100">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-100">
                     Total Spend
                   </p>
 
                   <div className="mt-3 flex flex-wrap items-end gap-2">
-                    <p className="text-3xl font-black">
+                    <p className="text-3xl font-black lg:text-4xl">
                       ₱{formatMoney(totalSpend)}
                     </p>
 
-                    <p className="mb-1 text-lg font-bold text-blue-100">
+                    <p className="mb-1 text-xl font-semibold text-blue-100">
                       / ₱{formatMoney(requiredSpend)}
                     </p>
                   </div>
 
-                  <div className="mt-4 flex items-center gap-4">
+                  <div className="mt-5 flex items-center gap-4">
                     <div className="h-3 flex-1 overflow-hidden rounded-full bg-white/20">
                       <div
-                        className="h-full rounded-full bg-blue-400"
+                        className="h-full rounded-full bg-blue-200"
                         style={{ width: `${progressPercent}%` }}
                       />
                     </div>
@@ -328,22 +323,20 @@ export default function ResellerPage() {
                     </p>
                   </div>
 
-                  <p className="mt-4 text-sm font-semibold text-blue-50">
+                  <p className="mt-4 text-base font-semibold text-blue-50">
                     {nextLevel ? (
                       <>
                         ₱{formatMoney(remainingSpend)} more to reach{" "}
                         <span className="font-black text-white">{nextLevel.name}</span>
                       </>
                     ) : (
-                      <span className="font-black text-white">
-                        Top level unlocked
-                      </span>
+                      <span className="font-black text-white">Maximum level reached</span>
                     )}
                   </p>
                 </div>
 
                 <div className="flex justify-center lg:justify-end">
-                  <div className="relative flex h-36 w-36 items-center justify-center rounded-full border-4 border-white/70 bg-white/10 shadow-2xl backdrop-blur">
+                  <div className="relative flex h-40 w-40 items-center justify-center rounded-full border-4 border-white/70 bg-white/10 shadow-2xl backdrop-blur">
                     {profile?.avatar_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -353,19 +346,15 @@ export default function ResellerPage() {
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center rounded-full bg-white/10">
-                        <User size={62} className="text-white" />
+                        <User size={72} className="text-white" />
                       </div>
                     )}
-
-                    <div className="absolute -bottom-3 rounded-xl bg-white px-4 py-1 text-sm font-black text-blue-700 shadow-lg">
-                      LEVEL {currentLevel.level}
-                    </div>
                   </div>
                 </div>
               </div>
             </section>
 
-            <section className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+            <section className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
               <MetricCard
                 icon={Star}
                 title="Available Points"
@@ -375,395 +364,337 @@ export default function ResellerPage() {
               />
 
               <MetricCard
-                icon={ArrowRightLeft}
+                icon={Wallet}
                 title="Point Value"
                 value={`100 pts = $${currentLevel.pointValueUsd.toFixed(2)}`}
                 subtitle="Value increases by level"
-                color="bg-purple-100 text-purple-600"
-              />
-
-              <MetricCard
-                icon={Percent}
-                title="Your Discount"
-                value={`${currentLevel.discount}%`}
-                subtitle="Applies to all orders"
                 color="bg-green-100 text-green-600"
               />
 
               <MetricCard
-                icon={currentLevel.childPanel ? Unlock : Lock}
-                title="Child Panel Access"
-                value={currentLevel.childPanel ? "Unlocked" : "Locked"}
-                subtitle={
-                  currentLevel.childPanel
-                    ? "You can create child panels"
-                    : "Unlock at Pro Reseller"
-                }
-                color={
-                  currentLevel.childPanel
-                    ? "bg-green-100 text-green-600"
-                    : "bg-orange-100 text-orange-500"
-                }
+                icon={Tag}
+                title="Your Discount"
+                value={`${currentLevel.discount}%`}
+                subtitle="Applies to all orders"
+                color="bg-orange-100 text-orange-500"
               />
+
+              <ChildPanelMetric isUnlocked={currentLevel.childPanel} />
             </section>
 
-            <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_420px]">
-              <div className="space-y-6">
-                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-black text-slate-950">
-                      Reseller Level Path
-                    </h3>
-                    <Info size={16} className="text-slate-400" />
-                  </div>
-
-                  <div className="mt-8">
-                    <div className="relative grid grid-cols-6 gap-0">
-                      <div className="absolute left-[8%] right-[8%] top-5 h-0.5 bg-slate-200" />
-
-                      {RESELLER_LEVELS.map((level) => {
-                        const isCurrent = level.level === currentLevel.level;
-                        const isUnlocked = currentLevel.level >= level.level;
-
-                        return (
-                          <div
-                            key={level.level}
-                            className="relative z-10 text-center"
-                          >
-                            <div
-                              className={`mx-auto flex h-10 w-10 items-center justify-center rounded-full border text-sm font-black ${
-                                isCurrent
-                                  ? "border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-600/20"
-                                  : isUnlocked
-                                    ? "border-blue-200 bg-blue-50 text-blue-600"
-                                    : "border-slate-200 bg-slate-100 text-slate-500"
-                              }`}
-                            >
-                              {level.level}
-                            </div>
-
-                            <div
-                              className={`mt-5 rounded-xl border p-4 ${
-                                isCurrent
-                                  ? "border-blue-300 bg-blue-50/60"
-                                  : "border-slate-100 bg-white"
-                              }`}
-                            >
-                              <p
-                                className={`text-sm font-black ${
-                                  isCurrent ? "text-blue-600" : "text-slate-800"
-                                }`}
-                              >
-                                {level.name}
-                              </p>
-
-                              <p className="mt-2 text-xs font-bold text-slate-600">
-                                Spend ₱{formatCompact(level.requiredSpend)}
-                              </p>
-
-                              <p className="mt-2 text-xs font-bold text-slate-600">
-                                {level.discount}% Discount
-                              </p>
-
-                              <p className="mt-2 text-xs font-bold text-slate-600">
-                                100 pts = ${level.pointValueUsd.toFixed(2)}
-                              </p>
-
-                              <p
-                                className={`mt-3 flex items-center justify-center gap-1 text-xs font-black ${
-                                  level.childPanel
-                                    ? "text-green-600"
-                                    : "text-red-500"
-                                }`}
-                              >
-                                {level.childPanel ? (
-                                  <Unlock size={13} />
-                                ) : (
-                                  <Lock size={13} />
-                                )}
-                                Child Panel {level.childPanel ? "Unlocked" : "Locked"}
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="mt-5 border-t border-slate-100 pt-4">
-                    <div className="grid gap-4 text-xs font-bold text-slate-500 md:grid-cols-4">
-                      <div className="flex items-center gap-2">
-                        <Wallet size={15} />
-                        Required Spend
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Percent size={15} />
-                        Discount
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Star size={15} />
-                        Point Value
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Lock size={15} />
-                        Child Panel Access
-                      </div>
-                    </div>
-                  </div>
-                </section>
-
-                <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-                  <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
-                        <ArrowRightLeft size={22} />
-                      </div>
-
-                      <div>
-                        <h3 className="text-lg font-black text-slate-950">
-                          Convert Points to Balance
-                        </h3>
-                        <p className="text-sm font-semibold text-slate-500">
-                          Convert your reseller points to wallet balance.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mt-5 grid gap-4 md:grid-cols-2">
-                      <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
-                        <p className="text-xs font-black uppercase text-slate-400">
-                          Available Points
-                        </p>
-                        <p className="mt-2 text-xl font-black text-blue-600">
-                          {formatCompact(availablePoints)} pts
-                        </p>
-                      </div>
-
-                      <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
-                        <p className="text-xs font-black uppercase text-slate-400">
-                          Point Value
-                        </p>
-                        <p className="mt-2 text-lg font-black text-green-600">
-                          100 pts = ${currentLevel.pointValueUsd.toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
-
-                    <label className="mt-5 block text-sm font-black text-slate-700">
-                      Points to Convert
-                    </label>
-
-                    <div className="mt-2 flex overflow-hidden rounded-xl border border-slate-200 bg-white">
-                      <input
-                        value={pointsInput}
-                        onChange={(e) => setPointsInput(e.target.value)}
-                        type="number"
-                        min={MIN_CONVERT_POINTS}
-                        max={availablePoints}
-                        placeholder="Enter points"
-                        className="h-12 flex-1 px-4 text-sm font-semibold outline-none"
-                      />
-                      <div className="flex h-12 items-center border-l border-slate-200 px-4 text-sm font-black text-slate-500">
-                        pts
-                      </div>
-                    </div>
-
-                    <div className="mt-4 rounded-xl bg-slate-50 p-4">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-bold text-slate-500">
-                          You will receive
-                        </p>
-                        <div className="text-right">
-                          <p className="text-xl font-black text-slate-950">
-                            ${usdCredit.toFixed(2)}
-                          </p>
-                          <p className="text-xs font-bold text-slate-400">
-                            ₱{formatMoney(phpCredit)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {message && (
-                      <p className="mt-3 rounded-xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-600">
-                        {message}
-                      </p>
-                    )}
-
-                    <button
-                      onClick={convertPoints}
-                      disabled={converting || loading}
-                      className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <ArrowRightLeft size={18} />
-                      {converting ? "Converting..." : "Convert to Balance"}
-                    </button>
-
-                    <p className="mt-3 text-xs font-semibold text-slate-400">
-                      Minimum {MIN_CONVERT_POINTS} points required. Point conversions are final.
-                    </p>
-                  </section>
-
-                  <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <div className="flex items-center justify-between gap-4">
-                      <h3 className="text-lg font-black text-slate-950">
-                        Recent Conversions
-                      </h3>
-
-                      <button className="text-sm font-black text-blue-600">
-                        View All
-                      </button>
-                    </div>
-
-                    <div className="mt-5 overflow-hidden rounded-xl border border-slate-100">
-                      <table className="w-full text-sm">
-                        <thead className="bg-slate-50 text-slate-500">
-                          <tr>
-                            <th className="p-4 text-left font-black">Date</th>
-                            <th className="p-4 text-left font-black">Points</th>
-                            <th className="p-4 text-left font-black">Amount</th>
-                            <th className="p-4 text-left font-black">Status</th>
-                          </tr>
-                        </thead>
-
-                        <tbody>
-                          {history.length <= 0 ? (
-                            <tr>
-                              <td
-                                colSpan={4}
-                                className="p-8 text-center text-sm font-semibold text-slate-500"
-                              >
-                                No conversions yet.
-                              </td>
-                            </tr>
-                          ) : (
-                            history.map((item) => (
-                              <tr
-                                key={item.id}
-                                className="border-t border-slate-100"
-                              >
-                                <td className="p-4 font-semibold text-slate-600">
-                                  {formatDate(item.created_at)}
-                                </td>
-                                <td className="p-4 font-black text-slate-700">
-                                  {item.points_used} pts
-                                </td>
-                                <td className="p-4 font-black text-slate-700">
-                                  ₱{formatMoney(item.amount_credited)}
-                                </td>
-                                <td className="p-4">
-                                  <span className="rounded-lg bg-green-100 px-3 py-1 text-xs font-black text-green-700">
-                                    Completed
-                                  </span>
-                                </td>
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </section>
+            <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_520px]">
+              <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xl font-black text-slate-950">
+                    Reseller Level Path
+                  </h3>
+                  <Info size={16} className="text-slate-400" />
                 </div>
-              </div>
 
-              <aside className="space-y-6">
-                <section className="rounded-2xl border border-blue-950/10 bg-[#061c42] p-5 text-white shadow-sm">
-                  <h3 className="text-lg font-black">Reseller Summary</h3>
+                <div className="mt-7">
+                  <div className="relative grid grid-cols-6">
+                    <div className="absolute left-[8%] right-[8%] top-5 h-0.5 bg-slate-200" />
 
-                  <div className="mt-5 space-y-4">
-                    <SummaryRow label="Current Level" value={currentLevel.name} />
-                    <SummaryRow label="Level" value={`Level ${currentLevel.level}`} />
-                    <SummaryRow label="Total Spend" value={`₱${formatMoney(totalSpend)}`} />
-                    <SummaryRow
-                      label="Next Level"
-                      value={nextLevel?.name || "Max Level"}
-                    />
-                    <SummaryRow
-                      label="Required Spend"
-                      value={`₱${formatMoney(requiredSpend)}`}
-                    />
-                    <SummaryRow
-                      label="Remaining to Next Level"
-                      value={
-                        nextLevel
-                          ? `₱${formatMoney(remainingSpend)}`
-                          : "Completed"
-                      }
-                    />
+                    {RESELLER_LEVELS.map((level) => {
+                      const isCurrent = level.level === currentLevel.level;
+
+                      return (
+                        <div key={level.level} className="relative z-10 text-center">
+                          <div
+                            className={`mx-auto flex h-10 w-10 items-center justify-center rounded-full border text-sm font-black ${
+                              isCurrent
+                                ? "border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                                : "border-slate-200 bg-white text-slate-600"
+                            }`}
+                          >
+                            {level.level}
+                          </div>
+
+                          <div
+                            className={`mt-5 min-h-[162px] rounded-xl border px-3 py-4 ${
+                              isCurrent
+                                ? "border-blue-300 bg-blue-50/60"
+                                : "border-slate-100 bg-white"
+                            }`}
+                          >
+                            <p
+                              className={`text-sm font-black ${
+                                isCurrent ? "text-blue-600" : "text-slate-950"
+                              }`}
+                            >
+                              {level.name}
+                            </p>
+
+                            <p className="mt-3 text-sm font-bold text-slate-700">
+                              ₱{formatCompact(level.requiredSpend)}
+                            </p>
+
+                            <p className="mt-2 text-sm font-bold text-slate-700">
+                              {level.discount}%
+                            </p>
+
+                            <p className="mt-2 text-sm font-bold text-slate-700">
+                              100 pts = ${level.pointValueUsd.toFixed(2)}
+                            </p>
+
+                            <p
+                              className={`mt-4 flex items-center justify-center gap-1 text-xs font-black ${
+                                level.childPanel ? "text-green-600" : "text-red-500"
+                              }`}
+                            >
+                              {level.childPanel ? <Unlock size={13} /> : <Lock size={13} />}
+                              {level.childPanel ? "Unlocked" : "Locked"}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                </section>
+                </div>
 
-                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
-                      <Star size={20} />
+                <div className="mt-4 border-t border-slate-100 pt-4">
+                  <div className="grid gap-3 text-xs font-bold text-slate-500 sm:grid-cols-4">
+                    <div className="flex items-center gap-2">
+                      <Flag size={14} /> Required Spend
                     </div>
+                    <div className="flex items-center gap-2">
+                      <Percent size={14} /> Discount
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Star size={14} /> Point Value
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Lock size={14} /> Child Panel Access
+                    </div>
+                  </div>
+                </div>
+              </section>
 
-                    <h3 className="text-lg font-black text-slate-950">
-                      How to Earn Points
+              <section className="rounded-2xl bg-[#061c42] p-6 text-white shadow-sm">
+                <h3 className="text-xl font-black">Reseller Summary</h3>
+
+                <div className="mt-6 space-y-4">
+                  <SummaryRow
+                    icon={User}
+                    label="Current Level"
+                    value={currentLevel.name}
+                    badge={`Level ${currentLevel.level}`}
+                  />
+                  <SummaryRow
+                    icon={Wallet}
+                    label="Total Spent"
+                    value={`₱${formatMoney(totalSpend)}`}
+                  />
+                  <SummaryRow
+                    icon={TrendingUp}
+                    label="Next Level"
+                    value={nextLevel?.name || "Max Level"}
+                  />
+                  <SummaryRow
+                    icon={Target}
+                    label="Required Spend"
+                    value={`₱${formatMoney(requiredSpend)}`}
+                  />
+                  <SummaryRow
+                    icon={Flag}
+                    label="Remaining to Next Level"
+                    value={
+                      nextLevel
+                        ? `₱${formatMoney(remainingSpend)}`
+                        : "Completed"
+                    }
+                  />
+                </div>
+              </section>
+            </div>
+
+            <div className="mt-5 grid gap-5 xl:grid-cols-[0.9fr_0.9fr_1fr]">
+              <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+                    <ArrowRightLeft size={20} />
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl font-black text-slate-950">
+                      Convert Points to Balance
                     </h3>
+                    <p className="mt-1 text-sm font-semibold text-slate-500">
+                      Convert your reseller points to wallet balance.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-5 grid grid-cols-2 divide-x divide-slate-200 rounded-xl bg-slate-50 p-4">
+                  <div className="pr-4 text-center">
+                    <p className="text-xs font-black uppercase text-slate-400">
+                      Available Points
+                    </p>
+                    <p className="mt-2 text-lg font-black text-blue-600">
+                      {formatCompact(availablePoints)} pts
+                    </p>
                   </div>
 
-                  <div className="mt-5 space-y-5">
-                    <HowToEarnItem
-                      icon={ShoppingCart}
-                      title="Spend to Earn"
-                      text="Earn 1 point for every ₱200 spent on orders and services."
-                      color="bg-blue-600 text-white"
-                    />
-
-                    <HowToEarnItem
-                      icon={Wallet}
-                      title="Convert & Save"
-                      text="Convert your points to balance based on your level's rate."
-                      color="bg-green-600 text-white"
-                    />
-
-                    <HowToEarnItem
-                      icon={Trophy}
-                      title="More Spend, More Rewards"
-                      text="Reach higher levels to increase your point value and discounts."
-                      color="bg-orange-500 text-white"
-                    />
+                  <div className="pl-4 text-center">
+                    <p className="text-xs font-black uppercase text-slate-400">
+                      Point Value
+                    </p>
+                    <p className="mt-2 text-lg font-black text-green-600">
+                      100 pts = ${currentLevel.pointValueUsd.toFixed(2)}
+                    </p>
                   </div>
-                </section>
+                </div>
 
-                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <div className="flex items-start gap-4">
-                    <div
-                      className={`flex h-12 w-12 items-center justify-center rounded-2xl ${
-                        currentLevel.childPanel
-                          ? "bg-green-100 text-green-600"
-                          : "bg-red-100 text-red-500"
-                      }`}
-                    >
-                      {currentLevel.childPanel ? <Unlock size={23} /> : <Lock size={23} />}
-                    </div>
+                <label className="mt-5 block text-sm font-black text-slate-700">
+                  Points to Convert
+                </label>
 
-                    <div>
-                      <h3 className="text-lg font-black text-slate-950">
-                        Child Panel Access
-                      </h3>
+                <div className="mt-2 flex overflow-hidden rounded-xl border border-slate-200 bg-white">
+                  <input
+                    value={pointsInput}
+                    onChange={(e) => setPointsInput(e.target.value)}
+                    type="number"
+                    min={MIN_CONVERT_POINTS}
+                    max={availablePoints}
+                    placeholder="Enter points"
+                    className="h-12 flex-1 px-4 text-sm font-semibold outline-none"
+                  />
 
-                      <p
-                        className={`mt-2 text-sm font-black ${
-                          currentLevel.childPanel
-                            ? "text-green-600"
-                            : "text-red-500"
-                        }`}
-                      >
-                        {currentLevel.childPanel ? "Unlocked" : "Locked"}
-                      </p>
-
-                      <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
-                        {currentLevel.childPanel
-                          ? "You can create and manage child panels for your clients."
-                          : "Reach Pro Reseller level to unlock child panel access."}
-                      </p>
-                    </div>
+                  <div className="flex h-12 items-center border-l border-slate-200 px-4 text-sm font-black text-slate-600">
+                    pts
                   </div>
-                </section>
-              </aside>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
+                  <p className="text-sm font-semibold text-slate-500">
+                    You will receive
+                  </p>
+
+                  <div className="text-right">
+                    <p className="text-xl font-black text-slate-950">
+                      ${usdCredit.toFixed(2)}
+                    </p>
+                    <p className="text-xs font-bold text-slate-400">
+                      ₱{formatMoney(phpCredit)}
+                    </p>
+                  </div>
+                </div>
+
+                {message && (
+                  <p className="mt-3 rounded-xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-600">
+                    {message}
+                  </p>
+                )}
+
+                <button
+                  onClick={convertPoints}
+                  disabled={loading || converting}
+                  className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <ArrowRightLeft size={18} />
+                  {converting ? "Converting..." : "Convert to Balance"}
+                </button>
+
+                <p className="mt-3 text-xs font-semibold text-slate-400">
+                  Minimum {MIN_CONVERT_POINTS} points required. Conversions are final.
+                </p>
+              </section>
+
+              <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center justify-between gap-4">
+                  <h3 className="text-xl font-black text-slate-950">
+                    Recent Conversions
+                  </h3>
+
+                  <button className="text-sm font-black text-blue-600">
+                    View All
+                  </button>
+                </div>
+
+                <div className="mt-5 overflow-hidden rounded-xl border border-slate-100">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 text-slate-500">
+                      <tr>
+                        <th className="p-4 text-left font-black">Date</th>
+                        <th className="p-4 text-left font-black">Points</th>
+                        <th className="p-4 text-left font-black">Amount</th>
+                        <th className="p-4 text-left font-black">Status</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {history.length <= 0 ? (
+                        <tr>
+                          <td
+                            colSpan={4}
+                            className="p-8 text-center text-sm font-semibold text-slate-500"
+                          >
+                            No conversions yet.
+                          </td>
+                        </tr>
+                      ) : (
+                        history.map((item) => (
+                          <tr key={item.id} className="border-t border-slate-100">
+                            <td className="p-4 font-semibold text-slate-600">
+                              {formatDate(item.created_at)}
+                            </td>
+
+                            <td className="p-4 font-black text-slate-700">
+                              {item.points_used} pts
+                            </td>
+
+                            <td className="p-4 font-black text-slate-700">
+                              ₱{formatMoney(item.amount_credited)}
+                            </td>
+
+                            <td className="p-4">
+                              <span className="inline-flex items-center gap-1 rounded-lg bg-green-100 px-3 py-1 text-xs font-black text-green-700">
+                                <CheckCircle2 size={13} />
+                                Completed
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-purple-600">
+                    <Star size={20} />
+                  </div>
+
+                  <h3 className="text-xl font-black text-slate-950">
+                    How to Earn Points
+                  </h3>
+                </div>
+
+                <div className="mt-5 space-y-5">
+                  <HowToEarnItem
+                    icon={ShoppingCart}
+                    title="Spend to Earn"
+                    text="Earn 1 point for every ₱200 spent on orders and services."
+                    color="bg-blue-600 text-white"
+                  />
+
+                  <HowToEarnItem
+                    icon={Wallet}
+                    title="Convert & Save"
+                    text="Convert your points to balance based on your level's rate."
+                    color="bg-green-600 text-white"
+                  />
+
+                  <HowToEarnItem
+                    icon={Trophy}
+                    title="More Spend, More Rewards"
+                    text="Reach higher levels to increase your point value and discounts."
+                    color="bg-orange-500 text-white"
+                  />
+                </div>
+              </section>
             </div>
           </div>
         </section>
@@ -796,19 +727,101 @@ function MetricCard({
           <p className="text-xs font-black uppercase tracking-wide text-slate-500">
             {title}
           </p>
-          <h3 className="mt-2 text-2xl font-black text-slate-950">{value}</h3>
-          <p className="mt-1 text-sm font-semibold text-slate-400">{subtitle}</p>
+
+          <h3 className="mt-2 text-2xl font-black text-slate-950">
+            {value}
+          </h3>
+
+          <p className="mt-1 text-sm font-semibold text-slate-400">
+            {subtitle}
+          </p>
         </div>
       </div>
     </div>
   );
 }
 
-function SummaryRow({ label, value }: { label: string; value: string }) {
+function ChildPanelMetric({ isUnlocked }: { isUnlocked: boolean }) {
+  if (isUnlocked) {
+    return (
+      <Link
+        href="/dashboard/child-panel"
+        className="rounded-2xl border border-green-200 bg-white p-5 shadow-sm transition hover:border-green-400 hover:bg-green-50"
+      >
+        <div className="flex items-center gap-5">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-green-100 text-green-600">
+            <Unlock size={26} />
+          </div>
+
+          <div>
+            <p className="text-xs font-black uppercase tracking-wide text-slate-500">
+              Child Panel Access
+            </p>
+
+            <h3 className="mt-2 text-2xl font-black text-green-600">
+              Open Panel
+            </h3>
+
+            <p className="mt-1 text-sm font-semibold text-slate-400">
+              Click to manage your child panel
+            </p>
+          </div>
+        </div>
+      </Link>
+    );
+  }
+
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-3 last:border-b-0 last:pb-0">
-      <p className="text-sm font-semibold text-blue-100">{label}</p>
-      <p className="text-right text-sm font-black text-white">{value}</p>
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex items-center gap-5">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-100 text-red-500">
+          <Lock size={26} />
+        </div>
+
+        <div>
+          <p className="text-xs font-black uppercase tracking-wide text-slate-500">
+            Child Panel Access
+          </p>
+
+          <h3 className="mt-2 text-2xl font-black text-red-500">
+            Locked
+          </h3>
+
+          <p className="mt-1 text-sm font-semibold text-slate-400">
+            Unlock at Pro Reseller
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SummaryRow({
+  icon: Icon,
+  label,
+  value,
+  badge,
+}: {
+  icon: any;
+  label: string;
+  value: string;
+  badge?: string;
+}) {
+  return (
+    <div className="flex items-center gap-4 border-b border-white/10 pb-4 last:border-b-0 last:pb-0">
+      <Icon size={22} className="text-blue-100" />
+
+      <p className="flex-1 text-base font-semibold text-blue-50">{label}</p>
+
+      <div className="flex items-center gap-3">
+        <p className="text-right text-base font-black text-white">{value}</p>
+
+        {badge && (
+          <span className="rounded-lg bg-blue-600 px-3 py-1 text-sm font-black text-white">
+            {badge}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
