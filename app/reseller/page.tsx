@@ -1,292 +1,881 @@
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import Link from "next/link";
-import GetStartedButton from "@/components/GetStartedButton";
+"use client";
 
-const resellerLevels = [
+import DashboardGuard from "@/components/DashboardGuard";
+import DashboardSidebar from "@/components/DashboardSidebar";
+import DashboardTopbar from "@/components/DashboardTopbar";
+import { supabase } from "@/lib/supabase";
+import {
+  ArrowRightLeft,
+  CheckCircle2,
+  HelpCircle,
+  Info,
+  Lock,
+  Percent,
+  ShieldCheck,
+  ShoppingCart,
+  Star,
+  Trophy,
+  Unlock,
+  User,
+  Wallet,
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+
+type ProfileData = {
+  id?: string;
+  username?: string | null;
+  firstname?: string | null;
+  lastname?: string | null;
+  full_name?: string | null;
+  avatar_url?: string | null;
+  plan?: string | null;
+  balance?: number | string | null;
+  total_spent?: number | string | null;
+  reseller_points?: number | string | null;
+};
+
+type ConversionRecord = {
+  id: string;
+  points_used: number;
+  amount_credited: number;
+  created_at: string;
+  status: string;
+};
+
+type ResellerLevel = {
+  level: number;
+  name: string;
+  requiredSpend: number;
+  discount: number;
+  pointValueUsd: number;
+  childPanel: boolean;
+};
+
+const RESELLER_LEVELS: ResellerLevel[] = [
   {
+    level: 1,
     name: "New Reseller",
-    tag: "Starter Level",
-    required: "$0",
-    discount: "0%",
-    points: "$1.00",
-    accent: "from-slate-500 to-zinc-700",
-    perks: ["Community based support"],
+    requiredSpend: 0,
+    discount: 0,
+    pointValueUsd: 1,
+    childPanel: false,
   },
   {
+    level: 2,
     name: "Active Reseller",
-    tag: "Growing Reseller",
-    required: "$500",
-    discount: "1%",
-    points: "$1.00",
-    accent: "from-blue-500 to-cyan-500",
-    perks: ["Priority ticket support by team"],
+    requiredSpend: 20000,
+    discount: 1,
+    pointValueUsd: 1,
+    childPanel: false,
   },
   {
+    level: 3,
     name: "Pro Reseller",
-    tag: "Advanced Reseller",
-    required: "$5,000",
-    discount: "2%",
-    points: "$1.25",
-    accent: "from-cyan-500 to-sky-500",
-    perks: ["Whatsapp/Telegram support by team", "Free Child Panel - Lifetime"],
+    requiredSpend: 60000,
+    discount: 2,
+    pointValueUsd: 1.25,
+    childPanel: true,
   },
   {
+    level: 4,
     name: "Master Reseller",
-    tag: "High Volume Reseller",
-    required: "$15,000",
-    discount: "3%",
-    points: "$1.50",
-    accent: "from-indigo-500 to-blue-500",
-    perks: [
-      "Top priority support",
-      "Free Child Panel - Lifetime",
-      "Early notification on new services",
-    ],
+    requiredSpend: 150000,
+    discount: 3,
+    pointValueUsd: 1.5,
+    childPanel: true,
   },
   {
+    level: 5,
     name: "Elite Partner",
-    tag: "Premium Partner",
-    required: "$30,000",
-    discount: "4%",
-    points: "$1.75",
-    accent: "from-blue-400 to-cyan-400",
-    perks: [
-      "Dedicated account manager",
-      "Free Child Panel - Lifetime",
-      "Track and resolve issues systematically",
-    ],
+    requiredSpend: 250000,
+    discount: 4,
+    pointValueUsd: 1.75,
+    childPanel: true,
   },
   {
+    level: 6,
     name: "Ascend Partner",
-    tag: "Top Tier Partner",
-    required: "$50,000",
-    discount: "5%",
-    points: "$2.00",
-    accent: "from-cyan-400 to-blue-600",
-    perks: [
-      "Admin handled support",
-      "Free Child Panel - Lifetime",
-      "Early notification on new services",
-      "Special discount by admin",
-      "Hidden services access",
-    ],
+    requiredSpend: 500000,
+    discount: 5,
+    pointValueUsd: 2,
+    childPanel: true,
   },
 ];
 
+const PHP_PER_USD = 56;
+const MIN_CONVERT_POINTS = 100;
+
 export default function ResellerPage() {
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [converting, setConverting] = useState(false);
+  const [pointsInput, setPointsInput] = useState("100");
+  const [message, setMessage] = useState("");
+  const [history, setHistory] = useState<ConversionRecord[]>([]);
+
+  async function loadProfile() {
+    setLoading(true);
+    setMessage("");
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setProfile(null);
+      setHistory([]);
+      setLoading(false);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+
+    if (error) {
+      console.error("RESELLER_PROFILE_ERROR:", error.message);
+      setProfile(null);
+      setHistory([]);
+      setLoading(false);
+      return;
+    }
+
+    setProfile((data || null) as ProfileData);
+
+    const { data: historyData, error: historyError } = await supabase
+      .from("reseller_point_conversions")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(5);
+
+    if (!historyError && historyData) {
+      setHistory(historyData as ConversionRecord[]);
+    } else {
+      setHistory([]);
+    }
+
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const totalSpend = toNumber(profile?.total_spent);
+  const availablePoints = toNumber(profile?.reseller_points);
+  const balance = toNumber(profile?.balance);
+
+  const currentLevel = getCurrentLevel(totalSpend);
+  const nextLevel = getNextLevel(currentLevel.level);
+  const requiredSpend = nextLevel?.requiredSpend || currentLevel.requiredSpend;
+  const remainingSpend = nextLevel
+    ? Math.max(0, nextLevel.requiredSpend - totalSpend)
+    : 0;
+
+  const progressPercent = nextLevel
+    ? Math.min(
+        100,
+        Math.max(
+          0,
+          ((totalSpend - currentLevel.requiredSpend) /
+            (nextLevel.requiredSpend - currentLevel.requiredSpend)) *
+            100,
+        ),
+      )
+    : 100;
+
+  const pointsToConvert = Math.max(0, Math.floor(Number(pointsInput || 0)));
+  const usdCredit = calculateUsdCredit(pointsToConvert, currentLevel.pointValueUsd);
+  const phpCredit = usdCredit * PHP_PER_USD;
+
+  async function convertPoints() {
+    if (converting) return;
+
+    setMessage("");
+
+    if (pointsToConvert < MIN_CONVERT_POINTS) {
+      setMessage(`Minimum conversion is ${MIN_CONVERT_POINTS} points.`);
+      return;
+    }
+
+    if (pointsToConvert > availablePoints) {
+      setMessage("You do not have enough reseller points.");
+      return;
+    }
+
+    setConverting(true);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setMessage("You must be logged in.");
+      setConverting(false);
+      return;
+    }
+
+    const newPoints = availablePoints - pointsToConvert;
+    const newBalance = balance + phpCredit;
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        reseller_points: newPoints,
+        balance: newBalance,
+      })
+      .eq("id", user.id);
+
+    if (error) {
+      console.error("CONVERT_POINTS_ERROR:", error.message);
+      setMessage(error.message);
+      setConverting(false);
+      return;
+    }
+
+    await supabase.from("reseller_point_conversions").insert({
+      user_id: user.id,
+      points_used: pointsToConvert,
+      amount_credited: phpCredit,
+      usd_value: usdCredit,
+      level_name: currentLevel.name,
+      status: "completed",
+    });
+
+    setMessage(`Converted ${pointsToConvert} points to ₱${formatMoney(phpCredit)}.`);
+    setPointsInput("100");
+    setConverting(false);
+    loadProfile();
+  }
+
+  const displayName =
+    profile?.firstname ||
+    profile?.username ||
+    profile?.full_name ||
+    "Reseller";
+
   return (
-    <main className="min-h-screen bg-black text-white">
-      <Navbar />
+    <DashboardGuard>
+      <main className="min-h-screen bg-[#f6f9fc] text-slate-950">
+        <DashboardSidebar />
 
-      <section className="relative overflow-hidden px-6 py-24">
-        <div className="absolute left-1/2 top-0 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-blue-600/20 blur-3xl" />
-        <div className="absolute right-0 top-1/3 h-[400px] w-[400px] rounded-full bg-cyan-600/10 blur-3xl" />
+        <section className="min-h-screen lg:ml-72">
+          <DashboardTopbar />
 
-        <div className="relative mx-auto max-w-7xl">
-          <div className="mx-auto max-w-3xl text-center">
-            <p className="mb-4 inline-flex rounded-full border border-blue-500/20 bg-blue-500/10 px-5 py-2 text-sm font-semibold text-blue-400">
-              Ascend Reseller Program
-            </p>
+          <div className="p-4 lg:p-8">
+            <div className="mb-6">
+              <h1 className="text-3xl font-black text-slate-950">
+                Reseller
+              </h1>
 
-            <h1 className="text-5xl font-black tracking-tight md:text-7xl">
-              Unlock Higher Reseller Benefits
-            </h1>
-
-            <p className="mt-6 text-lg text-zinc-400">
-              Grow your reseller level through lifetime spending and unlock
-              better discounts, stronger support, exclusive perks, and reseller
-              rewards.
-            </p>
-
-            <div className="mt-10 flex flex-col justify-center gap-4 sm:flex-row">
-              <GetStartedButton className="rounded-2xl bg-blue-600 px-8 py-4 font-bold transition hover:bg-blue-700">
-                Start Reselling
-              </GetStartedButton>
-
-              <Link
-                href="/services"
-                className="rounded-2xl border border-zinc-800 px-8 py-4 font-bold transition hover:border-blue-500"
-              >
-                View Services
-              </Link>
+              <p className="mt-2 text-sm font-semibold text-slate-500">
+                Track your progress, convert points, and unlock more benefits as you grow.
+              </p>
             </div>
-          </div>
 
-          <div className="mt-20 grid gap-6 lg:grid-cols-3">
-            {resellerLevels.map((level, index) => (
-              <div
-                key={level.name}
-                className="group relative overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950/80 p-6 transition duration-300 hover:-translate-y-1 hover:border-blue-500/40"
-              >
-                <div
-                  className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${level.accent}`}
-                />
+            <section className="overflow-hidden rounded-2xl border border-blue-950/10 bg-gradient-to-r from-[#061c42] via-[#102a7a] to-[#6d28d9] p-6 text-white shadow-sm lg:p-8">
+              <div className="grid gap-8 lg:grid-cols-[1.15fr_1fr_220px] lg:items-center">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-100">
+                    Current Level
+                  </p>
 
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-semibold text-zinc-500">
-                      Level {index + 1}
-                    </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <h2 className="text-3xl font-black lg:text-5xl">
+                      {loading ? "Loading..." : currentLevel.name}
+                    </h2>
 
-                    <h3 className="mt-2 text-3xl font-black">{level.name}</h3>
-
-                    <p className="mt-1 text-sm text-zinc-400">{level.tag}</p>
+                    <span className="rounded-xl bg-white/15 px-4 py-2 text-sm font-black text-white ring-1 ring-white/20">
+                      Level {currentLevel.level}
+                    </span>
                   </div>
 
-                  <div className="rounded-2xl border border-zinc-800 bg-black px-4 py-3 text-right">
-                    <p className="text-xs text-zinc-500">Required Spent</p>
-                    <p className="text-2xl font-black text-blue-400">
-                      {level.required}
-                    </p>
-                  </div>
+                  <p className="mt-4 max-w-xl text-sm font-semibold leading-7 text-blue-50">
+                    {nextLevel
+                      ? "Great start! Keep growing and reach the next level to unlock better rewards and benefits."
+                      : "You reached the highest reseller level. All premium rewards are active."}
+                  </p>
                 </div>
 
-                <div className="mt-8 grid grid-cols-2 gap-4">
-                  <div className="rounded-2xl border border-zinc-800 bg-black px-4 py-4">
-                    <p className="text-xs text-zinc-500">Discount</p>
-                    <p className="mt-2 text-2xl font-black text-cyan-400">
-                      {level.discount}
+                <div className="border-white/10 lg:border-l lg:pl-8">
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-100">
+                    Total Spend
+                  </p>
+
+                  <div className="mt-3 flex flex-wrap items-end gap-2">
+                    <p className="text-3xl font-black">
+                      ₱{formatMoney(totalSpend)}
+                    </p>
+
+                    <p className="mb-1 text-lg font-bold text-blue-100">
+                      / ₱{formatMoney(requiredSpend)}
                     </p>
                   </div>
 
-                  <div className="rounded-2xl border border-zinc-800 bg-black px-4 py-4">
-                    <p className="text-xs text-zinc-500">Every 100 points</p>
-                    <p className="mt-2 text-2xl font-black text-blue-400">
-                      {level.points}
+                  <div className="mt-4 flex items-center gap-4">
+                    <div className="h-3 flex-1 overflow-hidden rounded-full bg-white/20">
+                      <div
+                        className="h-full rounded-full bg-blue-400"
+                        style={{ width: `${progressPercent}%` }}
+                      />
+                    </div>
+
+                    <p className="text-sm font-black text-white">
+                      {progressPercent.toFixed(1)}%
                     </p>
                   </div>
-                </div>
 
-                <div className="mt-6 space-y-3">
-                  {level.perks.map((perk) => (
-                    <div
-                      key={perk}
-                      className="flex items-start gap-3 text-sm text-zinc-300"
-                    >
-                      <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-xs text-blue-400">
-                        ✓
+                  <p className="mt-4 text-sm font-semibold text-blue-50">
+                    {nextLevel ? (
+                      <>
+                        ₱{formatMoney(remainingSpend)} more to reach{" "}
+                        <span className="font-black text-white">{nextLevel.name}</span>
+                      </>
+                    ) : (
+                      <span className="font-black text-white">
+                        Top level unlocked
                       </span>
+                    )}
+                  </p>
+                </div>
 
-                      <p>{perk}</p>
+                <div className="flex justify-center lg:justify-end">
+                  <div className="relative flex h-36 w-36 items-center justify-center rounded-full border-4 border-white/70 bg-white/10 shadow-2xl backdrop-blur">
+                    {profile?.avatar_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={profile.avatar_url}
+                        alt="Profile"
+                        className="h-full w-full rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center rounded-full bg-white/10">
+                        <User size={62} className="text-white" />
+                      </div>
+                    )}
+
+                    <div className="absolute -bottom-3 rounded-xl bg-white px-4 py-1 text-sm font-black text-blue-700 shadow-lg">
+                      LEVEL {currentLevel.level}
                     </div>
-                  ))}
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
+            </section>
 
-          <div className="mt-20 grid gap-6 xl:grid-cols-2">
-            <div className="relative overflow-hidden rounded-[2rem] border border-blue-500/20 bg-gradient-to-br from-zinc-950 via-black to-blue-950/30 p-8 shadow-2xl shadow-blue-950/20">
-              <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-blue-600/20 blur-3xl" />
+            <section className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+              <MetricCard
+                icon={Star}
+                title="Available Points"
+                value={`${formatCompact(availablePoints)} pts`}
+                subtitle="Earn 1 point every ₱200 spend"
+                color="bg-blue-100 text-blue-600"
+              />
 
-              <div className="relative">
-                <div className="mb-8 flex items-start justify-between gap-5">
-                  <div>
-                    <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-blue-400">
-                      Point System
-                    </p>
+              <MetricCard
+                icon={ArrowRightLeft}
+                title="Point Value"
+                value={`100 pts = $${currentLevel.pointValueUsd.toFixed(2)}`}
+                subtitle="Value increases by level"
+                color="bg-purple-100 text-purple-600"
+              />
 
-                    <h2 className="text-4xl font-black">
-                      Earn Rewards From Every Order
-                    </h2>
+              <MetricCard
+                icon={Percent}
+                title="Your Discount"
+                value={`${currentLevel.discount}%`}
+                subtitle="Applies to all orders"
+                color="bg-green-100 text-green-600"
+              />
 
-                    <p className="mt-5 max-w-xl text-zinc-400">
-                      Completed orders generate reseller points. Your points
-                      stay inside your account until you decide to convert them
-                      into wallet balance.
-                    </p>
+              <MetricCard
+                icon={currentLevel.childPanel ? Unlock : Lock}
+                title="Child Panel Access"
+                value={currentLevel.childPanel ? "Unlocked" : "Locked"}
+                subtitle={
+                  currentLevel.childPanel
+                    ? "You can create child panels"
+                    : "Unlock at Pro Reseller"
+                }
+                color={
+                  currentLevel.childPanel
+                    ? "bg-green-100 text-green-600"
+                    : "bg-orange-100 text-orange-500"
+                }
+              />
+            </section>
+
+            <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_420px]">
+              <div className="space-y-6">
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-black text-slate-950">
+                      Reseller Level Path
+                    </h3>
+                    <Info size={16} className="text-slate-400" />
                   </div>
 
-                  <div className="hidden h-16 w-16 shrink-0 items-center justify-center rounded-3xl border border-blue-500/20 bg-blue-500/10 text-3xl xl:flex">
-                    ✦
+                  <div className="mt-8">
+                    <div className="relative grid grid-cols-6 gap-0">
+                      <div className="absolute left-[8%] right-[8%] top-5 h-0.5 bg-slate-200" />
+
+                      {RESELLER_LEVELS.map((level) => {
+                        const isCurrent = level.level === currentLevel.level;
+                        const isUnlocked = currentLevel.level >= level.level;
+
+                        return (
+                          <div
+                            key={level.level}
+                            className="relative z-10 text-center"
+                          >
+                            <div
+                              className={`mx-auto flex h-10 w-10 items-center justify-center rounded-full border text-sm font-black ${
+                                isCurrent
+                                  ? "border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                                  : isUnlocked
+                                    ? "border-blue-200 bg-blue-50 text-blue-600"
+                                    : "border-slate-200 bg-slate-100 text-slate-500"
+                              }`}
+                            >
+                              {level.level}
+                            </div>
+
+                            <div
+                              className={`mt-5 rounded-xl border p-4 ${
+                                isCurrent
+                                  ? "border-blue-300 bg-blue-50/60"
+                                  : "border-slate-100 bg-white"
+                              }`}
+                            >
+                              <p
+                                className={`text-sm font-black ${
+                                  isCurrent ? "text-blue-600" : "text-slate-800"
+                                }`}
+                              >
+                                {level.name}
+                              </p>
+
+                              <p className="mt-2 text-xs font-bold text-slate-600">
+                                Spend ₱{formatCompact(level.requiredSpend)}
+                              </p>
+
+                              <p className="mt-2 text-xs font-bold text-slate-600">
+                                {level.discount}% Discount
+                              </p>
+
+                              <p className="mt-2 text-xs font-bold text-slate-600">
+                                100 pts = ${level.pointValueUsd.toFixed(2)}
+                              </p>
+
+                              <p
+                                className={`mt-3 flex items-center justify-center gap-1 text-xs font-black ${
+                                  level.childPanel
+                                    ? "text-green-600"
+                                    : "text-red-500"
+                                }`}
+                              >
+                                {level.childPanel ? (
+                                  <Unlock size={13} />
+                                ) : (
+                                  <Lock size={13} />
+                                )}
+                                Child Panel {level.childPanel ? "Unlocked" : "Locked"}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {[
-                    ["01", "Points are stored", "Your rewards stay saved in your account."],
-                    ["02", "No auto conversion", "You stay in control of when to convert."],
-                    ["03", "Convert anytime", "Request conversion whenever you want."],
-                    ["04", "Wallet credit", "Converted points become usable balance."],
-                  ].map(([number, title, text]) => (
-                    <div
-                      key={title}
-                      className="group rounded-3xl border border-zinc-800 bg-black/70 p-5 transition hover:border-blue-500/40 hover:bg-blue-500/5"
-                    >
-                      <div className="mb-4 flex items-center justify-between">
-                        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 font-black">
-                          {number}
-                        </span>
+                  <div className="mt-5 border-t border-slate-100 pt-4">
+                    <div className="grid gap-4 text-xs font-bold text-slate-500 md:grid-cols-4">
+                      <div className="flex items-center gap-2">
+                        <Wallet size={15} />
+                        Required Spend
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Percent size={15} />
+                        Discount
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Star size={15} />
+                        Point Value
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Lock size={15} />
+                        Child Panel Access
+                      </div>
+                    </div>
+                  </div>
+                </section>
 
-                        <span className="text-xl text-blue-400">✓</span>
+                <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+                  <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+                        <ArrowRightLeft size={22} />
                       </div>
 
-                      <h3 className="font-black text-white">{title}</h3>
-                      <p className="mt-2 text-sm text-zinc-500">{text}</p>
+                      <div>
+                        <h3 className="text-lg font-black text-slate-950">
+                          Convert Points to Balance
+                        </h3>
+                        <p className="text-sm font-semibold text-slate-500">
+                          Convert your reseller points to wallet balance.
+                        </p>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-            </div>
 
-            <div className="relative overflow-hidden rounded-[2rem] border border-cyan-500/20 bg-gradient-to-br from-zinc-950 via-black to-cyan-950/30 p-8 shadow-2xl shadow-cyan-950/20">
-              <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-cyan-600/20 blur-3xl" />
-
-              <div className="relative">
-                <div className="mb-8 flex items-start justify-between gap-5">
-                  <div>
-                    <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-cyan-400">
-                      Reseller Progression
-                    </p>
-
-                    <h2 className="text-4xl font-black">
-                      How reseller levels work
-                    </h2>
-
-                    <p className="mt-5 max-w-xl text-zinc-400">
-                      Your lifetime spending determines your reseller level. As
-                      your volume grows, stronger benefits and better rewards
-                      unlock automatically.
-                    </p>
-                  </div>
-
-                  <div className="hidden h-16 w-16 shrink-0 items-center justify-center rounded-3xl border border-cyan-500/20 bg-cyan-500/10 text-3xl xl:flex">
-                    ↗
-                  </div>
-                </div>
-
-                <div className="relative grid gap-4 sm:grid-cols-2">
-                  {[
-                    ["1", "Add funds", "Load your wallet securely."],
-                    ["2", "Place orders", "Use services for your clients."],
-                    ["3", "Earn points", "Completed orders generate rewards."],
-                    ["4", "Level up", "Unlock better perks over time."],
-                  ].map(([number, title, text]) => (
-                    <div
-                      key={title}
-                      className="group rounded-3xl border border-zinc-800 bg-black/70 p-5 transition hover:border-cyan-500/40 hover:bg-cyan-500/5"
-                    >
-                      <div className="mb-4 flex items-center justify-between">
-                        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-600 font-black">
-                          {number}
-                        </span>
-
-                        <span className="text-xl text-cyan-400">→</span>
+                    <div className="mt-5 grid gap-4 md:grid-cols-2">
+                      <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                        <p className="text-xs font-black uppercase text-slate-400">
+                          Available Points
+                        </p>
+                        <p className="mt-2 text-xl font-black text-blue-600">
+                          {formatCompact(availablePoints)} pts
+                        </p>
                       </div>
 
-                      <h3 className="font-black text-white">{title}</h3>
-                      <p className="mt-2 text-sm text-zinc-500">{text}</p>
+                      <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                        <p className="text-xs font-black uppercase text-slate-400">
+                          Point Value
+                        </p>
+                        <p className="mt-2 text-lg font-black text-green-600">
+                          100 pts = ${currentLevel.pointValueUsd.toFixed(2)}
+                        </p>
+                      </div>
                     </div>
-                  ))}
+
+                    <label className="mt-5 block text-sm font-black text-slate-700">
+                      Points to Convert
+                    </label>
+
+                    <div className="mt-2 flex overflow-hidden rounded-xl border border-slate-200 bg-white">
+                      <input
+                        value={pointsInput}
+                        onChange={(e) => setPointsInput(e.target.value)}
+                        type="number"
+                        min={MIN_CONVERT_POINTS}
+                        max={availablePoints}
+                        placeholder="Enter points"
+                        className="h-12 flex-1 px-4 text-sm font-semibold outline-none"
+                      />
+                      <div className="flex h-12 items-center border-l border-slate-200 px-4 text-sm font-black text-slate-500">
+                        pts
+                      </div>
+                    </div>
+
+                    <div className="mt-4 rounded-xl bg-slate-50 p-4">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-bold text-slate-500">
+                          You will receive
+                        </p>
+                        <div className="text-right">
+                          <p className="text-xl font-black text-slate-950">
+                            ${usdCredit.toFixed(2)}
+                          </p>
+                          <p className="text-xs font-bold text-slate-400">
+                            ₱{formatMoney(phpCredit)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {message && (
+                      <p className="mt-3 rounded-xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-600">
+                        {message}
+                      </p>
+                    )}
+
+                    <button
+                      onClick={convertPoints}
+                      disabled={converting || loading}
+                      className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <ArrowRightLeft size={18} />
+                      {converting ? "Converting..." : "Convert to Balance"}
+                    </button>
+
+                    <p className="mt-3 text-xs font-semibold text-slate-400">
+                      Minimum {MIN_CONVERT_POINTS} points required. Point conversions are final.
+                    </p>
+                  </section>
+
+                  <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="flex items-center justify-between gap-4">
+                      <h3 className="text-lg font-black text-slate-950">
+                        Recent Conversions
+                      </h3>
+
+                      <button className="text-sm font-black text-blue-600">
+                        View All
+                      </button>
+                    </div>
+
+                    <div className="mt-5 overflow-hidden rounded-xl border border-slate-100">
+                      <table className="w-full text-sm">
+                        <thead className="bg-slate-50 text-slate-500">
+                          <tr>
+                            <th className="p-4 text-left font-black">Date</th>
+                            <th className="p-4 text-left font-black">Points</th>
+                            <th className="p-4 text-left font-black">Amount</th>
+                            <th className="p-4 text-left font-black">Status</th>
+                          </tr>
+                        </thead>
+
+                        <tbody>
+                          {history.length <= 0 ? (
+                            <tr>
+                              <td
+                                colSpan={4}
+                                className="p-8 text-center text-sm font-semibold text-slate-500"
+                              >
+                                No conversions yet.
+                              </td>
+                            </tr>
+                          ) : (
+                            history.map((item) => (
+                              <tr
+                                key={item.id}
+                                className="border-t border-slate-100"
+                              >
+                                <td className="p-4 font-semibold text-slate-600">
+                                  {formatDate(item.created_at)}
+                                </td>
+                                <td className="p-4 font-black text-slate-700">
+                                  {item.points_used} pts
+                                </td>
+                                <td className="p-4 font-black text-slate-700">
+                                  ₱{formatMoney(item.amount_credited)}
+                                </td>
+                                <td className="p-4">
+                                  <span className="rounded-lg bg-green-100 px-3 py-1 text-xs font-black text-green-700">
+                                    Completed
+                                  </span>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
                 </div>
               </div>
+
+              <aside className="space-y-6">
+                <section className="rounded-2xl border border-blue-950/10 bg-[#061c42] p-5 text-white shadow-sm">
+                  <h3 className="text-lg font-black">Reseller Summary</h3>
+
+                  <div className="mt-5 space-y-4">
+                    <SummaryRow label="Current Level" value={currentLevel.name} />
+                    <SummaryRow label="Level" value={`Level ${currentLevel.level}`} />
+                    <SummaryRow label="Total Spend" value={`₱${formatMoney(totalSpend)}`} />
+                    <SummaryRow
+                      label="Next Level"
+                      value={nextLevel?.name || "Max Level"}
+                    />
+                    <SummaryRow
+                      label="Required Spend"
+                      value={`₱${formatMoney(requiredSpend)}`}
+                    />
+                    <SummaryRow
+                      label="Remaining to Next Level"
+                      value={
+                        nextLevel
+                          ? `₱${formatMoney(remainingSpend)}`
+                          : "Completed"
+                      }
+                    />
+                  </div>
+                </section>
+
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+                      <Star size={20} />
+                    </div>
+
+                    <h3 className="text-lg font-black text-slate-950">
+                      How to Earn Points
+                    </h3>
+                  </div>
+
+                  <div className="mt-5 space-y-5">
+                    <HowToEarnItem
+                      icon={ShoppingCart}
+                      title="Spend to Earn"
+                      text="Earn 1 point for every ₱200 spent on orders and services."
+                      color="bg-blue-600 text-white"
+                    />
+
+                    <HowToEarnItem
+                      icon={Wallet}
+                      title="Convert & Save"
+                      text="Convert your points to balance based on your level's rate."
+                      color="bg-green-600 text-white"
+                    />
+
+                    <HowToEarnItem
+                      icon={Trophy}
+                      title="More Spend, More Rewards"
+                      text="Reach higher levels to increase your point value and discounts."
+                      color="bg-orange-500 text-white"
+                    />
+                  </div>
+                </section>
+
+                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="flex items-start gap-4">
+                    <div
+                      className={`flex h-12 w-12 items-center justify-center rounded-2xl ${
+                        currentLevel.childPanel
+                          ? "bg-green-100 text-green-600"
+                          : "bg-red-100 text-red-500"
+                      }`}
+                    >
+                      {currentLevel.childPanel ? <Unlock size={23} /> : <Lock size={23} />}
+                    </div>
+
+                    <div>
+                      <h3 className="text-lg font-black text-slate-950">
+                        Child Panel Access
+                      </h3>
+
+                      <p
+                        className={`mt-2 text-sm font-black ${
+                          currentLevel.childPanel
+                            ? "text-green-600"
+                            : "text-red-500"
+                        }`}
+                      >
+                        {currentLevel.childPanel ? "Unlocked" : "Locked"}
+                      </p>
+
+                      <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
+                        {currentLevel.childPanel
+                          ? "You can create and manage child panels for your clients."
+                          : "Reach Pro Reseller level to unlock child panel access."}
+                      </p>
+                    </div>
+                  </div>
+                </section>
+              </aside>
             </div>
           </div>
-        </div>
-      </section>
-
-      <Footer />
-    </main>
+        </section>
+      </main>
+    </DashboardGuard>
   );
+}
+
+function MetricCard({
+  icon: Icon,
+  title,
+  value,
+  subtitle,
+  color,
+}: {
+  icon: any;
+  title: string;
+  value: string;
+  subtitle: string;
+  color: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex items-center gap-5">
+        <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${color}`}>
+          <Icon size={26} />
+        </div>
+
+        <div>
+          <p className="text-xs font-black uppercase tracking-wide text-slate-500">
+            {title}
+          </p>
+          <h3 className="mt-2 text-2xl font-black text-slate-950">{value}</h3>
+          <p className="mt-1 text-sm font-semibold text-slate-400">{subtitle}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-3 last:border-b-0 last:pb-0">
+      <p className="text-sm font-semibold text-blue-100">{label}</p>
+      <p className="text-right text-sm font-black text-white">{value}</p>
+    </div>
+  );
+}
+
+function HowToEarnItem({
+  icon: Icon,
+  title,
+  text,
+  color,
+}: {
+  icon: any;
+  title: string;
+  text: string;
+  color: string;
+}) {
+  return (
+    <div className="flex gap-4">
+      <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${color}`}>
+        <Icon size={22} />
+      </div>
+
+      <div>
+        <p className="text-sm font-black text-slate-800">{title}</p>
+        <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
+          {text}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function getCurrentLevel(totalSpend: number) {
+  return [...RESELLER_LEVELS]
+    .reverse()
+    .find((level) => totalSpend >= level.requiredSpend) || RESELLER_LEVELS[0];
+}
+
+function getNextLevel(currentLevel: number) {
+  return RESELLER_LEVELS.find((level) => level.level === currentLevel + 1) || null;
+}
+
+function calculateUsdCredit(points: number, pointValueUsd: number) {
+  return (points / 100) * pointValueUsd;
+}
+
+function toNumber(value: unknown) {
+  const number = Number(value || 0);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function formatMoney(value: number) {
+  return value.toLocaleString("en-PH", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatCompact(value: number) {
+  return value.toLocaleString("en-PH", {
+    maximumFractionDigits: 0,
+  });
+}
+
+function formatDate(dateString: string) {
+  return new Date(dateString).toLocaleDateString("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
