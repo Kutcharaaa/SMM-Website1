@@ -168,7 +168,7 @@ export default function AffiliatesPage() {
       .select("*")
       .eq("referrer_id", user.id)
       .order("created_at", { ascending: false })
-      .limit(5);
+      .limit(4);
 
     if (referralError) {
       console.warn("AFFILIATE_REFERRALS_NOT_READY:", referralError.message);
@@ -182,7 +182,7 @@ export default function AffiliatesPage() {
       .select("*")
       .eq("referrer_id", user.id)
       .order("created_at", { ascending: false })
-      .limit(5);
+      .limit(4);
 
     if (commissionError) {
       console.warn("AFFILIATE_COMMISSIONS_NOT_READY:", commissionError.message);
