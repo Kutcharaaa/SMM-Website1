@@ -114,12 +114,18 @@ export default function AffiliatesPage() {
   const [referrals, setReferrals] = useState<ReferralRecord[]>([]);
   const [commissions, setCommissions] = useState<CommissionRecord[]>([]);
   const [transferHistory, setTransferHistory] = useState<TransferRecord[]>([]);
+  const [allReferrals, setAllReferrals] = useState<ReferralRecord[]>([]);
+  const [allCommissions, setAllCommissions] = useState<CommissionRecord[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [transferring, setTransferring] = useState(false);
+  const [loadingAllReferrals, setLoadingAllReferrals] = useState(false);
+  const [loadingAllCommissions, setLoadingAllCommissions] = useState(false);
 
   const [showCommissionModal, setShowCommissionModal] = useState(false);
+  const [showReferralsModal, setShowReferralsModal] = useState(false);
+  const [showCommissionsModal, setShowCommissionsModal] = useState(false);
   const [transferAmount, setTransferAmount] = useState("");
   const [transferMessage, setTransferMessage] = useState("");
 
@@ -135,11 +141,19 @@ export default function AffiliatesPage() {
       setReferrals([]);
       setCommissions([]);
       setTransferHistory([]);
+      setAllReferrals([]);
+      setAllCommissions([]);
       setLoading(false);
       return;
     }
 
-    await supabase.rpc("refresh_my_affiliate_commissions");
+    const { error: refreshError } = await supabase.rpc(
+      "refresh_my_affiliate_commissions",
+    );
+
+    if (refreshError) {
+      console.warn("AFFILIATE_REFRESH_NOT_READY:", refreshError.message);
+    }
 
     const { data: profileData } = await supabase
       .from("profiles")
@@ -192,6 +206,78 @@ export default function AffiliatesPage() {
     }
 
     setLoading(false);
+  }
+
+  async function loadAllReferrals() {
+    setLoadingAllReferrals(true);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setAllReferrals([]);
+      setLoadingAllReferrals(false);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("affiliate_referrals")
+      .select("*")
+      .eq("referrer_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(100);
+
+    if (error) {
+      console.warn("AFFILIATE_ALL_REFERRALS_NOT_READY:", error.message);
+      setAllReferrals([]);
+    } else {
+      setAllReferrals((data || []) as ReferralRecord[]);
+    }
+
+    setLoadingAllReferrals(false);
+  }
+
+  async function loadAllCommissions() {
+    setLoadingAllCommissions(true);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setAllCommissions([]);
+      setLoadingAllCommissions(false);
+      return;
+    }
+
+    await supabase.rpc("refresh_my_affiliate_commissions");
+
+    const { data, error } = await supabase
+      .from("affiliate_commissions")
+      .select("*")
+      .eq("referrer_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(100);
+
+    if (error) {
+      console.warn("AFFILIATE_ALL_COMMISSIONS_NOT_READY:", error.message);
+      setAllCommissions([]);
+    } else {
+      setAllCommissions((data || []) as CommissionRecord[]);
+    }
+
+    setLoadingAllCommissions(false);
+  }
+
+  function openReferralsModal() {
+    setShowReferralsModal(true);
+    loadAllReferrals();
+  }
+
+  function openCommissionsModal() {
+    setShowCommissionsModal(true);
+    loadAllCommissions();
   }
 
   useEffect(() => {
@@ -331,6 +417,7 @@ export default function AffiliatesPage() {
 
     setTransferAmount("");
     await loadAffiliateData();
+    await loadAllCommissions();
     setTransferring(false);
   }
 
@@ -636,7 +723,11 @@ export default function AffiliatesPage() {
                     Recent Referrals
                   </h3>
 
-                  <button className="text-sm font-black text-blue-600">
+                  <button
+                    type="button"
+                    onClick={openReferralsModal}
+                    className="text-sm font-black text-blue-600 transition hover:text-blue-700"
+                  >
                     View All
                   </button>
                 </div>
@@ -690,7 +781,11 @@ export default function AffiliatesPage() {
                   </table>
                 </div>
 
-                <button className="mt-4 flex w-full items-center justify-center gap-2 text-sm font-black text-blue-600">
+                <button
+                  type="button"
+                  onClick={openReferralsModal}
+                  className="mt-4 flex w-full items-center justify-center gap-2 text-sm font-black text-blue-600 transition hover:text-blue-700"
+                >
                   View All Referrals <ArrowRight size={16} />
                 </button>
               </section>
@@ -701,7 +796,11 @@ export default function AffiliatesPage() {
                     Commission History
                   </h3>
 
-                  <button className="text-sm font-black text-blue-600">
+                  <button
+                    type="button"
+                    onClick={openCommissionsModal}
+                    className="text-sm font-black text-blue-600 transition hover:text-blue-700"
+                  >
                     View All
                   </button>
                 </div>
@@ -729,38 +828,44 @@ export default function AffiliatesPage() {
                           </td>
                         </tr>
                       ) : (
-                        commissions.map((item) => (
-                          <tr key={item.id} className="border-t border-slate-100">
-                            <td className="p-3 font-semibold text-slate-500">
-                              {formatDate(item.created_at)}
-                            </td>
-                            <td className="p-3 font-black text-slate-700">
-                              {item.referred_username || "Referral"}
-                            </td>
-                            <td className="p-3 font-black text-slate-700">
-                              ₱{formatMoney(toNumber(item.deposit_amount))}
-                            </td>
-                            <td className="p-3 font-black text-slate-700">
-                              ₱
-                              {formatMoney(
-                                Math.max(
-                                  0,
-                                  toNumber(item.commission_amount) -
-                                    toNumber(item.used_amount),
-                                ),
-                              )}
-                            </td>
-                            <td className="p-3">
-                              <CommissionStatusBadge status={item.status || "pending"} />
-                            </td>
-                          </tr>
-                        ))
+                        commissions.map((item) => {
+                          const commissionAmount = toNumber(item.commission_amount);
+                          const usedAmount = toNumber(item.used_amount);
+                          const availableLeft = Math.max(
+                            0,
+                            commissionAmount - usedAmount,
+                          );
+
+                          return (
+                            <tr key={item.id} className="border-t border-slate-100">
+                              <td className="p-3 font-semibold text-slate-500">
+                                {formatDate(item.created_at)}
+                              </td>
+                              <td className="p-3 font-black text-slate-700">
+                                {item.referred_username || "Referral"}
+                              </td>
+                              <td className="p-3 font-black text-slate-700">
+                                ₱{formatMoney(toNumber(item.deposit_amount))}
+                              </td>
+                              <td className="p-3 font-black text-slate-700">
+                                ₱{formatMoney(availableLeft)}
+                              </td>
+                              <td className="p-3">
+                                <CommissionStatusBadge status={item.status || "pending"} />
+                              </td>
+                            </tr>
+                          );
+                        })
                       )}
                     </tbody>
                   </table>
                 </div>
 
-                <button className="mt-4 flex w-full items-center justify-center gap-2 text-sm font-black text-blue-600">
+                <button
+                  type="button"
+                  onClick={openCommissionsModal}
+                  className="mt-4 flex w-full items-center justify-center gap-2 text-sm font-black text-blue-600 transition hover:text-blue-700"
+                >
                   View All History <ArrowRight size={16} />
                 </button>
               </section>
@@ -795,6 +900,211 @@ export default function AffiliatesPage() {
               </div>
             </section>
           </div>
+
+          {showReferralsModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+              <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+                <div className="flex items-start justify-between border-b border-slate-100 p-6">
+                  <div>
+                    <h3 className="text-2xl font-black text-slate-950">
+                      All Referrals
+                    </h3>
+
+                    <p className="mt-1 text-sm font-semibold text-slate-500">
+                      View users who registered using your referral link.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowReferralsModal(false)}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="overflow-y-auto p-6">
+                  {loadingAllReferrals ? (
+                    <div className="rounded-2xl bg-slate-50 p-10 text-center text-sm font-semibold text-slate-500">
+                      Loading referrals...
+                    </div>
+                  ) : (
+                    <div className="overflow-hidden rounded-xl border border-slate-100">
+                      <div className="overflow-x-auto">
+                        <table className="w-full min-w-[760px] text-sm">
+                          <thead className="bg-slate-50 text-slate-500">
+                            <tr>
+                              <th className="p-4 text-left font-black">User</th>
+                              <th className="p-4 text-left font-black">Joined</th>
+                              <th className="p-4 text-left font-black">Total Deposits</th>
+                              <th className="p-4 text-left font-black">Qualification</th>
+                              <th className="p-4 text-left font-black">Status</th>
+                            </tr>
+                          </thead>
+
+                          <tbody>
+                            {allReferrals.length <= 0 ? (
+                              <tr>
+                                <td
+                                  colSpan={5}
+                                  className="p-12 text-center text-sm font-semibold text-slate-500"
+                                >
+                                  No referrals yet.
+                                </td>
+                              </tr>
+                            ) : (
+                              allReferrals.map((item) => {
+                                const deposits = toNumber(item.total_deposits);
+                                const isQualified =
+                                  item.is_qualified || deposits >= QUALIFICATION_AMOUNT;
+                                const remaining = Math.max(
+                                  0,
+                                  QUALIFICATION_AMOUNT - deposits,
+                                );
+
+                                return (
+                                  <tr key={item.id} className="border-t border-slate-100">
+                                    <td className="p-4 font-black text-slate-700">
+                                      {item.referred_username || "User"}
+                                    </td>
+
+                                    <td className="p-4 font-semibold text-slate-500">
+                                      {formatDate(item.created_at)}
+                                    </td>
+
+                                    <td className="p-4 font-black text-slate-700">
+                                      ₱{formatMoney(deposits)}
+                                    </td>
+
+                                    <td className="p-4 font-semibold text-slate-500">
+                                      {isQualified
+                                        ? "Reached ₱1,000"
+                                        : `₱${formatMoney(remaining)} remaining`}
+                                    </td>
+
+                                    <td className="p-4">
+                                      <StatusBadge qualified={isQualified} />
+                                    </td>
+                                  </tr>
+                                );
+                              })
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showCommissionsModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+              <div className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+                <div className="flex items-start justify-between border-b border-slate-100 p-6">
+                  <div>
+                    <h3 className="text-2xl font-black text-slate-950">
+                      All Commission History
+                    </h3>
+
+                    <p className="mt-1 text-sm font-semibold text-slate-500">
+                      View all affiliate commissions, including pending, available, and used commissions.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowCommissionsModal(false)}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="overflow-y-auto p-6">
+                  {loadingAllCommissions ? (
+                    <div className="rounded-2xl bg-slate-50 p-10 text-center text-sm font-semibold text-slate-500">
+                      Loading commission history...
+                    </div>
+                  ) : (
+                    <div className="overflow-hidden rounded-xl border border-slate-100">
+                      <div className="overflow-x-auto">
+                        <table className="w-full min-w-[900px] text-sm">
+                          <thead className="bg-slate-50 text-slate-500">
+                            <tr>
+                              <th className="p-4 text-left font-black">Date</th>
+                              <th className="p-4 text-left font-black">Referral</th>
+                              <th className="p-4 text-left font-black">Deposit</th>
+                              <th className="p-4 text-left font-black">Commission</th>
+                              <th className="p-4 text-left font-black">Used</th>
+                              <th className="p-4 text-left font-black">Available Left</th>
+                              <th className="p-4 text-left font-black">Status</th>
+                            </tr>
+                          </thead>
+
+                          <tbody>
+                            {allCommissions.length <= 0 ? (
+                              <tr>
+                                <td
+                                  colSpan={7}
+                                  className="p-12 text-center text-sm font-semibold text-slate-500"
+                                >
+                                  No commissions yet.
+                                </td>
+                              </tr>
+                            ) : (
+                              allCommissions.map((item) => {
+                                const commissionAmount = toNumber(item.commission_amount);
+                                const usedAmount = toNumber(item.used_amount);
+                                const availableLeft = Math.max(
+                                  0,
+                                  commissionAmount - usedAmount,
+                                );
+
+                                return (
+                                  <tr key={item.id} className="border-t border-slate-100">
+                                    <td className="p-4 font-semibold text-slate-500">
+                                      {formatDate(item.created_at)}
+                                    </td>
+
+                                    <td className="p-4 font-black text-slate-700">
+                                      {item.referred_username || "Referral"}
+                                    </td>
+
+                                    <td className="p-4 font-black text-slate-700">
+                                      ₱{formatMoney(toNumber(item.deposit_amount))}
+                                    </td>
+
+                                    <td className="p-4 font-black text-slate-700">
+                                      ₱{formatMoney(commissionAmount)}
+                                    </td>
+
+                                    <td className="p-4 font-black text-slate-700">
+                                      ₱{formatMoney(usedAmount)}
+                                    </td>
+
+                                    <td className="p-4 font-black text-slate-700">
+                                      ₱{formatMoney(availableLeft)}
+                                    </td>
+
+                                    <td className="p-4">
+                                      <CommissionStatusBadge status={item.status || "pending"} />
+                                    </td>
+                                  </tr>
+                                );
+                              })
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {showCommissionModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
