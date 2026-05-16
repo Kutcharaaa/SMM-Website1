@@ -102,7 +102,7 @@ const RESELLER_LEVELS: ResellerLevel[] = [
   },
 ];
 
-const PHP_PER_USD = 56;
+const PHP_PER_USD = 55.5;
 const MIN_CONVERT_POINTS = 100;
 
 export default function ResellerPage() {
