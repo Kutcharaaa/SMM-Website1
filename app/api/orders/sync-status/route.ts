@@ -27,11 +27,13 @@ function calculateCurrentCount({
   remains: number;
   fallback: number;
 }) {
-  if (nextStatus === "completed") {
-    return quantity;
-  }
+  if (nextStatus === "completed") return quantity;
 
-  if (nextStatus === "canceled" || nextStatus === "failed" || nextStatus === "rejected") {
+  if (
+    nextStatus === "canceled" ||
+    nextStatus === "failed" ||
+    nextStatus === "rejected"
+  ) {
     return fallback;
   }
 
@@ -41,8 +43,12 @@ function calculateCurrentCount({
 export async function POST(req: Request) {
   try {
     const secret = req.headers.get("authorization");
+    const internalRequest = req.headers.get("x-internal-sync") === "true";
 
-    if (secret !== `Bearer ${process.env.CRON_SECRET}`) {
+    if (
+      secret !== `Bearer ${process.env.CRON_SECRET}` &&
+      !internalRequest
+    ) {
       return NextResponse.json({
         success: false,
         message: "Unauthorized.",
