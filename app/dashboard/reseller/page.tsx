@@ -40,7 +40,8 @@ type ConversionRecord = {
   id: string;
   points_used?: number | string | null;
   points?: number | string | null;
-  amount_credited: number | string;
+  amount_credited?: number | string | null;
+  wallet_credit?: number | string | null;
   created_at: string;
   status: string;
 };
@@ -149,7 +150,7 @@ export default function ResellerPage() {
 
     const { data: historyData, error: historyError } = await supabase
       .from("reseller_point_conversions")
-      .select("id, points_used, points, amount_credited, created_at, status")
+      .select("id, points_used, points, amount_credited, wallet_credit, created_at, status")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(5);
@@ -243,20 +244,25 @@ export default function ResellerPage() {
 
 const { data: newHistory, error: historyError } = await supabase
   .from("reseller_point_conversions")
-  .insert({
-    user_id: user.id,
+.insert({
+  user_id: user.id,
 
-    // new column
-    points_used: pointsToConvert,
+  // new column
+  points_used: pointsToConvert,
 
-    // old required column in your table
-    points: pointsToConvert,
+  // old required column in your table
+  points: pointsToConvert,
 
-    amount_credited: phpCredit,
-    usd_value: usdCredit,
-    level_name: currentLevel.name,
-    status: "completed",
-  })
+  // new amount column
+  amount_credited: phpCredit,
+
+  // old required amount column in your table
+  wallet_credit: phpCredit,
+
+  usd_value: usdCredit,
+  level_name: currentLevel.name,
+  status: "completed",
+})
   .select("id, points_used, points, amount_credited, created_at, status")
   .single();
 
@@ -656,7 +662,7 @@ const { data: newHistory, error: historyError } = await supabase
                             </td>
 
                             <td className="p-4 font-black text-slate-700">
-                              ₱{formatMoney(toNumber(item.amount_credited))}
+                             ₱{formatMoney(toNumber(item.amount_credited ?? item.wallet_credit))}
                             </td>
 
                             <td className="p-4">
