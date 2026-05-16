@@ -136,11 +136,20 @@ export default function OrdersPage() {
   }
 
   async function loadOrderData() {
-    const { data: serviceData } = await supabase
-      .from("services")
-      .select("*")
-      .eq("status", "active")
-      .order("category");
+const { data: serviceData, error: serviceError } = await supabase
+  .from("services")
+  .select("*")
+  .in("status", ["active", "Active"])
+  .order("category");
+
+if (serviceError) {
+  console.error("SERVICES LOAD ERROR:", serviceError.message);
+  showToast(serviceError.message, "error");
+}
+
+console.log("LOADED SERVICES:", serviceData);
+
+setServices(serviceData || []);
 
     setServices(serviceData || []);
 
