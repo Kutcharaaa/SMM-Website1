@@ -583,8 +583,8 @@ export default function DashboardServicesPage() {
             </div>
           </div>
 
-          <aside className="hidden border-l border-slate-200 bg-white p-5 lg:block">
-            <div className="sticky top-4 pb-6">
+          <aside className="hidden max-h-[calc(100vh-80px)] overflow-y-auto border-l border-slate-200 bg-white p-5 lg:block">
+            <div className="pb-8">
               <div className="mb-6 flex items-center justify-between">
                 <h3 className="text-lg font-black text-slate-950">
                   Service Details
@@ -616,7 +616,7 @@ export default function DashboardServicesPage() {
                             </p>
                           </div>
 
-                          <h4 className="mt-3 text-base font-black leading-snug text-slate-950">
+                          <h4 className="mt-3 break-words text-sm font-black leading-snug text-slate-950">
                             {selectedService.name}
                           </h4>
 
@@ -663,7 +663,7 @@ export default function DashboardServicesPage() {
                   </div>
 
                   <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-                    <h4 className="text-base font-black text-slate-950">
+                    <h4 className="text-sm font-black text-slate-950">
                       Order Calculator
                     </h4>
 
