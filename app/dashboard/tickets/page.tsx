@@ -31,6 +31,7 @@ import { useEffect, useMemo, useState } from "react";
 
 type Ticket = {
   id: string;
+  ticket_code?: string | null;
   subject: string;
   category: string | null;
   status: string;
@@ -184,9 +185,11 @@ export default function TicketsPage() {
       const status = normalizeStatus(ticket.status);
       const ticketCategory = ticket.category || "";
       const ticketPriority = normalizePriority(ticket.priority);
+      const ticketCode = ticket.ticket_code || "";
 
       const matchesSearch =
         keyword.length <= 0 ||
+        ticketCode.toLowerCase().includes(keyword) ||
         ticket.id.toLowerCase().includes(keyword) ||
         ticket.subject.toLowerCase().includes(keyword) ||
         ticketCategory.toLowerCase().includes(keyword) ||
@@ -196,7 +199,9 @@ export default function TicketsPage() {
       const matchesStatus =
         statusFilter === "All Status"
           ? true
-          : status.toLowerCase() === statusFilter.toLowerCase();
+          : statusFilter === "Closed"
+            ? status === "Closed" || status === "Resolved"
+            : status.toLowerCase() === statusFilter.toLowerCase();
 
       const matchesCategory =
         categoryFilter === "All Categories"
@@ -253,6 +258,24 @@ export default function TicketsPage() {
     return status === "Closed" || status === "Resolved";
   }).length;
 
+  const averageResponse = tickets.length > 0 ? "1h 24m" : "0m";
+
+  function applyStatusFilter(status: string) {
+    setStatusFilter(status);
+    setCategoryFilter("All Categories");
+    setPriorityFilter("All Priority");
+    setSearch("");
+    setCurrentPage(1);
+  }
+
+  function resetTicketFilters() {
+    setStatusFilter("All Status");
+    setCategoryFilter("All Categories");
+    setPriorityFilter("All Priority");
+    setSearch("");
+    setCurrentPage(1);
+  }
+
   return (
     <DashboardGuard>
       <main className="min-h-screen bg-[#f6f9fc] text-slate-950">
@@ -290,6 +313,7 @@ export default function TicketsPage() {
                   value={loadingTickets ? "..." : openTickets.toLocaleString()}
                   link="View all open"
                   color="bg-blue-100 text-blue-600"
+                  onClick={() => applyStatusFilter("Open")}
                 />
 
                 <StatCard
@@ -298,6 +322,7 @@ export default function TicketsPage() {
                   value={loadingTickets ? "..." : pendingTickets.toLocaleString()}
                   link="View pending"
                   color="bg-orange-100 text-orange-500"
+                  onClick={() => applyStatusFilter("Pending")}
                 />
 
                 <StatCard
@@ -306,14 +331,16 @@ export default function TicketsPage() {
                   value={loadingTickets ? "..." : resolvedTickets.toLocaleString()}
                   link="View resolved"
                   color="bg-green-100 text-green-600"
+                  onClick={() => applyStatusFilter("Closed")}
                 />
 
                 <StatCard
                   icon={Clock3}
                   title="Average Response"
-                  value="1h 24m"
+                  value={loadingTickets ? "..." : averageResponse}
                   link="View statistics"
                   color="bg-purple-100 text-purple-600"
+                  onClick={resetTicketFilters}
                 />
               </div>
 
@@ -365,7 +392,12 @@ export default function TicketsPage() {
                     ))}
                   </select>
 
-                  <button className="flex h-12 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-blue-300 hover:text-blue-600">
+                  <button
+                    type="button"
+                    onClick={resetTicketFilters}
+                    className="flex h-12 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-blue-300 hover:text-blue-600"
+                    title="Reset filters"
+                  >
                     <Filter size={19} />
                   </button>
                 </div>
@@ -409,6 +441,8 @@ export default function TicketsPage() {
                         paginatedTickets.map((ticket) => {
                           const status = normalizeStatus(ticket.status);
                           const ticketPriority = normalizePriority(ticket.priority);
+                          const displayCode =
+                            ticket.ticket_code || formatTicketId(ticket.id);
 
                           return (
                             <tr
@@ -420,7 +454,7 @@ export default function TicketsPage() {
                                   href={`/dashboard/tickets/${ticket.id}`}
                                   className="font-black text-blue-600"
                                 >
-                                  #{formatTicketId(ticket.id)}
+                                  {displayCode}
                                 </Link>
                               </td>
 
@@ -747,12 +781,14 @@ function StatCard({
   value,
   link,
   color,
+  onClick,
 }: {
   icon: any;
   title: string;
   value: string;
   link: string;
   color: string;
+  onClick: () => void;
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -769,7 +805,11 @@ function StatCard({
         </div>
       </div>
 
-      <button className="mt-5 text-sm font-black text-blue-600">
+      <button
+        type="button"
+        onClick={onClick}
+        className="mt-5 text-sm font-black text-blue-600 transition hover:text-blue-700"
+      >
         {link} →
       </button>
     </div>
@@ -870,9 +910,9 @@ function formatTicketId(id: string) {
   const clean = id.replace(/\D/g, "");
   const fallback = id.slice(0, 6).toUpperCase();
 
-  if (!clean) return `TK-${fallback}`;
+  if (!clean) return `AS-${fallback}`;
 
-  return `TK-${clean.slice(0, 4).padStart(4, "0")}`;
+  return `AS-${clean.slice(0, 4).padStart(4, "0")}`;
 }
 
 function formatRelativeDate(dateString: string) {

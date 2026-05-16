@@ -29,6 +29,7 @@ import { useEffect, useMemo, useState } from "react";
 
 type Ticket = {
   id: string;
+  ticket_code?: string | null;
   user_id?: string;
   subject: string;
   category: string | null;
@@ -178,6 +179,7 @@ export default function TicketDetailPage() {
     loadTicket();
   }
 
+  const displayTicketCode = ticket?.ticket_code || formatTicketId(ticketId);
   const normalizedStatus = normalizeStatus(ticket?.status || "open");
   const normalizedPriority = normalizePriority(ticket?.priority || "medium");
   const isClosed = normalizedStatus === "Closed";
@@ -211,7 +213,7 @@ export default function TicketDetailPage() {
                   </h1>
 
                   <p className="mt-2 text-sm font-semibold text-slate-500">
-                    Ticket #{formatTicketId(ticketId)} • Created{" "}
+                    Ticket {displayTicketCode} • Created{" "}
                     {ticket?.created_at ? formatFullDate(ticket.created_at) : "loading"}
                   </p>
                 </div>
@@ -242,7 +244,7 @@ export default function TicketDetailPage() {
                 <InfoCard
                   icon={TicketIcon}
                   title="Ticket ID"
-                  value={`#${formatTicketId(ticketId)}`}
+                  value={displayTicketCode}
                   color="bg-blue-100 text-blue-600"
                 />
 
@@ -474,7 +476,7 @@ export default function TicketDetailPage() {
                 </div>
 
                 <div className="mt-5 space-y-4">
-                  <DetailRow label="Ticket ID" value={`#${formatTicketId(ticketId)}`} />
+                  <DetailRow label="Ticket ID" value={displayTicketCode} />
                   <DetailRow label="Subject" value={ticket?.subject || "Loading"} />
                   <DetailRow label="Category" value={ticket?.category || "General Question"} />
                   <DetailRow label="Priority" value={normalizedPriority} />
@@ -684,9 +686,9 @@ function formatTicketId(id: string) {
   const clean = id.replace(/\D/g, "");
   const fallback = id.slice(0, 6).toUpperCase();
 
-  if (!clean) return `TK-${fallback}`;
+  if (!clean) return `AS-${fallback}`;
 
-  return `TK-${clean.slice(0, 4).padStart(4, "0")}`;
+  return `AS-${clean.slice(0, 4).padStart(4, "0")}`;
 }
 
 function formatFullDate(dateString: string) {
