@@ -52,6 +52,8 @@ type Service = {
   description: string;
 };
 
+const SERVICES_PER_PAGE = 15;
+
 const platforms = [
   "All Platforms",
   "Instagram",
@@ -162,9 +164,7 @@ export default function DashboardServicesPage() {
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [quantity, setQuantity] = useState("1000");
-
   const [currentPage, setCurrentPage] = useState(1);
-const SERVICES_PER_PAGE = 15;
 
   async function loadServices() {
     setLoading(true);
@@ -289,7 +289,34 @@ const SERVICES_PER_PAGE = 15;
     return filteredServices.slice(startIndex, startIndex + SERVICES_PER_PAGE);
   }, [filteredServices, currentPage]);
 
+  const visiblePages = useMemo(() => {
+    const pages: number[] = [];
+    const maxVisible = 5;
+
+    let start = Math.max(1, currentPage - 2);
+    let end = Math.min(totalPages, start + maxVisible - 1);
+
+    if (end - start < maxVisible - 1) {
+      start = Math.max(1, end - maxVisible + 1);
+    }
+
+    for (let page = start; page <= end; page++) {
+      pages.push(page);
+    }
+
+    return pages;
+  }, [currentPage, totalPages]);
+
+  const startItem =
+    filteredServices.length > 0 ? (currentPage - 1) * SERVICES_PER_PAGE + 1 : 0;
+
+  const endItem = Math.min(
+    currentPage * SERVICES_PER_PAGE,
+    filteredServices.length,
+  );
+
   const cheapestRate = services.length > 0 ? Math.min(...services.map((s) => s.price)) : 0;
+
   const fastestService = services.length > 0
     ? [...services].sort((a, b) => getFastestMinutes(a.fastest) - getFastestMinutes(b.fastest))[0]
     : null;
@@ -424,7 +451,9 @@ const SERVICES_PER_PAGE = 15;
                   ) : (
                     <PlatformIcon platform={item} size={18} />
                   )}
+
                   {item}
+
                   <span
                     className={`ml-1 rounded-full px-2 py-0.5 text-xs ${
                       platform === item ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
@@ -505,10 +534,12 @@ const SERVICES_PER_PAGE = 15;
                             <td className="p-5">
                               <div className="flex items-center gap-3">
                                 <PlatformIcon platform={service.platform} size={28} />
+
                                 <div>
                                   <p className="font-black text-slate-950">
                                     {service.name}
                                   </p>
+
                                   <p className="mt-1 text-xs font-semibold text-slate-400">
                                     {service.platform} • {service.category}
                                   </p>
@@ -580,24 +611,83 @@ const SERVICES_PER_PAGE = 15;
                 </table>
               </div>
 
-              <div className="flex items-center justify-between border-t border-slate-100 p-5">
+              <div className="flex flex-col gap-4 border-t border-slate-100 p-5 md:flex-row md:items-center md:justify-between">
                 <p className="text-sm font-semibold text-slate-500">
-                  Showing {filteredServices.length.toLocaleString()} of {services.length.toLocaleString()} services
+                  Showing{" "}
+                  <span className="font-black text-slate-700">
+                    {startItem.toLocaleString()} - {endItem.toLocaleString()}
+                  </span>{" "}
+                  of{" "}
+                  <span className="font-black text-slate-700">
+                    {filteredServices.length.toLocaleString()}
+                  </span>{" "}
+                  services
                 </p>
 
-                <div className="hidden items-center gap-2 md:flex">
-                  {[1, 2, 3, 4, 5].map((page) => (
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                    disabled={currentPage === 1}
+                    className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-600 transition hover:border-blue-300 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Prev
+                  </button>
+
+                  {visiblePages[0] > 1 && (
+                    <>
+                      <button
+                        onClick={() => setCurrentPage(1)}
+                        className="h-10 w-10 rounded-xl border border-slate-200 bg-white text-sm font-black text-slate-600 transition hover:border-blue-300 hover:text-blue-600"
+                      >
+                        1
+                      </button>
+
+                      {visiblePages[0] > 2 && (
+                        <span className="px-2 text-sm font-black text-slate-400">
+                          ...
+                        </span>
+                      )}
+                    </>
+                  )}
+
+                  {visiblePages.map((page) => (
                     <button
                       key={page}
-                      className={`h-10 w-10 rounded-xl border text-sm font-black ${
-                        page === 1
-                          ? "border-blue-600 bg-blue-600 text-white"
-                          : "border-slate-200 bg-white text-slate-600"
+                      onClick={() => setCurrentPage(page)}
+                      className={`h-10 w-10 rounded-xl border text-sm font-black transition ${
+                        page === currentPage
+                          ? "border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                          : "border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-600"
                       }`}
                     >
                       {page}
                     </button>
                   ))}
+
+                  {visiblePages[visiblePages.length - 1] < totalPages && (
+                    <>
+                      {visiblePages[visiblePages.length - 1] < totalPages - 1 && (
+                        <span className="px-2 text-sm font-black text-slate-400">
+                          ...
+                        </span>
+                      )}
+
+                      <button
+                        onClick={() => setCurrentPage(totalPages)}
+                        className="h-10 w-10 rounded-xl border border-slate-200 bg-white text-sm font-black text-slate-600 transition hover:border-blue-300 hover:text-blue-600"
+                      >
+                        {totalPages}
+                      </button>
+                    </>
+                  )}
+
+                  <button
+                    onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                    disabled={currentPage === totalPages}
+                    className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-600 transition hover:border-blue-300 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Next
+                  </button>
                 </div>
               </div>
             </div>
