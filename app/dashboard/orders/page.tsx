@@ -132,11 +132,6 @@ export default function OrdersPage() {
     }
 
     setOrders(data || []);
-
-    if (!selectedOrder && data && data.length > 0) {
-      setSelectedOrder(data[0]);
-    }
-
     setLoading(false);
   }
 
@@ -457,7 +452,7 @@ export default function OrdersPage() {
     }
   }
 
-  const sideOrder = selectedOrder || filteredOrders[0] || orders[0] || null;
+  const sideOrder = selectedOrder;
 
   const sideProgress =
     sideOrder && Number(sideOrder.quantity || 0) > 0
