@@ -10,7 +10,6 @@ import {
   Flag,
   Info,
   Lock,
-  Percent,
   ShoppingCart,
   Star,
   Tag,
@@ -39,8 +38,8 @@ type ProfileData = {
 
 type ConversionRecord = {
   id: string;
-  points_used: number;
-  amount_credited: number;
+  points_used: number | string;
+  amount_credited: number | string;
   created_at: string;
   status: string;
 };
@@ -149,12 +148,13 @@ export default function ResellerPage() {
 
     const { data: historyData, error: historyError } = await supabase
       .from("reseller_point_conversions")
-      .select("*")
+      .select("id, points_used, amount_credited, created_at, status")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(5);
 
     if (historyError) {
+      console.error("RESELLER_HISTORY_LOAD_ERROR:", historyError.message);
       setHistory([]);
     } else {
       setHistory((historyData || []) as ConversionRecord[]);
@@ -240,31 +240,39 @@ export default function ResellerPage() {
       return;
     }
 
-const { error: historyError } = await supabase
-  .from("reseller_point_conversions")
-  .insert({
-    user_id: user.id,
-    points_used: pointsToConvert,
-    amount_credited: phpCredit,
-    usd_value: usdCredit,
-    level_name: currentLevel.name,
-    status: "completed",
-  });
+    const { data: newHistory, error: historyError } = await supabase
+      .from("reseller_point_conversions")
+      .insert({
+        user_id: user.id,
+        points_used: pointsToConvert,
+        amount_credited: phpCredit,
+        usd_value: usdCredit,
+        level_name: currentLevel.name,
+        status: "completed",
+      })
+      .select("id, points_used, amount_credited, created_at, status")
+      .single();
 
-if (historyError) {
-  console.error("CONVERSION_HISTORY_ERROR:", historyError.message);
-  setMessage(
-    `Points converted, but conversion history failed: ${historyError.message}`,
-  );
-  setConverting(false);
-  loadData();
-  return;
-}
+    if (historyError) {
+      console.error("CONVERSION_HISTORY_ERROR:", historyError.message);
+      setConverting(false);
+      await loadData();
+      setMessage(
+        `Points converted, but conversion history failed: ${historyError.message}`,
+      );
+      return;
+    }
 
-setMessage(`Converted ${pointsToConvert} points to ₱${formatMoney(phpCredit)}.`);
-setPointsInput("100");
-setConverting(false);
-loadData();
+    if (newHistory) {
+      setHistory((current) =>
+        [newHistory as ConversionRecord, ...current].slice(0, 5),
+      );
+    }
+
+    setPointsInput("100");
+    setConverting(false);
+    await loadData();
+    setMessage(`Converted ${pointsToConvert} points to ₱${formatMoney(phpCredit)}.`);
   }
 
   return (
@@ -342,7 +350,9 @@ loadData();
                         <span className="font-black text-white">{nextLevel.name}</span>
                       </>
                     ) : (
-                      <span className="font-black text-white">Maximum level reached</span>
+                      <span className="font-black text-white">
+                        Maximum level reached
+                      </span>
                     )}
                   </p>
                 </div>
@@ -532,10 +542,10 @@ loadData();
 
                   <div className="pl-4 text-center">
                     <p className="text-xs font-black uppercase text-slate-400">
-                      100 Points
+                      Point Value
                     </p>
                     <p className="mt-2 text-lg font-black text-green-600">
-                      ${currentLevel.pointValueUsd.toFixed(2)}
+                      100 pts = ${currentLevel.pointValueUsd.toFixed(2)}
                     </p>
                   </div>
                 </div>
@@ -635,17 +645,17 @@ loadData();
                             </td>
 
                             <td className="p-4 font-black text-slate-700">
-                              {item.points_used} pts
+                              {formatCompact(toNumber(item.points_used))} pts
                             </td>
 
                             <td className="p-4 font-black text-slate-700">
-                              ₱{formatMoney(item.amount_credited)}
+                              ₱{formatMoney(toNumber(item.amount_credited))}
                             </td>
 
                             <td className="p-4">
                               <span className="inline-flex items-center gap-1 rounded-lg bg-green-100 px-3 py-1 text-xs font-black text-green-700">
                                 <CheckCircle2 size={13} />
-                                Completed
+                                {item.status || "Completed"}
                               </span>
                             </td>
                           </tr>
