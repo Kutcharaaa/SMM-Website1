@@ -532,10 +532,10 @@ loadData();
 
                   <div className="pl-4 text-center">
                     <p className="text-xs font-black uppercase text-slate-400">
-                      Point Value
+                      100 Points
                     </p>
                     <p className="mt-2 text-lg font-black text-green-600">
-                      100 pts = ${currentLevel.pointValueUsd.toFixed(2)}
+                      ${currentLevel.pointValueUsd.toFixed(2)}
                     </p>
                   </div>
                 </div>
