@@ -162,8 +162,6 @@ export default function DashboardServicesPage() {
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [quantity, setQuantity] = useState("1000");
-  const [currentPage, setCurrentPage] = useState(1);
-  const SERVICES_PER_PAGE = 15;
 
   async function loadServices() {
     setLoading(true);
