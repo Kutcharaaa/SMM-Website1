@@ -29,6 +29,13 @@ import {
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+type TicketReply = {
+  id: string;
+  ticket_id: string;
+  sender_role: string;
+  created_at: string;
+};
+
 type Ticket = {
   id: string;
   ticket_code?: string | null;
@@ -38,6 +45,7 @@ type Ticket = {
   priority: string;
   created_at: string;
   updated_at?: string | null;
+  ticket_replies?: TicketReply[];
 };
 
 const TICKETS_PER_PAGE = 8;
@@ -91,7 +99,17 @@ export default function TicketsPage() {
 
     const { data, error } = await supabase
       .from("tickets")
-      .select("*")
+      .select(
+        `
+        *,
+        ticket_replies (
+          id,
+          ticket_id,
+          sender_role,
+          created_at
+        )
+      `,
+      )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
@@ -258,7 +276,7 @@ export default function TicketsPage() {
     return status === "Closed" || status === "Resolved";
   }).length;
 
-  const averageResponse = tickets.length > 0 ? "1h 24m" : "0m";
+  const averageResponse = calculateAverageResponseTime(tickets);
 
   function applyStatusFilter(status: string) {
     setStatusFilter(status);
@@ -904,6 +922,78 @@ function getPriorityStyle(priority: string) {
   if (priority === "Medium") return "bg-blue-100 text-blue-600";
 
   return "bg-slate-100 text-slate-600";
+}
+
+function calculateAverageResponseTime(tickets: Ticket[]) {
+  const responseTimes: number[] = [];
+
+  tickets.forEach((ticket) => {
+    const replies = ticket.ticket_replies || [];
+
+    const firstUserReply = replies
+      .filter((reply) => reply.sender_role === "user")
+      .sort(
+        (a, b) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+      )[0];
+
+    const firstAdminReply = replies
+      .filter(
+        (reply) =>
+          reply.sender_role === "admin" ||
+          reply.sender_role === "support" ||
+          reply.sender_role === "staff",
+      )
+      .sort(
+        (a, b) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+      )
+      .find((reply) => {
+        if (!firstUserReply) return false;
+
+        return (
+          new Date(reply.created_at).getTime() >
+          new Date(firstUserReply.created_at).getTime()
+        );
+      });
+
+    if (firstUserReply && firstAdminReply) {
+      const responseMs =
+        new Date(firstAdminReply.created_at).getTime() -
+        new Date(firstUserReply.created_at).getTime();
+
+      if (responseMs > 0) {
+        responseTimes.push(responseMs);
+      }
+    }
+  });
+
+  if (responseTimes.length <= 0) {
+    return "0m";
+  }
+
+  const averageMs =
+    responseTimes.reduce((total, current) => total + current, 0) /
+    responseTimes.length;
+
+  return formatDuration(averageMs);
+}
+
+function formatDuration(milliseconds: number) {
+  const totalMinutes = Math.max(0, Math.round(milliseconds / 60000));
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+
+  if (days > 0) {
+    return `${days}d ${hours}h`;
+  }
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+
+  return `${minutes}m`;
 }
 
 function formatTicketId(id: string) {
