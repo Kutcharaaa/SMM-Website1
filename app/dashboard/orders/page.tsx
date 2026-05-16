@@ -157,26 +157,44 @@ export default function OrdersPage() {
     if (profileData) setProfile(profileData);
   }
 
-  useEffect(() => {
-    loadOrders();
-    loadOrderData();
-
-    const savedFavorites = window.localStorage.getItem("favorite_services");
-    if (savedFavorites) {
-      try {
-        setFavoriteServiceIds(JSON.parse(savedFavorites));
-      } catch {
-        setFavoriteServiceIds([]);
-      }
+useEffect(() => {
+  async function refreshOrders() {
+    try {
+      await fetch("/api/orders/sync-status", {
+        method: "POST",
+        headers: {
+          "x-internal-sync": "true",
+        },
+      });
+    } catch (error) {
+      console.error("SYNC_ERROR:", error);
     }
 
-    const interval = setInterval(() => {
-      loadOrders();
-      loadOrderData();
-    }, 10000);
+    await loadOrders();
+    await loadOrderData();
+  }
 
-    return () => clearInterval(interval);
-  }, []);
+  refreshOrders();
+
+  const savedFavorites =
+    window.localStorage.getItem("favorite_services");
+
+  if (savedFavorites) {
+    try {
+      setFavoriteServiceIds(
+        JSON.parse(savedFavorites)
+      );
+    } catch {
+      setFavoriteServiceIds([]);
+    }
+  }
+
+  const interval = setInterval(() => {
+    refreshOrders();
+  }, 30000);
+
+  return () => clearInterval(interval);
+}, []);
 
   const totalOrders = orders.length;
   const completedOrders = orders.filter((o) => o.status === "completed").length;
