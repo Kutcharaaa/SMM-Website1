@@ -38,7 +38,8 @@ type ProfileData = {
 
 type ConversionRecord = {
   id: string;
-  points_used: number | string;
+  points_used?: number | string | null;
+  points?: number | string | null;
   amount_credited: number | string;
   created_at: string;
   status: string;
@@ -148,7 +149,7 @@ export default function ResellerPage() {
 
     const { data: historyData, error: historyError } = await supabase
       .from("reseller_point_conversions")
-      .select("id, points_used, amount_credited, created_at, status")
+      .select("id, points_used, points, amount_credited, created_at, status")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(5);
@@ -240,18 +241,24 @@ export default function ResellerPage() {
       return;
     }
 
-    const { data: newHistory, error: historyError } = await supabase
-      .from("reseller_point_conversions")
-      .insert({
-        user_id: user.id,
-        points_used: pointsToConvert,
-        amount_credited: phpCredit,
-        usd_value: usdCredit,
-        level_name: currentLevel.name,
-        status: "completed",
-      })
-      .select("id, points_used, amount_credited, created_at, status")
-      .single();
+const { data: newHistory, error: historyError } = await supabase
+  .from("reseller_point_conversions")
+  .insert({
+    user_id: user.id,
+
+    // new column
+    points_used: pointsToConvert,
+
+    // old required column in your table
+    points: pointsToConvert,
+
+    amount_credited: phpCredit,
+    usd_value: usdCredit,
+    level_name: currentLevel.name,
+    status: "completed",
+  })
+  .select("id, points_used, points, amount_credited, created_at, status")
+  .single();
 
     if (historyError) {
       console.error("CONVERSION_HISTORY_ERROR:", historyError.message);
@@ -645,7 +652,7 @@ export default function ResellerPage() {
                             </td>
 
                             <td className="p-4 font-black text-slate-700">
-                              {formatCompact(toNumber(item.points_used))} pts
+                              {formatCompact(toNumber(item.points_used ?? item.points))} pts
                             </td>
 
                             <td className="p-4 font-black text-slate-700">
