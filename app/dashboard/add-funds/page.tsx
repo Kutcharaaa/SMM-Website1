@@ -1,19 +1,40 @@
 "use client";
 
 import DashboardLayout from "@/components/DashboardLayout";
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
 import DashboardGuard from "@/components/DashboardGuard";
 import { useToast } from "@/components/ToastProvider";
+import { supabase } from "@/lib/supabase";
+import {
+  ArrowRight,
+  Check,
+  CheckCircle2,
+  Copy,
+  CreditCard,
+  FileImage,
+  Info,
+  Lock,
+  Pencil,
+  ShieldCheck,
+  Upload,
+  Wallet,
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 type PaymentMethod = {
   id: string;
   name: string;
-  account_name: string;
-  account_number: string;
-  instructions: string;
-  qr_url: string;
+  account_name: string | null;
+  account_number: string | null;
+  instructions: string | null;
+  qr_url: string | null;
+  icon_url?: string | null;
+  icon?: string | null;
+  image_url?: string | null;
+  processing_time?: string | null;
+  minimum_amount?: number | null;
+  min_amount?: number | null;
   is_active: boolean;
+  created_at?: string;
 };
 
 type CurrencyRate = {
@@ -24,37 +45,54 @@ type CurrencyRate = {
   is_enabled: boolean;
 };
 
+const quickAmounts = [100, 300, 500, 1000, 2000, 5000, 10000];
+
 export default function AddFundsPage() {
+  const { showToast } = useToast();
+
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [currencies, setCurrencies] = useState<CurrencyRate[]>([]);
 
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState("100");
   const [currency, setCurrency] = useState("PHP");
   const [methodId, setMethodId] = useState("");
   const [reference, setReference] = useState("");
   const [proofFile, setProofFile] = useState<File | null>(null);
 
-  const [message, setMessage] = useState("");
   const [submittingDeposit, setSubmittingDeposit] = useState(false);
   const [showQrDetails, setShowQrDetails] = useState(false);
-  const { showToast } = useToast();
 
   async function loadPaymentMethods() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("payment_methods")
       .select("*")
       .eq("is_active", true)
       .order("created_at", { ascending: false });
 
-    setPaymentMethods(data || []);
+    if (error) {
+      showToast(error.message, "error");
+      return;
+    }
+
+    const rows = data || [];
+    setPaymentMethods(rows);
+
+    if (!methodId && rows.length > 0) {
+      setMethodId(rows[0].id);
+    }
   }
 
   async function loadCurrencies() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("exchange_rates")
       .select("*")
       .eq("is_enabled", true)
       .order("currency_code");
+
+    if (error) {
+      showToast(error.message, "error");
+      return;
+    }
 
     setCurrencies(data || []);
   }
@@ -71,25 +109,68 @@ export default function AddFundsPage() {
     currencies.find((item) => item.currency_code === currency) || null;
 
   const conversionRate = Number(selectedCurrency?.panel_rate || 1);
-
   const walletCredit = Number(amount || 0) * conversionRate;
+
+  const minimumAmount = Number(
+    selectedMethod?.minimum_amount || selectedMethod?.min_amount || 50
+  );
+
+  const iconUrl =
+    selectedMethod?.icon_url ||
+    selectedMethod?.icon ||
+    selectedMethod?.image_url ||
+    "";
+
+  const canSubmit =
+    Number(amount || 0) >= minimumAmount &&
+    Boolean(selectedMethod) &&
+    Boolean(reference) &&
+    Boolean(proofFile) &&
+    !submittingDeposit;
+
+  const selectedAmountIsPreset = quickAmounts.includes(Number(amount || 0));
+
+  const processingLabel =
+    selectedMethod?.processing_time ||
+    "Manual Review";
+
+  const instructions =
+    selectedMethod?.instructions ||
+    "Send the exact amount to the selected payment account, enter the reference number, and upload your payment proof. Your balance will be added after admin approval.";
+
+  async function copyText(text?: string | null) {
+    if (!text) return;
+    await navigator.clipboard.writeText(text);
+    showToast("Copied to clipboard.", "success");
+  }
+
+  function resetForm() {
+    setAmount("100");
+    setCurrency("PHP");
+    setReference("");
+    setProofFile(null);
+    setShowQrDetails(false);
+
+    if (paymentMethods.length > 0) {
+      setMethodId(paymentMethods[0].id);
+    } else {
+      setMethodId("");
+    }
+  }
 
   async function handleSubmit() {
     if (submittingDeposit) return;
 
     setSubmittingDeposit(true);
 
-    if (
-      !amount ||
-      !currency ||
-      !selectedMethod ||
-      !reference ||
-      !proofFile
-    ) {
-      showToast(
-  "Please complete all fields and upload proof.",
-  "warning"
-);
+    if (!amount || !currency || !selectedMethod || !reference || !proofFile) {
+      showToast("Please complete all fields and upload proof.", "warning");
+      setSubmittingDeposit(false);
+      return;
+    }
+
+    if (Number(amount) < minimumAmount) {
+      showToast(`Minimum amount is ${currency} ${minimumAmount.toFixed(2)}.`, "warning");
       setSubmittingDeposit(false);
       return;
     }
@@ -103,7 +184,6 @@ export default function AddFundsPage() {
     }
 
     const fileExt = proofFile.name.split(".").pop();
-
     const fileName = `${authData.user.id}-${Date.now()}.${fileExt}`;
 
     const { error: uploadError } = await supabase.storage
@@ -158,279 +238,475 @@ export default function AddFundsPage() {
     const { data: admins } = await supabase
       .from("profiles")
       .select("id")
-      .in("role", [
-        "admin",
-        "head_admin",
-        "super_admin",
-      ]);
+      .in("role", ["admin", "head_admin", "super_admin"]);
 
     if (admins && admins.length > 0) {
       await supabase.from("notifications").insert(
         admins.map((admin) => ({
           user_id: admin.id,
           title: "New Deposit Request",
-          message: `New ${currency} ${Number(
-            amount
-          ).toFixed(2)} deposit request via ${selectedMethod.name
-            }.`,
+          message: `New ${currency} ${Number(amount).toFixed(2)} deposit request via ${selectedMethod.name}.`,
           type: "new_deposit",
           is_read: false,
         }))
       );
     }
 
-    setAmount("");
-    setCurrency("PHP");
-    setMethodId("");
-    setReference("");
-    setProofFile(null);
-
-    setShowQrDetails(false);
-
-showToast(
-  "Deposit request submitted successfully!",
-  "success"
-);
+    resetForm();
+    showToast("Deposit request submitted successfully!", "success");
     setSubmittingDeposit(false);
   }
+
+  const amountPreviewText = useMemo(() => {
+    if (!amount) return "₱0.00";
+    return `₱${walletCredit.toFixed(2)}`;
+  }, [amount, walletCredit]);
 
   return (
     <DashboardGuard>
       <DashboardLayout>
-        <h2 className="text-4xl font-black mb-4">
-          Add Funds
-        </h2>
+        <div className="-m-8 min-h-screen bg-[#f6f9fc] p-6 lg:p-8">
+          <div className="mb-7">
+            <h1 className="text-3xl font-black text-slate-950">
+              Add Funds
+            </h1>
 
-        <p className="text-zinc-400 mb-8">
-          Submit a manual deposit request using
-          your available payment methods.
-        </p>
-
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 p-4 lg:p-8">
-            <h3 className="text-2xl font-black mb-6">
-              Deposit Details
-            </h3>
-
-            <div className="flex flex-col gap-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div>
-                  <label className="block text-sm text-zinc-400 mb-2">
-                    Amount
-                  </label>
-
-                  <input
-                    type="number"
-                    placeholder="Enter amount"
-                    value={amount}
-                    onChange={(e) =>
-                      setAmount(e.target.value)
-                    }
-                    className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm text-zinc-400 mb-2">
-                    Currency
-                  </label>
-
-                  <select
-                    value={currency}
-                    onChange={(e) =>
-                      setCurrency(e.target.value)
-                    }
-                    className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500"
-                  >
-                    {currencies.map((item) => (
-                      <option
-                        key={item.id}
-                        value={item.currency_code}
-                      >
-                        {item.currency_code}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {amount && (
-                <div className="rounded-2xl border border-zinc-800 bg-black p-4">
-                  <p className="text-sm text-zinc-400">
-                    Wallet Credit Preview
-                  </p>
-
-                  <p className="text-2xl font-black text-green-400 mt-2">
-                    ₱{walletCredit.toFixed(2)}
-                  </p>
-
-                  <p className="text-xs text-zinc-500 mt-1">
-                    Rate used: 1 {currency} = ₱
-                    {conversionRate.toFixed(4)}
-                  </p>
-                </div>
-              )}
-
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">
-                  Payment Method
-                </label>
-
-                <select
-                  value={methodId}
-                  onChange={(e) => {
-                    setMethodId(e.target.value);
-                    setShowQrDetails(false);
-                  }}
-                  className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500"
-                >
-                  <option value="">
-                    Select payment method
-                  </option>
-
-                  {paymentMethods.map((method) => (
-                    <option
-                      key={method.id}
-                      value={method.id}
-                    >
-                      {method.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">
-                  Reference Number
-                </label>
-
-                <input
-                  type="text"
-                  placeholder="Transaction reference"
-                  value={reference}
-                  onChange={(e) =>
-                    setReference(e.target.value)
-                  }
-                  className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-zinc-400 mb-2">
-                  Upload Payment Proof
-                </label>
-
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    if (
-                      e.target.files &&
-                      e.target.files[0]
-                    ) {
-                      setProofFile(
-                        e.target.files[0]
-                      );
-                    }
-                  }}
-                  className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-zinc-400"
-                />
-              </div>
-
-              <button
-                onClick={handleSubmit}
-                disabled={!methodId || submittingDeposit}
-                className="bg-blue-600 hover:bg-blue-700 rounded-xl py-3 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {submittingDeposit ? "Submitting..." : "Submit Deposit Request"}
-              </button>
-            </div>
+            <p className="mt-2 text-sm font-semibold text-slate-500">
+              Top up your wallet balance to place orders and enjoy our services.
+            </p>
           </div>
 
-          <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 p-4 lg:p-8 xl:sticky xl:top-6 h-fit">
-            <h3 className="text-2xl font-black mb-6">
-              Payment Method Instruction
-            </h3>
+          <div className="grid gap-7 xl:grid-cols-[1fr_360px]">
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <section className="border-b border-slate-100 p-5 lg:p-6">
+                <StepHeader number="1" title="Choose Payment Method" />
 
-            {!selectedMethod ? (
-              <div className="rounded-2xl border border-zinc-800 bg-black p-6">
-                <p className="text-zinc-400">
-                  Select a payment method to view
-                  payment instructions.
-                </p>
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-6">
-                <h4 className="text-xl font-bold mb-4">
-                  {selectedMethod.name} Payment
-                  Instructions
-                </h4>
+                <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                  {paymentMethods.length <= 0 ? (
+                    <div className="col-span-full rounded-2xl border border-slate-200 p-8 text-center text-sm font-semibold text-slate-500">
+                      No active payment methods yet.
+                    </div>
+                  ) : (
+                    paymentMethods.map((method) => {
+                      const isSelected = method.id === methodId;
+                      const methodIcon =
+                        method.icon_url || method.icon || method.image_url || "";
 
-                {selectedMethod.qr_url && (
-                  <div className="mb-6">
-                    <div className="flex justify-center">
+                      return (
+                        <button
+                          key={method.id}
+                          onClick={() => {
+                            setMethodId(method.id);
+                            setShowQrDetails(false);
+                          }}
+                          className={`relative flex min-h-[138px] flex-col items-center justify-center rounded-2xl border p-5 text-center transition ${
+                            isSelected
+                              ? "border-blue-500 bg-blue-50/40 shadow-sm"
+                              : "border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/20"
+                          }`}
+                        >
+                          {isSelected && (
+                            <span className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-600/30">
+                              <Check size={16} strokeWidth={3} />
+                            </span>
+                          )}
+
+                          <PaymentIcon src={methodIcon} name={method.name} />
+
+                          <h3 className="mt-3 text-sm font-black text-slate-950">
+                            {method.name}
+                          </h3>
+
+                          <span
+                            className={`mt-2 rounded-full px-3 py-1 text-[11px] font-black ${
+                              processingLabelFor(method) === "Instant"
+                                ? "bg-green-50 text-green-600"
+                                : "bg-slate-100 text-slate-500"
+                            }`}
+                          >
+                            {processingLabelFor(method)}
+                          </span>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+
+                <div className="mt-5 flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-semibold text-slate-600">
+                  <Info size={18} className="mt-0.5 shrink-0 text-blue-600" />
+                  <p>
+                    Payments are reviewed securely. Your funds will be added after successful verification.
+                  </p>
+                </div>
+              </section>
+
+              <section className="border-b border-slate-100 p-5 lg:p-6">
+                <StepHeader number="2" title="Select Amount" />
+
+                <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                  {quickAmounts.map((value) => {
+                    const selected = Number(amount || 0) === value;
+
+                    return (
+                      <button
+                        key={value}
+                        onClick={() => setAmount(String(value))}
+                        className={`relative rounded-2xl border p-5 text-center transition ${
+                          selected
+                            ? "border-blue-500 bg-blue-50/50 shadow-sm"
+                            : "border-slate-200 bg-white hover:border-blue-300"
+                        }`}
+                      >
+                        {selected && (
+                          <span className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-600/30">
+                            <Check size={16} strokeWidth={3} />
+                          </span>
+                        )}
+
+                        <h3 className="text-2xl font-black text-slate-950">
+                          ₱{value.toLocaleString()}
+                        </h3>
+
+                        <p className="mt-2 text-sm font-semibold text-slate-500">
+                          You pay ₱{value.toLocaleString()}.00
+                        </p>
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    onClick={() => {
+                      if (selectedAmountIsPreset) setAmount("");
+                    }}
+                    className={`rounded-2xl border p-5 text-center transition ${
+                      !selectedAmountIsPreset
+                        ? "border-blue-500 bg-blue-50/50 shadow-sm"
+                        : "border-slate-200 bg-white hover:border-blue-300"
+                    }`}
+                  >
+                    <Pencil size={18} className="mx-auto text-slate-500" />
+                    <h3 className="mt-2 text-base font-black text-slate-700">
+                      Custom Amount
+                    </h3>
+                    <p className="mt-2 text-sm font-semibold text-slate-500">
+                      Enter any amount
+                    </p>
+                  </button>
+                </div>
+
+                <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
+                  <label className="text-sm font-bold text-slate-600">
+                    Or enter custom amount
+                  </label>
+
+                  <div className="mt-3 flex overflow-hidden rounded-xl border border-slate-200">
+                    <input
+                      type="number"
+                      placeholder="Enter amount"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      className="h-12 flex-1 px-4 text-sm font-semibold text-slate-900 outline-none"
+                    />
+
+                    <select
+                      value={currency}
+                      onChange={(e) => setCurrency(e.target.value)}
+                      className="border-l border-slate-200 bg-slate-50 px-4 text-sm font-black text-slate-700 outline-none"
+                    >
+                      {currencies.map((item) => (
+                        <option key={item.id} value={item.currency_code}>
+                          {item.currency_code}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <p className="mt-2 text-xs font-semibold text-slate-500">
+                    Minimum amount: {currency} {minimumAmount.toFixed(2)}
+                  </p>
+                </div>
+              </section>
+
+              <section className="border-b border-slate-100 p-5 lg:p-6">
+                <StepHeader number="3" title="Payment Details" />
+
+                <div className="mt-5 grid gap-5 lg:grid-cols-[280px_1fr]">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                    <h3 className="text-sm font-black text-slate-900">
+                      QR Code
+                    </h3>
+
+                    {selectedMethod?.qr_url ? (
                       <img
                         src={selectedMethod.qr_url}
                         alt={`${selectedMethod.name} QR Code`}
-                        className="w-52 h-52 sm:w-64 sm:h-64 object-contain rounded-2xl border border-zinc-800 bg-white p-3"
+                        className="mt-4 h-56 w-full rounded-2xl border border-slate-200 bg-white object-contain p-3"
+                      />
+                    ) : (
+                      <div className="mt-4 flex h-56 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white text-sm font-semibold text-slate-400">
+                        No QR uploaded
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => setShowQrDetails(!showQrDetails)}
+                      className="mt-4 w-full rounded-xl border border-slate-200 bg-white py-3 text-sm font-black text-blue-600 transition hover:border-blue-300"
+                    >
+                      {showQrDetails ? "Hide Account Details" : "Show Account Details"}
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {showQrDetails && selectedMethod && (
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <AccountBox
+                          label="Account Name"
+                          value={selectedMethod.account_name || "N/A"}
+                          onCopy={() => copyText(selectedMethod.account_name)}
+                        />
+
+                        <AccountBox
+                          label="Account Number"
+                          value={selectedMethod.account_number || "N/A"}
+                          onCopy={() => copyText(selectedMethod.account_number)}
+                        />
+                      </div>
+                    )}
+
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                      <label className="text-sm font-bold text-slate-600">
+                        Reference Number
+                      </label>
+
+                      <input
+                        type="text"
+                        placeholder="Enter transaction reference"
+                        value={reference}
+                        onChange={(e) => setReference(e.target.value)}
+                        className="mt-3 h-12 w-full rounded-xl border border-slate-200 px-4 text-sm font-semibold outline-none transition focus:border-blue-500"
                       />
                     </div>
 
-                    <div className="flex justify-center">
-                      <button
-                        onClick={() =>
-                          setShowQrDetails(
-                            !showQrDetails
-                          )
-                        }
-                        className="mt-4 text-sm text-blue-400 hover:text-blue-300 font-semibold"
-                      >
-                        Can&apos;t scan QR Code?
-                      </button>
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                      <label className="text-sm font-bold text-slate-600">
+                        Upload Payment Proof
+                      </label>
+
+                      <label className="mt-3 flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center transition hover:border-blue-400 hover:bg-blue-50/40">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              setProofFile(e.target.files[0]);
+                            }
+                          }}
+                        />
+
+                        <Upload size={26} className="text-blue-600" />
+
+                        <p className="mt-3 text-sm font-black text-slate-800">
+                          {proofFile ? proofFile.name : "Click to upload proof"}
+                        </p>
+
+                        <p className="mt-1 text-xs font-semibold text-slate-500">
+                          PNG, JPG, WEBP screenshots are accepted.
+                        </p>
+                      </label>
                     </div>
-
-                    {showQrDetails && (
-                      <div className="mt-4 rounded-xl bg-black/60 border border-zinc-800 p-4 text-sm text-zinc-300 space-y-2">
-                        <p>
-                          <span className="text-zinc-500">
-                            Account Name:
-                          </span>{" "}
-                          {
-                            selectedMethod.account_name
-                          }
-                        </p>
-
-                        <p>
-                          <span className="text-zinc-500">
-                            Account / Number:
-                          </span>{" "}
-                          {
-                            selectedMethod.account_number
-                          }
-                        </p>
-                      </div>
-                    )}
                   </div>
-                )}
+                </div>
+              </section>
 
-                <div className="space-y-3 text-sm text-zinc-300 whitespace-pre-line">
-                  {selectedMethod.instructions ||
-                    "Send the exact amount, enter the reference number, then upload your payment proof."}
+              <section className="p-5 lg:p-6">
+                <StepHeader number="4" title="Review & Submit" />
+
+                <button
+                  onClick={handleSubmit}
+                  disabled={!canSubmit}
+                  className="mt-5 flex w-full items-center justify-center gap-3 rounded-xl bg-blue-600 py-4 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {submittingDeposit ? "Submitting..." : "Submit Deposit Request"}
+                  <ArrowRight size={18} />
+                </button>
+
+                <div className="mt-4 flex items-center justify-center gap-2 text-xs font-semibold text-slate-500">
+                  <Lock size={14} />
+                  Secure payment review by Ascend Service
+                </div>
+              </section>
+            </div>
+
+            <aside className="space-y-5">
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-black text-slate-950">
+                    Payment Summary
+                  </h3>
+
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
+                    <Wallet size={22} />
+                  </div>
                 </div>
 
-                <div className="mt-6 rounded-xl bg-black/60 border border-zinc-800 p-4">
-                  <p className="text-sm text-yellow-400">
-                    Important: Deposits are
-                    manually reviewed. Your balance
-                    will be added after admin
-                    approval.
-                  </p>
+                <div className="mt-6 space-y-5">
+                  <SummaryRow
+                    label="Payment Method"
+                    value={selectedMethod?.name || "Not selected"}
+                  />
+
+                  <SummaryRow
+                    label="Processing Time"
+                    value={processingLabel}
+                  />
+
+                  <SummaryRow
+                    label="Amount"
+                    value={`${currency} ${Number(amount || 0).toFixed(2)}`}
+                  />
+
+                  <div className="border-t border-slate-100 pt-5">
+                    <SummaryRow
+                      label="Total to Add"
+                      value={amountPreviewText}
+                      valueClassName="text-2xl text-blue-600"
+                    />
+                  </div>
+
+                  <SummaryRow
+                    label="Status"
+                    value="Pending Review"
+                    valueClassName="text-orange-500"
+                  />
+
+                  <div className="rounded-2xl bg-green-50 p-4 text-sm font-semibold text-green-700">
+                    Your deposit will be reviewed after proof submission.
+                  </div>
                 </div>
               </div>
-            )}
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 className="text-lg font-black text-slate-950">
+                  Payment Instructions
+                </h3>
+
+                <div className="mt-4 whitespace-pre-line text-sm font-medium leading-relaxed text-slate-600">
+                  {instructions}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 className="text-lg font-black text-slate-950">
+                  Secure & Trusted
+                </h3>
+
+                <div className="mt-4 space-y-3">
+                  <TrustItem text="Manual verification for safety" />
+                  <TrustItem text="Secure proof upload" />
+                  <TrustItem text="Admin reviewed deposits" />
+                  <TrustItem text="24/7 support available" />
+                </div>
+              </div>
+            </aside>
           </div>
         </div>
       </DashboardLayout>
     </DashboardGuard>
+  );
+}
+
+function processingLabelFor(method: PaymentMethod) {
+  return method.processing_time || "Manual Review";
+}
+
+function StepHeader({ number, title }: { number: string; title: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-sm font-black text-white">
+        {number}
+      </span>
+
+      <h2 className="text-lg font-black text-slate-950">{title}</h2>
+    </div>
+  );
+}
+
+function PaymentIcon({ src, name }: { src?: string; name: string }) {
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={`${name} icon`}
+        className="h-12 w-12 rounded-xl object-contain"
+      />
+    );
+  }
+
+  return (
+    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+      <CreditCard size={26} />
+    </div>
+  );
+}
+
+function AccountBox({
+  label,
+  value,
+  onCopy,
+}: {
+  label: string;
+  value: string;
+  onCopy: () => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <p className="break-all text-sm font-black text-slate-900">
+          {value}
+        </p>
+
+        <button
+          type="button"
+          onClick={onCopy}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-blue-50 hover:text-blue-600"
+        >
+          <Copy size={16} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SummaryRow({
+  label,
+  value,
+  valueClassName = "",
+}: {
+  label: string;
+  value: string;
+  valueClassName?: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <p className="text-sm font-bold text-slate-500">{label}</p>
+      <p className={`text-right text-sm font-black text-slate-950 ${valueClassName}`}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function TrustItem({ text }: { text: string }) {
+  return (
+    <div className="flex items-center gap-3 text-sm font-semibold text-slate-600">
+      <CheckCircle2 size={17} className="text-blue-600" />
+      {text}
+    </div>
   );
 }
