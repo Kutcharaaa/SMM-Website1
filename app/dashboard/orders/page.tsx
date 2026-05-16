@@ -1349,13 +1349,6 @@ export default function OrdersPage() {
                             value={Number(selectedService.max_quantity || 0).toLocaleString()}
                           />
 
-
-                            <div className="flex items-center gap-3">
-                              <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
-                                <div className="h-full w-[28%] rounded-full bg-blue-600" />
-                              </div>
-                              <span className="text-xs font-black text-slate-400">0%</span>
-                            </div>
                           </div>
                       ) : (
                         <div className="mt-5 rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm font-semibold text-slate-500">
