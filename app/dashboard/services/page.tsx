@@ -20,6 +20,7 @@ import { useEffect, useMemo, useState } from "react";
 
 type DbService = {
   id: string;
+  provider_service_id: string | null;
   name: string | null;
   category: string | null;
   description: string | null;
@@ -168,7 +169,7 @@ export default function DashboardServicesPage() {
     const { data, error } = await supabase
       .from("services")
       .select(
-        "id, name, category, description, price_per_1000, min_quantity, max_quantity, status, fastest_delivery, average_delivery, service_tags",
+        "id, provider_service_id, name, category, description, price_per_1000, min_quantity, max_quantity, status, fastest_delivery, average_delivery, service_tags",
       )
       .in("status", ["active", "Active"])
       .order("created_at", { ascending: false });
@@ -193,7 +194,7 @@ export default function DashboardServicesPage() {
 
       return {
         id: service.id,
-        publicId: getPublicId(service.id),
+        publicId: service.provider_service_id || getPublicId(service.id),
         name,
         platform: platformName,
         category,
@@ -292,7 +293,7 @@ export default function DashboardServicesPage() {
       <section className="min-h-screen lg:ml-72">
         <DashboardTopbar />
 
-        <div className="grid min-h-[calc(100vh-80px)] lg:grid-cols-[1fr_390px]">
+        <div className="grid min-h-[calc(100vh-80px)] lg:grid-cols-[1fr_360px]">
           <div className="p-6 lg:p-8">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -582,10 +583,10 @@ export default function DashboardServicesPage() {
             </div>
           </div>
 
-          <aside className="hidden border-l border-slate-200 bg-white p-6 lg:block">
-            <div className="sticky top-6">
+          <aside className="hidden border-l border-slate-200 bg-white p-5 lg:block">
+            <div className="sticky top-4 pb-6">
               <div className="mb-6 flex items-center justify-between">
-                <h3 className="text-xl font-black text-slate-950">
+                <h3 className="text-lg font-black text-slate-950">
                   Service Details
                 </h3>
 
@@ -600,7 +601,7 @@ export default function DashboardServicesPage() {
               {selectedService ? (
                 <>
                   <div className="overflow-hidden rounded-2xl border border-orange-100 bg-orange-50/50">
-                    <div className="p-5">
+                    <div className="p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div className="flex items-center gap-3">
@@ -610,32 +611,32 @@ export default function DashboardServicesPage() {
                               fill={favoriteIds.includes(selectedService.id) ? "currentColor" : "none"}
                             />
 
-                            <p className="text-xl font-black text-blue-600">
+                            <p className="text-lg font-black text-blue-600">
                               {selectedService.publicId}
                             </p>
                           </div>
 
-                          <h4 className="mt-4 text-lg font-black text-slate-950">
+                          <h4 className="mt-3 text-base font-black leading-snug text-slate-950">
                             {selectedService.name}
                           </h4>
 
-                          <span className="mt-3 inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-black text-green-600">
+                          <span className="mt-2 inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-black text-green-600">
                             Active
                           </span>
                         </div>
 
-                        <PlatformIcon platform={selectedService.platform} size={44} />
+                        <PlatformIcon platform={selectedService.platform} size={34} />
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
+                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
                     <InfoRow label="Category" value={selectedService.platform} />
                     <InfoRow label="Type" value={selectedService.category} />
                     <InfoRow label="Description" value={selectedService.description} />
                   </div>
 
-                  <div className="mt-5 grid grid-cols-2 gap-3">
+                  <div className="mt-4 grid grid-cols-2 gap-3">
                     <MetricCard
                       title="Fastest Delivery"
                       value={selectedService.fastest}
@@ -661,12 +662,12 @@ export default function DashboardServicesPage() {
                     />
                   </div>
 
-                  <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
-                    <h4 className="text-lg font-black text-slate-950">
+                  <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+                    <h4 className="text-base font-black text-slate-950">
                       Order Calculator
                     </h4>
 
-                    <label className="mt-5 block text-sm font-bold text-slate-500">
+                    <label className="mt-4 block text-sm font-bold text-slate-500">
                       Quantity
                     </label>
 
@@ -681,7 +682,7 @@ export default function DashboardServicesPage() {
                       <span>Max: {selectedService.max.toLocaleString()}</span>
                     </div>
 
-                    <div className="mt-5 flex items-center justify-between">
+                    <div className="mt-4 flex items-center justify-between">
                       <p className="text-sm font-bold text-slate-500">
                         Total Charge
                       </p>
@@ -693,7 +694,7 @@ export default function DashboardServicesPage() {
 
                     <a
                       href="/dashboard/orders"
-                      className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-sm font-black text-white transition hover:bg-blue-700"
+                      className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-sm font-black text-white transition hover:bg-blue-700"
                     >
                       <ShoppingCart size={17} />
                       Add to Order
@@ -710,7 +711,7 @@ export default function DashboardServicesPage() {
                     </button>
                   </div>
 
-                  <div className="mt-5 rounded-2xl bg-green-50 p-5">
+                  <div className="mt-4 rounded-2xl bg-green-50 p-4">
                     {[
                       `Refill: ${selectedService.refill}`,
                       `Drop: ${selectedService.drop}`,
@@ -788,8 +789,8 @@ function StatCard({
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="mb-4 last:mb-0">
-      <p className="text-sm font-bold text-slate-500">{label}</p>
-      <p className="mt-1 break-words text-sm font-black text-slate-900">
+      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{label}</p>
+      <p className="mt-1 break-words text-xs font-bold text-slate-700">
         {value || "N/A"}
       </p>
     </div>
@@ -808,22 +809,22 @@ function MetricCard({
   color: string;
 }) {
   return (
-    <div className={`rounded-2xl p-4 ${color}`}>
+    <div className={`rounded-2xl p-3 ${color}`}>
       <div className="flex items-center gap-2">
         <Icon size={18} />
-        <p className="text-xs font-black">{title}</p>
+        <p className="text-[11px] font-black">{title}</p>
       </div>
 
-      <p className="mt-2 text-2xl font-black">{value}</p>
+      <p className="mt-2 text-xl font-black">{value}</p>
     </div>
   );
 }
 
 function SmallCard({ title, value }: { title: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4">
-      <p className="text-sm font-bold text-slate-500">{title}</p>
-      <p className="mt-2 text-xl font-black text-slate-950">{value}</p>
+    <div className="rounded-2xl border border-slate-200 bg-white p-3">
+      <p className="text-xs font-bold text-slate-500">{title}</p>
+      <p className="mt-2 text-lg font-black text-slate-950">{value}</p>
     </div>
   );
 }
