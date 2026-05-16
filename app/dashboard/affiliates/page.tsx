@@ -48,6 +48,7 @@ type CommissionRecord = {
   referred_username?: string | null;
   deposit_amount?: number | string | null;
   commission_amount?: number | string | null;
+  used_amount?: number | string | null;
   status?: string | null;
   created_at: string;
 };
@@ -113,8 +114,10 @@ export default function AffiliatesPage() {
   const [referrals, setReferrals] = useState<ReferralRecord[]>([]);
   const [commissions, setCommissions] = useState<CommissionRecord[]>([]);
   const [transferHistory, setTransferHistory] = useState<TransferRecord[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [transferring, setTransferring] = useState(false);
 
   const [showCommissionModal, setShowCommissionModal] = useState(false);
   const [transferAmount, setTransferAmount] = useState("");
@@ -135,6 +138,8 @@ export default function AffiliatesPage() {
       setLoading(false);
       return;
     }
+
+    await supabase.rpc("refresh_my_affiliate_commissions");
 
     const { data: profileData } = await supabase
       .from("profiles")
@@ -244,9 +249,15 @@ export default function AffiliatesPage() {
       const status = (item.status || "").toLowerCase();
       return status === "available";
     })
-    .reduce((total, item) => total + toNumber(item.commission_amount), 0);
+    .reduce((total, item) => {
+      const commissionAmount = toNumber(item.commission_amount);
+      const usedAmount = toNumber(item.used_amount);
+
+      return total + Math.max(0, commissionAmount - usedAmount);
+    }, 0);
 
   const amountToTransfer = toNumber(transferAmount);
+
   const canTransfer =
     amountToTransfer >= MIN_TRANSFER_AMOUNT &&
     amountToTransfer <= availableCommission;
@@ -281,7 +292,9 @@ export default function AffiliatesPage() {
     setShowCommissionModal(true);
   }
 
-  function transferCommission() {
+  async function transferCommission() {
+    if (transferring) return;
+
     setTransferMessage("");
 
     if (availableCommission <= 0) {
@@ -299,9 +312,26 @@ export default function AffiliatesPage() {
       return;
     }
 
+    setTransferring(true);
+
+    const { error } = await supabase.rpc("transfer_affiliate_commission", {
+      p_amount: amountToTransfer,
+    });
+
+    if (error) {
+      console.error("TRANSFER_COMMISSION_ERROR:", error.message);
+      setTransferMessage(error.message);
+      setTransferring(false);
+      return;
+    }
+
     setTransferMessage(
-      "Transfer backend will be connected after we create the affiliate commission transfer table.",
+      `Successfully transferred ₱${formatMoney(amountToTransfer)} to your wallet balance.`,
     );
+
+    setTransferAmount("");
+    await loadAffiliateData();
+    setTransferring(false);
   }
 
   return (
@@ -711,7 +741,14 @@ export default function AffiliatesPage() {
                               ₱{formatMoney(toNumber(item.deposit_amount))}
                             </td>
                             <td className="p-3 font-black text-slate-700">
-                              ₱{formatMoney(toNumber(item.commission_amount))}
+                              ₱
+                              {formatMoney(
+                                Math.max(
+                                  0,
+                                  toNumber(item.commission_amount) -
+                                    toNumber(item.used_amount),
+                                ),
+                              )}
                             </td>
                             <td className="p-3">
                               <CommissionStatusBadge status={item.status || "pending"} />
@@ -870,9 +907,10 @@ export default function AffiliatesPage() {
                     <button
                       type="button"
                       onClick={transferCommission}
-                      className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
+                      disabled={transferring}
+                      className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      Transfer to Balance
+                      {transferring ? "Transferring..." : "Transfer to Balance"}
                       <ArrowRight size={17} />
                     </button>
 
@@ -1054,10 +1092,10 @@ function StatusBadge({ qualified }: { qualified: boolean }) {
 function CommissionStatusBadge({ status }: { status: string }) {
   const value = status.toLowerCase();
 
-  if (value === "paid" || value === "completed") {
+  if (value === "paid" || value === "completed" || value === "used") {
     return (
       <span className="rounded-lg bg-green-100 px-3 py-1 text-xs font-black text-green-700">
-        Paid
+        {formatStatus(status)}
       </span>
     );
   }
