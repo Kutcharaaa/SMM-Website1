@@ -155,6 +155,11 @@ function getPlatformCount(services: Service[], platform: string) {
   return services.filter((service) => service.platform === platform).length;
 }
 
+function getServiceIdNumber(value: string) {
+  const numberOnly = value.replace(/\D/g, "");
+  return Number(numberOnly || 0);
+}
+
 export default function DashboardServicesPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -238,39 +243,49 @@ export default function DashboardServicesPage() {
     window.localStorage.setItem("favorite_services", JSON.stringify(favoriteIds));
   }, [favoriteIds]);
 
-  const filteredServices = useMemo(() => {
-    let rows = services.filter((service) => {
-      const keyword = search.toLowerCase();
+const filteredServices = useMemo(() => {
+  const keyword = search.trim().toLowerCase();
 
-      const matchesSearch =
-        service.publicId.toLowerCase().includes(keyword) ||
-        service.id.toLowerCase().includes(keyword) ||
-        service.name.toLowerCase().includes(keyword) ||
-        service.category.toLowerCase().includes(keyword) ||
-        service.platform.toLowerCase().includes(keyword);
+  let rows = services.filter((service) => {
+    const matchesSearch =
+      keyword.length <= 0 ||
+      service.publicId.toLowerCase().includes(keyword) ||
+      service.name.toLowerCase().includes(keyword) ||
+      service.category.toLowerCase().includes(keyword) ||
+      service.platform.toLowerCase().includes(keyword);
 
-      const matchesPlatform =
-        platform === "All Platforms" ? true : service.platform === platform;
+    const matchesPlatform =
+      platform === "All Platforms" ? true : service.platform === platform;
 
-      return matchesSearch && matchesPlatform;
+    return matchesSearch && matchesPlatform;
+  });
+
+  if (sortBy === "cheapest") {
+    rows = [...rows].sort((a, b) => a.price - b.price);
+  }
+
+  if (sortBy === "fastest") {
+    rows = [...rows].sort(
+      (a, b) => getFastestMinutes(a.fastest) - getFastestMinutes(b.fastest),
+    );
+  }
+
+  if (sortBy === "service_id") {
+    rows = [...rows].sort((a, b) => {
+      const numberA = getServiceIdNumber(a.publicId);
+      const numberB = getServiceIdNumber(b.publicId);
+
+      if (numberA !== numberB) return numberA - numberB;
+
+      return a.publicId.localeCompare(b.publicId, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      });
     });
+  }
 
-    if (sortBy === "cheapest") {
-      rows = [...rows].sort((a, b) => a.price - b.price);
-    }
-
-    if (sortBy === "fastest") {
-      rows = [...rows].sort(
-        (a, b) => getFastestMinutes(a.fastest) - getFastestMinutes(b.fastest),
-      );
-    }
-
-    if (sortBy === "service_id") {
-      rows = [...rows].sort((a, b) => a.publicId.localeCompare(b.publicId));
-    }
-
-    return rows;
-  }, [services, search, platform, sortBy]);
+  return rows;
+}, [services, search, platform, sortBy]);
 
   useEffect(() => {
     setCurrentPage(1);
