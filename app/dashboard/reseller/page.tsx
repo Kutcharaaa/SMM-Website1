@@ -19,6 +19,7 @@ import {
   Unlock,
   User,
   Wallet,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -112,8 +113,11 @@ const MIN_CONVERT_POINTS = 100;
 export default function ResellerPage() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [history, setHistory] = useState<ConversionRecord[]>([]);
+  const [allHistory, setAllHistory] = useState<ConversionRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingAllHistory, setLoadingAllHistory] = useState(false);
   const [converting, setConverting] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [pointsInput, setPointsInput] = useState("100");
   const [message, setMessage] = useState("");
 
@@ -150,7 +154,9 @@ export default function ResellerPage() {
 
     const { data: historyData, error: historyError } = await supabase
       .from("reseller_point_conversions")
-      .select("id, points_used, points, amount_credited, wallet_credit, created_at, status")
+      .select(
+        "id, points_used, points, amount_credited, wallet_credit, created_at, status",
+      )
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(5);
@@ -163,6 +169,43 @@ export default function ResellerPage() {
     }
 
     setLoading(false);
+  }
+
+  async function loadAllConversionHistory() {
+    setLoadingAllHistory(true);
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setAllHistory([]);
+      setLoadingAllHistory(false);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("reseller_point_conversions")
+      .select(
+        "id, points_used, points, amount_credited, wallet_credit, created_at, status",
+      )
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(100);
+
+    if (error) {
+      console.error("RESELLER_ALL_HISTORY_ERROR:", error.message);
+      setAllHistory([]);
+    } else {
+      setAllHistory((data || []) as ConversionRecord[]);
+    }
+
+    setLoadingAllHistory(false);
+  }
+
+  function openHistoryModal() {
+    setShowHistoryModal(true);
+    loadAllConversionHistory();
   }
 
   useEffect(() => {
@@ -242,29 +285,25 @@ export default function ResellerPage() {
       return;
     }
 
-const { data: newHistory, error: historyError } = await supabase
-  .from("reseller_point_conversions")
-.insert({
-  user_id: user.id,
+    const { data: newHistory, error: historyError } = await supabase
+      .from("reseller_point_conversions")
+      .insert({
+        user_id: user.id,
 
-  // new column
-  points_used: pointsToConvert,
+        points_used: pointsToConvert,
+        points: pointsToConvert,
 
-  // old required column in your table
-  points: pointsToConvert,
+        amount_credited: phpCredit,
+        wallet_credit: phpCredit,
 
-  // new amount column
-  amount_credited: phpCredit,
-
-  // old required amount column in your table
-  wallet_credit: phpCredit,
-
-  usd_value: usdCredit,
-  level_name: currentLevel.name,
-  status: "completed",
-})
-  .select("id, points_used, points, amount_credited, created_at, status")
-  .single();
+        usd_value: usdCredit,
+        level_name: currentLevel.name,
+        status: "completed",
+      })
+      .select(
+        "id, points_used, points, amount_credited, wallet_credit, created_at, status",
+      )
+      .single();
 
     if (historyError) {
       console.error("CONVERSION_HISTORY_ERROR:", historyError.message);
@@ -279,6 +318,9 @@ const { data: newHistory, error: historyError } = await supabase
     if (newHistory) {
       setHistory((current) =>
         [newHistory as ConversionRecord, ...current].slice(0, 5),
+      );
+      setAllHistory((current) =>
+        [newHistory as ConversionRecord, ...current].slice(0, 100),
       );
     }
 
@@ -624,59 +666,20 @@ const { data: newHistory, error: historyError } = await supabase
                     Recent Conversions
                   </h3>
 
-                  <button className="text-sm font-black text-blue-600">
+                  <button
+                    type="button"
+                    onClick={openHistoryModal}
+                    className="text-sm font-black text-blue-600 transition hover:text-blue-700"
+                  >
                     View All
                   </button>
                 </div>
 
-                <div className="mt-5 overflow-hidden rounded-xl border border-slate-100">
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-50 text-slate-500">
-                      <tr>
-                        <th className="p-4 text-left font-black">Date</th>
-                        <th className="p-4 text-left font-black">Points</th>
-                        <th className="p-4 text-left font-black">Amount</th>
-                        <th className="p-4 text-left font-black">Status</th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {history.length <= 0 ? (
-                        <tr>
-                          <td
-                            colSpan={4}
-                            className="p-8 text-center text-sm font-semibold text-slate-500"
-                          >
-                            No conversions yet.
-                          </td>
-                        </tr>
-                      ) : (
-                        history.map((item) => (
-                          <tr key={item.id} className="border-t border-slate-100">
-                            <td className="p-4 font-semibold text-slate-600">
-                              {formatDate(item.created_at)}
-                            </td>
-
-                            <td className="p-4 font-black text-slate-700">
-                              {formatCompact(toNumber(item.points_used ?? item.points))} pts
-                            </td>
-
-                            <td className="p-4 font-black text-slate-700">
-                             ₱{formatMoney(toNumber(item.amount_credited ?? item.wallet_credit))}
-                            </td>
-
-                            <td className="p-4">
-                              <span className="inline-flex items-center gap-1 rounded-lg bg-green-100 px-3 py-1 text-xs font-black text-green-700">
-                                <CheckCircle2 size={13} />
-                                {item.status || "Completed"}
-                              </span>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                <ConversionTable
+                  records={history}
+                  emptyText="No conversions yet."
+                  compact
+                />
               </section>
 
               <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -715,9 +718,115 @@ const { data: newHistory, error: historyError } = await supabase
               </section>
             </div>
           </div>
+
+          {showHistoryModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+              <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+                <div className="flex items-center justify-between border-b border-slate-100 p-6">
+                  <div>
+                    <h3 className="text-2xl font-black text-slate-950">
+                      All Recent Conversions
+                    </h3>
+                    <p className="mt-1 text-sm font-semibold text-slate-500">
+                      View your reseller point conversion history.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowHistoryModal(false)}
+                    className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
+                  >
+                    <X size={21} />
+                  </button>
+                </div>
+
+                <div className="overflow-y-auto p-6">
+                  {loadingAllHistory ? (
+                    <div className="rounded-2xl bg-slate-50 p-10 text-center text-sm font-semibold text-slate-500">
+                      Loading conversion history...
+                    </div>
+                  ) : (
+                    <ConversionTable
+                      records={allHistory}
+                      emptyText="No conversion history found."
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </section>
       </main>
     </DashboardGuard>
+  );
+}
+
+function ConversionTable({
+  records,
+  emptyText,
+  compact = false,
+}: {
+  records: ConversionRecord[];
+  emptyText: string;
+  compact?: boolean;
+}) {
+  return (
+    <div className="mt-5 overflow-hidden rounded-xl border border-slate-100">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[620px] text-sm">
+          <thead className="bg-slate-50 text-slate-500">
+            <tr>
+              <th className="p-4 text-left font-black">Date</th>
+              <th className="p-4 text-left font-black">Points</th>
+              <th className="p-4 text-left font-black">Amount</th>
+              <th className="p-4 text-left font-black">Status</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {records.length <= 0 ? (
+              <tr>
+                <td
+                  colSpan={4}
+                  className={`text-center text-sm font-semibold text-slate-500 ${
+                    compact ? "p-8" : "p-12"
+                  }`}
+                >
+                  {emptyText}
+                </td>
+              </tr>
+            ) : (
+              records.map((item) => (
+                <tr key={item.id} className="border-t border-slate-100">
+                  <td className="p-4 font-semibold text-slate-600">
+                    {formatDate(item.created_at)}
+                  </td>
+
+                  <td className="p-4 font-black text-slate-700">
+                    {formatCompact(toNumber(item.points_used ?? item.points))} pts
+                  </td>
+
+                  <td className="p-4 font-black text-slate-700">
+                    ₱
+                    {formatMoney(
+                      toNumber(item.amount_credited ?? item.wallet_credit),
+                    )}
+                  </td>
+
+                  <td className="p-4">
+                    <span className="inline-flex items-center gap-1 rounded-lg bg-green-100 px-3 py-1 text-xs font-black text-green-700">
+                      <CheckCircle2 size={13} />
+                      {formatStatus(item.status)}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 
@@ -904,9 +1013,19 @@ function formatCompact(value: number) {
 }
 
 function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleDateString("en-PH", {
+  return new Date(dateString).toLocaleString("en-PH", {
     month: "short",
     day: "numeric",
     year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   });
+}
+
+function formatStatus(status: string) {
+  if (!status) return "Completed";
+
+  return status
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
