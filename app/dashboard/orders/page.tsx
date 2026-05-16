@@ -1354,13 +1354,6 @@ export default function OrdersPage() {
                             value={Number(selectedService.max_quantity || 0).toLocaleString()}
                           />
 
-                          <div className="pt-2">
-                            <div className="mb-3 flex items-center gap-2">
-                              <p className="text-sm font-black text-blue-600">
-                                Progress Preview
-                              </p>
-                              <Info size={15} className="text-blue-600" />
-                            </div>
 
                             <div className="flex items-center gap-3">
                               <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
@@ -1369,7 +1362,6 @@ export default function OrdersPage() {
                               <span className="text-xs font-black text-slate-400">0%</span>
                             </div>
                           </div>
-                        </div>
                       ) : (
                         <div className="mt-5 rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm font-semibold text-slate-500">
                           Select a service to preview details.
