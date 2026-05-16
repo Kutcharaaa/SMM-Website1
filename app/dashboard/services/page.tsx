@@ -269,6 +269,23 @@ export default function DashboardServicesPage() {
     return rows;
   }, [services, search, platform, sortBy]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, platform, sortBy]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredServices.length / SERVICES_PER_PAGE));
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedServices = useMemo(() => {
+    const startIndex = (currentPage - 1) * SERVICES_PER_PAGE;
+    return filteredServices.slice(startIndex, startIndex + SERVICES_PER_PAGE);
+  }, [filteredServices, currentPage]);
+
   const cheapestRate = services.length > 0 ? Math.min(...services.map((s) => s.price)) : 0;
   const fastestService = services.length > 0
     ? [...services].sort((a, b) => getFastestMinutes(a.fastest) - getFastestMinutes(b.fastest))[0]
@@ -447,7 +464,7 @@ export default function DashboardServicesPage() {
                         </td>
                       </tr>
                     ) : (
-                      filteredServices.map((service) => {
+                      paginatedServices.map((service) => {
                         const isFavorite = favoriteIds.includes(service.id);
 
                         return (
@@ -583,8 +600,8 @@ export default function DashboardServicesPage() {
             </div>
           </div>
 
-          <aside className="hidden max-h-[calc(100vh-80px)] overflow-y-auto border-l border-slate-200 bg-white p-5 lg:block">
-            <div className="pb-8">
+          <aside className="hidden border-l border-slate-200 bg-white p-5 lg:block">
+            <div className="sticky top-[92px] max-h-[calc(100vh-110px)] overflow-y-auto pb-8 pr-1">
               <div className="mb-6 flex items-center justify-between">
                 <h3 className="text-lg font-black text-slate-950">
                   Service Details
