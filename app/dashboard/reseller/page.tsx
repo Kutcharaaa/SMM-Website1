@@ -240,19 +240,31 @@ export default function ResellerPage() {
       return;
     }
 
-    await supabase.from("reseller_point_conversions").insert({
-      user_id: user.id,
-      points_used: pointsToConvert,
-      amount_credited: phpCredit,
-      usd_value: usdCredit,
-      level_name: currentLevel.name,
-      status: "completed",
-    });
+const { error: historyError } = await supabase
+  .from("reseller_point_conversions")
+  .insert({
+    user_id: user.id,
+    points_used: pointsToConvert,
+    amount_credited: phpCredit,
+    usd_value: usdCredit,
+    level_name: currentLevel.name,
+    status: "completed",
+  });
 
-    setMessage(`Converted ${pointsToConvert} points to ₱${formatMoney(phpCredit)}.`);
-    setPointsInput("100");
-    setConverting(false);
-    loadData();
+if (historyError) {
+  console.error("CONVERSION_HISTORY_ERROR:", historyError.message);
+  setMessage(
+    `Points converted, but conversion history failed: ${historyError.message}`,
+  );
+  setConverting(false);
+  loadData();
+  return;
+}
+
+setMessage(`Converted ${pointsToConvert} points to ₱${formatMoney(phpCredit)}.`);
+setPointsInput("100");
+setConverting(false);
+loadData();
   }
 
   return (
@@ -449,23 +461,6 @@ export default function ResellerPage() {
                         </div>
                       );
                     })}
-                  </div>
-                </div>
-
-                <div className="mt-4 border-t border-slate-100 pt-4">
-                  <div className="grid gap-3 text-xs font-bold text-slate-500 sm:grid-cols-4">
-                    <div className="flex items-center gap-2">
-                      <Flag size={14} /> Required Spend
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Percent size={14} /> Discount
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Star size={14} /> Point Value
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Lock size={14} /> Child Panel Access
-                    </div>
                   </div>
                 </div>
               </section>
