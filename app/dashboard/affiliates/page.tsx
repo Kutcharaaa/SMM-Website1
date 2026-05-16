@@ -183,7 +183,11 @@ export default function AffiliatesPage() {
   }).length;
 
   const totalQualifiedDeposits = referrals
-    .filter((item) => item.is_qualified || toNumber(item.total_deposits) >= QUALIFICATION_AMOUNT)
+    .filter(
+      (item) =>
+        item.is_qualified ||
+        toNumber(item.total_deposits) >= QUALIFICATION_AMOUNT,
+    )
     .reduce((total, item) => total + toNumber(item.total_deposits), 0);
 
   const currentLevel = getCurrentAffiliateLevel(totalQualifiedDeposits);
@@ -234,6 +238,10 @@ export default function AffiliatesPage() {
     }
 
     copyReferralLink();
+  }
+
+  function useCommission() {
+    alert("Use Commission modal will be added next.");
   }
 
   return (
@@ -356,12 +364,9 @@ export default function AffiliatesPage() {
                 color="bg-green-100 text-green-600"
               />
 
-              <MetricCard
-                icon={Wallet}
-                title="Available Commission"
+              <CommissionMetricCard
                 value={loading ? "..." : `₱${formatMoney(availableCommission)}`}
-                subtitle="Ready to convert/use"
-                color="bg-purple-100 text-purple-600"
+                onUse={useCommission}
               />
 
               <MetricCard
@@ -723,6 +728,48 @@ function MetricCard({
           <p className="text-sm font-black text-slate-600">{title}</p>
           <h3 className="mt-2 text-2xl font-black text-slate-950">{value}</h3>
           <p className="mt-1 text-sm font-semibold text-slate-400">{subtitle}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CommissionMetricCard({
+  value,
+  onUse,
+}: {
+  value: string;
+  onUse: () => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex items-center gap-5">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-100 text-purple-600">
+          <Wallet size={26} />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-black text-slate-600">
+            Available Commission
+          </p>
+
+          <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h3 className="text-2xl font-black text-slate-950">{value}</h3>
+              <p className="mt-1 text-sm font-semibold text-slate-400">
+                Ready to transfer to balance
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={onUse}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
+            >
+              Use Commission
+              <ArrowRight size={16} />
+            </button>
+          </div>
         </div>
       </div>
     </div>
