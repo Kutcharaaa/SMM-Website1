@@ -136,20 +136,11 @@ export default function OrdersPage() {
   }
 
   async function loadOrderData() {
-const { data: serviceData, error: serviceError } = await supabase
-  .from("services")
-  .select("*")
-  .in("status", ["active", "Active"])
-  .order("category");
-
-if (serviceError) {
-  console.error("SERVICES LOAD ERROR:", serviceError.message);
-  showToast(serviceError.message, "error");
-}
-
-console.log("LOADED SERVICES:", serviceData);
-
-setServices(serviceData || []);
+    const { data: serviceData } = await supabase
+      .from("services")
+      .select("*")
+      .eq("status", "active")
+      .order("category");
 
     setServices(serviceData || []);
 
@@ -166,30 +157,26 @@ setServices(serviceData || []);
     if (profileData) setProfile(profileData);
   }
 
-useEffect(() => {
-  async function refreshOrders() {
-    try {
-      await fetch("/api/orders/sync-status", {
-        method: "POST",
-        headers: {
-          "x-internal-sync": "true",
-        },
-      });
-    } catch (error) {
-      console.error("SYNC_ERROR:", error);
+  useEffect(() => {
+    loadOrders();
+    loadOrderData();
+
+    const savedFavorites = window.localStorage.getItem("favorite_services");
+    if (savedFavorites) {
+      try {
+        setFavoriteServiceIds(JSON.parse(savedFavorites));
+      } catch {
+        setFavoriteServiceIds([]);
+      }
     }
 
-    await loadOrders();
-  }
+    const interval = setInterval(() => {
+      loadOrders();
+      loadOrderData();
+    }, 10000);
 
-  refreshOrders();
-
-  const interval = setInterval(() => {
-    refreshOrders();
-  }, 30000);
-
-  return () => clearInterval(interval);
-}, []);
+    return () => clearInterval(interval);
+  }, []);
 
   const totalOrders = orders.length;
   const completedOrders = orders.filter((o) => o.status === "completed").length;
