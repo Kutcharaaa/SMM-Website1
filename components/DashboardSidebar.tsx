@@ -27,11 +27,6 @@ const menu = [
     icon: LayoutDashboard,
   },
   {
-    name: "New Order",
-    href: "/dashboard/new-order",
-    icon: PlusCircle,
-  },
-  {
     name: "Orders",
     href: "/dashboard/orders",
     icon: ShoppingCart,

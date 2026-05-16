@@ -17,6 +17,8 @@ import {
   ShieldCheck,
   Upload,
   Wallet,
+  X,
+  ZoomIn,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -61,6 +63,7 @@ export default function AddFundsPage() {
 
   const [submittingDeposit, setSubmittingDeposit] = useState(false);
   const [showQrDetails, setShowQrDetails] = useState(false);
+  const [qrPreviewOpen, setQrPreviewOpen] = useState(false);
 
   async function loadPaymentMethods() {
     const { data, error } = await supabase
@@ -111,9 +114,13 @@ export default function AddFundsPage() {
   const conversionRate = Number(selectedCurrency?.panel_rate || 1);
   const walletCredit = Number(amount || 0) * conversionRate;
 
-  const minimumAmount = Number(
-    selectedMethod?.minimum_amount || selectedMethod?.min_amount || 50
+  const baseMinimumPhp = Math.max(
+    50,
+    Number(selectedMethod?.minimum_amount || selectedMethod?.min_amount || 50),
   );
+
+  const minimumAmount =
+    conversionRate > 0 ? baseMinimumPhp / conversionRate : baseMinimumPhp;
 
   const iconUrl =
     selectedMethod?.icon_url ||
@@ -130,13 +137,32 @@ export default function AddFundsPage() {
 
   const selectedAmountIsPreset = quickAmounts.includes(Number(amount || 0));
 
-  const processingLabel =
-    selectedMethod?.processing_time ||
-    "Manual Review";
+  const processingLabel = selectedMethod?.processing_time || "Manual Review";
 
   const instructions =
     selectedMethod?.instructions ||
     "Send the exact amount to the selected payment account, enter the reference number, and upload your payment proof. Your balance will be added after admin approval.";
+
+  function formatCurrencyValue(value: number, code = currency) {
+    const symbols: Record<string, string> = {
+      PHP: "₱",
+      USD: "$",
+      THB: "฿",
+      EUR: "€",
+      GBP: "£",
+      JPY: "¥",
+      KRW: "₩",
+      CNY: "¥",
+      AUD: "A$",
+      CAD: "C$",
+    };
+
+    const symbol = symbols[code] || `${code} `;
+    return `${symbol}${Number(value || 0).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  }
 
   async function copyText(text?: string | null) {
     if (!text) return;
@@ -150,6 +176,7 @@ export default function AddFundsPage() {
     setReference("");
     setProofFile(null);
     setShowQrDetails(false);
+    setQrPreviewOpen(false);
 
     if (paymentMethods.length > 0) {
       setMethodId(paymentMethods[0].id);
@@ -170,7 +197,10 @@ export default function AddFundsPage() {
     }
 
     if (Number(amount) < minimumAmount) {
-      showToast(`Minimum amount is ${currency} ${minimumAmount.toFixed(2)}.`, "warning");
+      showToast(
+        `Minimum deposit is ${formatCurrencyValue(minimumAmount)} (₱${baseMinimumPhp.toFixed(2)} PHP).`,
+        "warning",
+      );
       setSubmittingDeposit(false);
       return;
     }
@@ -200,19 +230,17 @@ export default function AddFundsPage() {
       .from("payment-proofs")
       .getPublicUrl(fileName);
 
-    const { error: insertError } = await supabase
-      .from("deposits")
-      .insert({
-        user_id: authData.user.id,
-        amount: Number(amount),
-        currency,
-        conversion_rate: conversionRate,
-        wallet_credit: walletCredit,
-        method: selectedMethod.name,
-        reference_number: reference,
-        proof_url: publicUrlData.publicUrl,
-        status: "pending",
-      });
+    const { error: insertError } = await supabase.from("deposits").insert({
+      user_id: authData.user.id,
+      amount: Number(amount),
+      currency,
+      conversion_rate: conversionRate,
+      wallet_credit: walletCredit,
+      method: selectedMethod.name,
+      reference_number: reference,
+      proof_url: publicUrlData.publicUrl,
+      status: "pending",
+    });
 
     if (insertError) {
       showToast(insertError.message, "error");
@@ -248,7 +276,7 @@ export default function AddFundsPage() {
           message: `New ${currency} ${Number(amount).toFixed(2)} deposit request via ${selectedMethod.name}.`,
           type: "new_deposit",
           is_read: false,
-        }))
+        })),
       );
     }
 
@@ -267,9 +295,7 @@ export default function AddFundsPage() {
       <DashboardLayout>
         <div className="-m-8 min-h-screen bg-[#f6f9fc] p-6 lg:p-8">
           <div className="mb-7">
-            <h1 className="text-3xl font-black text-slate-950">
-              Add Funds
-            </h1>
+            <h1 className="text-3xl font-black text-slate-950">Add Funds</h1>
 
             <p className="mt-2 text-sm font-semibold text-slate-500">
               Top up your wallet balance to place orders and enjoy our services.
@@ -290,7 +316,10 @@ export default function AddFundsPage() {
                     paymentMethods.map((method) => {
                       const isSelected = method.id === methodId;
                       const methodIcon =
-                        method.icon_url || method.icon || method.image_url || "";
+                        method.icon_url ||
+                        method.icon ||
+                        method.image_url ||
+                        "";
 
                       return (
                         <button
@@ -298,6 +327,7 @@ export default function AddFundsPage() {
                           onClick={() => {
                             setMethodId(method.id);
                             setShowQrDetails(false);
+                            setQrPreviewOpen(false);
                           }}
                           className={`relative flex min-h-[138px] flex-col items-center justify-center rounded-2xl border p-5 text-center transition ${
                             isSelected
@@ -335,7 +365,8 @@ export default function AddFundsPage() {
                 <div className="mt-5 flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-semibold text-slate-600">
                   <Info size={18} className="mt-0.5 shrink-0 text-blue-600" />
                   <p>
-                    Payments are reviewed securely. Your funds will be added after successful verification.
+                    Payments are reviewed securely. Your funds will be added
+                    after successful verification.
                   </p>
                 </div>
               </section>
@@ -364,11 +395,11 @@ export default function AddFundsPage() {
                         )}
 
                         <h3 className="text-2xl font-black text-slate-950">
-                          ₱{value.toLocaleString()}
+                          {formatCurrencyValue(value)}
                         </h3>
 
                         <p className="mt-2 text-sm font-semibold text-slate-500">
-                          You pay ₱{value.toLocaleString()}.00
+                          You pay {formatCurrencyValue(value)}
                         </p>
                       </button>
                     );
@@ -422,7 +453,8 @@ export default function AddFundsPage() {
                   </div>
 
                   <p className="mt-2 text-xs font-semibold text-slate-500">
-                    Minimum amount: {currency} {minimumAmount.toFixed(2)}
+                    Minimum amount: {formatCurrencyValue(minimumAmount)} (₱
+                    {baseMinimumPhp.toFixed(2)} PHP)
                   </p>
                 </div>
               </section>
@@ -437,11 +469,24 @@ export default function AddFundsPage() {
                     </h3>
 
                     {selectedMethod?.qr_url ? (
-                      <img
-                        src={selectedMethod.qr_url}
-                        alt={`${selectedMethod.name} QR Code`}
-                        className="mt-4 h-56 w-full rounded-2xl border border-slate-200 bg-white object-contain p-3"
-                      />
+                      <button
+                        type="button"
+                        onClick={() => setQrPreviewOpen(true)}
+                        className="group relative mt-4 block h-56 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white p-3"
+                      >
+                        <img
+                          src={selectedMethod.qr_url}
+                          alt={`${selectedMethod.name} QR Code`}
+                          className="h-full w-full object-contain"
+                        />
+
+                        <span className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition group-hover:bg-black/20 group-hover:opacity-100">
+                          <span className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-black text-slate-800 shadow-lg">
+                            <ZoomIn size={16} />
+                            Enlarge QR
+                          </span>
+                        </span>
+                      </button>
                     ) : (
                       <div className="mt-4 flex h-56 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white text-sm font-semibold text-slate-400">
                         No QR uploaded
@@ -453,7 +498,9 @@ export default function AddFundsPage() {
                       onClick={() => setShowQrDetails(!showQrDetails)}
                       className="mt-4 w-full rounded-xl border border-slate-200 bg-white py-3 text-sm font-black text-blue-600 transition hover:border-blue-300"
                     >
-                      {showQrDetails ? "Hide Account Details" : "Show Account Details"}
+                      {showQrDetails
+                        ? "Hide Account Details"
+                        : "Show Account Details"}
                     </button>
                   </div>
 
@@ -528,7 +575,9 @@ export default function AddFundsPage() {
                   disabled={!canSubmit}
                   className="mt-5 flex w-full items-center justify-center gap-3 rounded-xl bg-blue-600 py-4 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {submittingDeposit ? "Submitting..." : "Submit Deposit Request"}
+                  {submittingDeposit
+                    ? "Submitting..."
+                    : "Submit Deposit Request"}
                   <ArrowRight size={18} />
                 </button>
 
@@ -557,10 +606,7 @@ export default function AddFundsPage() {
                     value={selectedMethod?.name || "Not selected"}
                   />
 
-                  <SummaryRow
-                    label="Processing Time"
-                    value={processingLabel}
-                  />
+                  <SummaryRow label="Processing Time" value={processingLabel} />
 
                   <SummaryRow
                     label="Amount"
@@ -611,6 +657,37 @@ export default function AddFundsPage() {
               </div>
             </aside>
           </div>
+
+          {qrPreviewOpen && selectedMethod?.qr_url && (
+            <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+              <div className="relative w-full max-w-2xl rounded-3xl bg-white p-5 shadow-2xl">
+                <button
+                  type="button"
+                  onClick={() => setQrPreviewOpen(false)}
+                  className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200"
+                >
+                  <X size={20} />
+                </button>
+
+                <div className="pr-12">
+                  <h3 className="text-2xl font-black text-slate-950">
+                    {selectedMethod.name} QR Code
+                  </h3>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    Scan this QR code to send your payment.
+                  </p>
+                </div>
+
+                <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <img
+                    src={selectedMethod.qr_url}
+                    alt={`${selectedMethod.name} QR Code`}
+                    className="max-h-[70vh] w-full object-contain"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </DashboardLayout>
     </DashboardGuard>
@@ -667,9 +744,7 @@ function AccountBox({
       </p>
 
       <div className="mt-2 flex items-center justify-between gap-3">
-        <p className="break-all text-sm font-black text-slate-900">
-          {value}
-        </p>
+        <p className="break-all text-sm font-black text-slate-900">{value}</p>
 
         <button
           type="button"
@@ -695,7 +770,9 @@ function SummaryRow({
   return (
     <div className="flex items-center justify-between gap-4">
       <p className="text-sm font-bold text-slate-500">{label}</p>
-      <p className={`text-right text-sm font-black text-slate-950 ${valueClassName}`}>
+      <p
+        className={`text-right text-sm font-black text-slate-950 ${valueClassName}`}
+      >
         {value}
       </p>
     </div>
