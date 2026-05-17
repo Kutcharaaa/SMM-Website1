@@ -1,16 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import WalletBalance from "@/components/WalletBalance";
+import { supabase } from "@/lib/supabase";
 
 import {
   LayoutDashboard,
-  PlusCircle,
   ShoppingCart,
   Layers3,
   Wallet,
-  Receipt,
   Ticket,
   Star,
   Users,
@@ -18,7 +17,10 @@ import {
   Settings,
   LogOut,
   X,
+  AlertTriangle,
 } from "lucide-react";
+
+import { useState } from "react";
 
 const menu = [
   {
@@ -67,11 +69,6 @@ const menu = [
     href: "/dashboard/settings",
     icon: Settings,
   },
-  {
-    name: "Logout",
-    href: "/logout",
-    icon: LogOut,
-  },
 ];
 
 type DashboardSidebarProps = {
@@ -84,6 +81,10 @@ export default function DashboardSidebar({
   onClose,
 }: DashboardSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const [logoutModalOpen, setLogoutModalOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   function isActive(href: string) {
     if (href === "/dashboard") {
@@ -91,6 +92,20 @@ export default function DashboardSidebar({
     }
 
     return pathname.startsWith(href);
+  }
+
+  async function handleLogout() {
+    if (loggingOut) return;
+
+    setLoggingOut(true);
+
+    await supabase.auth.signOut();
+
+    setLogoutModalOpen(false);
+    setLoggingOut(false);
+
+    router.push("/login");
+    router.refresh();
   }
 
   return (
@@ -121,7 +136,7 @@ export default function DashboardSidebar({
 
             <button
               onClick={onClose}
-              className="lg:hidden rounded-xl bg-white/10 p-2 transition hover:bg-white/20"
+              className="rounded-xl bg-white/10 p-2 transition hover:bg-white/20 lg:hidden"
             >
               <X size={18} />
             </button>
@@ -155,7 +170,6 @@ export default function DashboardSidebar({
                 >
                   <div className="flex items-center gap-3">
                     <Icon size={18} strokeWidth={2.2} />
-
                     <span>{item.name}</span>
                   </div>
 
@@ -167,11 +181,25 @@ export default function DashboardSidebar({
                 </Link>
               );
             })}
+
+            <button
+              type="button"
+              onClick={() => {
+                setLogoutModalOpen(true);
+                onClose?.();
+              }}
+              className="flex w-full items-center justify-between rounded-2xl px-4 py-3 text-sm font-semibold text-blue-100 transition hover:bg-white/10 hover:text-white"
+            >
+              <div className="flex items-center gap-3">
+                <LogOut size={18} strokeWidth={2.2} />
+                <span>Logout</span>
+              </div>
+            </button>
           </div>
         </nav>
 
         <div className="p-4">
-          <div className="rounded-3xl bg-white/10 p-5 backdrop-blur-xl shadow-lg shadow-blue-950/20">
+          <div className="rounded-3xl bg-white/10 p-5 shadow-lg shadow-blue-950/20 backdrop-blur-xl">
             <p className="text-xs font-medium text-blue-100/80">
               Available Balance
             </p>
@@ -190,6 +218,51 @@ export default function DashboardSidebar({
           </div>
         </div>
       </aside>
+
+      {logoutModalOpen && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="p-6">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-50 text-red-600">
+                  <AlertTriangle size={24} />
+                </div>
+
+                <div>
+                  <h3 className="text-xl font-black text-slate-950">
+                    Confirm Logout
+                  </h3>
+
+                  <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
+                    Are you sure you want to logout from your Ascend Service
+                    account?
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setLogoutModalOpen(false)}
+                  disabled={loggingOut}
+                  className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  disabled={loggingOut}
+                  className="rounded-2xl bg-red-600 px-5 py-3 text-sm font-black text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loggingOut ? "Logging out..." : "Yes, Logout"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
