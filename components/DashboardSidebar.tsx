@@ -52,7 +52,7 @@ const menu = [
     name: "Reseller",
     href: "/dashboard/reseller",
     icon: Star,
-    badge: "NEW",
+    badge: "",
   },
   {
     name: "Affiliates",
