@@ -630,7 +630,7 @@ export default function SettingsPage() {
                   })}
                   helper={
                     selectedCurrency
-                      ? `Uses panel rate: ${formatRate(getPanelRate(selectedCurrency))}. Wallet still stays PHP.`
+                      ? `Rate: ${formatRate(getPanelRate(selectedCurrency))}.`
                       : "Wallet stays PHP. This only changes display later."
                   }
                 />
@@ -650,17 +650,6 @@ export default function SettingsPage() {
                   options={THEME_OPTIONS}
                   helper="Saved now. Global theme support can be connected later."
                 />
-              </div>
-
-              <div className="mt-5 rounded-2xl border border-orange-100 bg-orange-50 p-4">
-                <p className="text-sm font-black text-orange-700">
-                  Important currency rule
-                </p>
-                <p className="mt-1 text-sm font-semibold leading-6 text-orange-700/80">
-                  Your wallet and order calculations stay in PHP. Display currency
-                  only changes how balances and prices will be shown later using
-                  your exchange_rates panel rate.
-                </p>
               </div>
 
               <button
