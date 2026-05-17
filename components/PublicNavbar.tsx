@@ -1,15 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import {
-  LayoutDashboard,
-  ShieldCheck,
-  Menu,
-  X,
-  User,
-} from "lucide-react";
+import { LayoutDashboard, ShieldCheck, Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 type Profile = {
@@ -19,30 +13,12 @@ type Profile = {
 };
 
 const navItems = [
-  {
-    name: "Home",
-    href: "/",
-  },
-  {
-    name: "Services",
-    href: "/services",
-  },
-  {
-    name: "Reseller",
-    href: "/reseller",
-  },
-  {
-    name: "Affiliates",
-    href: "/affiliates",
-  },
-  {
-    name: "API",
-    href: "/api",
-  },
-  {
-    name: "Support",
-    href: "/support",
-  },
+  { name: "Home", href: "/" },
+  { name: "Services", href: "/services" },
+  { name: "Reseller", href: "/reseller" },
+  { name: "Affiliates", href: "/affiliates" },
+  { name: "API", href: "/api" },
+  { name: "Support", href: "/support" },
 ];
 
 function getRoleLabel(role: string) {
@@ -58,12 +34,10 @@ function isAdminRole(role: string) {
 
 export default function PublicNavbar() {
   const pathname = usePathname();
-  const router = useRouter();
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loggedIn, setLoggedIn] = useState(false);
-
   const [profile, setProfile] = useState<Profile>({
     username: null,
     role: "user",
@@ -97,10 +71,7 @@ export default function PublicNavbar() {
       .single();
 
     setProfile({
-      username:
-        data?.username ||
-        session.user.email?.split("@")[0] ||
-        "User",
+      username: data?.username || session.user.email?.split("@")[0] || "User",
       role: data?.role || "user",
       avatar_url: data?.avatar_url || null,
     });
@@ -131,19 +102,13 @@ export default function PublicNavbar() {
     <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/95 backdrop-blur-xl">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 lg:px-8">
         <Link href="/" className="flex items-center gap-3">
-          <img
-            src="/logo.png"
-            alt="Ascend Service"
-            className="h-12 w-auto"
-          />
+          <img src="/logo.png" alt="Ascend Service" className="h-12 w-auto" />
         </Link>
 
         <nav className="hidden items-center gap-2 lg:flex">
           {navItems.map((item) => {
             const active =
-              item.href === "/"
-                ? pathname === "/"
-                : pathname.startsWith(item.href);
+              item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
 
             return (
               <Link
@@ -184,9 +149,7 @@ export default function PublicNavbar() {
             <>
               <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900 px-4 py-2">
                 <div className="text-right">
-                  <p className="text-sm font-black leading-5 text-white">
-                    {username}
-                  </p>
+                  <p className="text-sm font-black leading-5 text-white">{username}</p>
 
                   <div className="mt-1 flex justify-end gap-1">
                     <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-black text-white">
@@ -247,11 +210,7 @@ export default function PublicNavbar() {
         <div className="fixed inset-0 z-[999] bg-slate-950/70 backdrop-blur-sm lg:hidden">
           <div className="ml-auto h-full w-[310px] bg-slate-950 p-5 shadow-2xl">
             <div className="flex items-center justify-between">
-              <img
-                src="/logo.png"
-                alt="Ascend Service"
-                className="h-10 w-auto"
-              />
+              <img src="/logo.png" alt="Ascend Service" className="h-10 w-auto" />
 
               <button
                 onClick={() => setMobileOpen(false)}
@@ -264,9 +223,7 @@ export default function PublicNavbar() {
             <div className="mt-8 space-y-2">
               {navItems.map((item) => {
                 const active =
-                  item.href === "/"
-                    ? pathname === "/"
-                    : pathname.startsWith(item.href);
+                  item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
 
                 return (
                   <Link
@@ -274,9 +231,7 @@ export default function PublicNavbar() {
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
                     className={`block rounded-2xl px-4 py-3 text-sm font-black transition ${
-                      active
-                        ? "bg-blue-600 text-white"
-                        : "text-slate-200 hover:bg-white/10"
+                      active ? "bg-blue-600 text-white" : "text-slate-200 hover:bg-white/10"
                     }`}
                   >
                     {item.name}
@@ -322,9 +277,7 @@ export default function PublicNavbar() {
                     </div>
 
                     <div>
-                      <p className="text-sm font-black text-white">
-                        {username}
-                      </p>
+                      <p className="text-sm font-black text-white">{username}</p>
 
                       <div className="mt-1 flex gap-1">
                         <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-black text-white">
