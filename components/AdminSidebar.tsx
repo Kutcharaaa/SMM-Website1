@@ -85,7 +85,7 @@ export default function AdminSidebar() {
         },
         {
           name: "Analytics / Reports",
-          href: "/admin/reports",
+          href: "/admin/analytics",
           icon: BarChart3,
           roles: ["head_admin", "super_admin"],
         },
