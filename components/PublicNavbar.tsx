@@ -183,7 +183,7 @@ export default function PublicNavbar() {
                   className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700"
                 >
                   <ShieldCheck size={17} />
-                  Admin Dashboard
+                  Admin
                 </Link>
               )}
 
