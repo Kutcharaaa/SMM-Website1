@@ -95,8 +95,8 @@ const resellerLevels = [
     discount: "4% Discount",
     convert: "100 Points = $1.75",
     icon: Gem,
-    border: "border-red-200",
-    accent: "bg-red-50 text-red-600",
+    border: "border-orange-200",
+    accent: "bg-orange-50 text-orange-600",
   },
   {
     name: "Ascend Partner",
@@ -104,8 +104,8 @@ const resellerLevels = [
     discount: "5% Discount",
     convert: "100 Points = $2.00",
     icon: Trophy,
-    border: "border-yellow-200",
-    accent: "bg-yellow-50 text-yellow-600",
+    border: "border-blue-200",
+    accent: "bg-blue-50 text-blue-600",
   },
 ];
 
