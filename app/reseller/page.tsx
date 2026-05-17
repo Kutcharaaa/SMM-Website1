@@ -34,19 +34,19 @@ const benefits = [
   },
   {
     title: "Unlock Discounts",
-    text: "The more points you earn, the more discount you unlock.",
+    text: "Higher reseller level means better order discounts.",
     icon: Tag,
     color: "bg-green-50 text-green-600",
   },
   {
     title: "Convert to Balance",
-    text: "Convert reseller points into real wallet balance anytime.",
+    text: "Convert reseller points into wallet balance anytime.",
     icon: Wallet,
     color: "bg-purple-50 text-purple-600",
   },
   {
     title: "Child Panel Access",
-    text: "Get your own child panel and manage your clients easily.",
+    text: "Unlock child panel access and manage your clients easily.",
     icon: Users,
     color: "bg-orange-50 text-orange-600",
   },
@@ -55,7 +55,7 @@ const benefits = [
 const resellerLevels = [
   {
     name: "New Reseller",
-    points: "₱0.00",
+    spend: "₱0.00",
     discount: "0% Discount",
     convert: "100 Points = $1.00",
     icon: Users,
@@ -64,7 +64,7 @@ const resellerLevels = [
   },
   {
     name: "Active Reseller",
-    points: "₱20,000.00",
+    spend: "₱20,000.00",
     discount: "1% Discount",
     convert: "100 Points = $1.00",
     icon: ShieldCheck,
@@ -73,7 +73,7 @@ const resellerLevels = [
   },
   {
     name: "Pro Reseller",
-    points: "₱60,000.00",
+    spend: "₱60,000.00",
     discount: "2% Discount",
     convert: "100 Points = $1.25",
     icon: Crown,
@@ -82,16 +82,16 @@ const resellerLevels = [
   },
   {
     name: "Master Reseller",
-    points: "₱150,000.00",
+    spend: "₱150,000.00",
     discount: "3% Discount",
     convert: "100 Points = $1.50",
     icon: Gift,
     border: "border-orange-200",
     accent: "bg-orange-50 text-orange-600",
   },
-    {
+  {
     name: "Elite Partner",
-    points: "₱250,000.00",
+    spend: "₱250,000.00",
     discount: "4% Discount",
     convert: "100 Points = $1.75",
     icon: Gem,
@@ -100,8 +100,8 @@ const resellerLevels = [
   },
   {
     name: "Ascend Partner",
-    points: "₱500,000.00",
-    discount: "5% Dicount",
+    spend: "₱500,000.00",
+    discount: "5% Discount",
     convert: "100 Points = $2.00",
     icon: Trophy,
     border: "border-blue-200",
@@ -112,7 +112,7 @@ const resellerLevels = [
 const comparisonRows = [
   {
     feature: "Purchase Discount",
-    normal: "No Discount",
+    normal: "0%",
     reseller: "Up to 5%",
   },
   {
@@ -248,9 +248,23 @@ export default function ResellerPage() {
             </div>
 
             <div className="mt-10 grid max-w-2xl gap-5 sm:grid-cols-3">
-              <MiniBenefit icon={Zap} title="Instant Access" text="Start immediately" />
-              <MiniBenefit icon={ShieldCheck} title="Secure & Reliable" text="100% Safe" />
-              <MiniBenefit icon={Headphones} title="24/7 Support" text="Always Here" />
+              <MiniBenefit
+                icon={Zap}
+                title="Instant Access"
+                text="Start immediately"
+              />
+
+              <MiniBenefit
+                icon={ShieldCheck}
+                title="Secure & Reliable"
+                text="100% Safe"
+              />
+
+              <MiniBenefit
+                icon={Headphones}
+                title="24/7 Support"
+                text="Always Here"
+              />
             </div>
           </div>
 
@@ -288,7 +302,9 @@ export default function ResellerPage() {
 
                 <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white">
                   <div className="flex items-center justify-between border-b border-slate-100 p-4">
-                    <h3 className="font-black text-slate-950">Recent Orders</h3>
+                    <h3 className="font-black text-slate-950">
+                      Recent Orders
+                    </h3>
 
                     <span className="text-xs font-black text-blue-600">
                       View All Orders
@@ -430,15 +446,15 @@ export default function ResellerPage() {
             </p>
           </div>
 
-          <div className="mt-10 grid gap-5 lg:grid-cols-5">
+          <div className="mx-auto mt-10 grid max-w-7xl gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             {resellerLevels.map((level, index) => {
               const Icon = level.icon;
 
               return (
                 <div key={level.name} className="relative">
                   {index !== resellerLevels.length - 1 && (
-                    <div className="absolute -right-4 top-1/2 z-10 hidden -translate-y-1/2 text-slate-300 lg:block">
-                      <ArrowRight size={26} />
+                    <div className="absolute -right-4 top-1/2 z-10 hidden -translate-y-1/2 text-slate-300 xl:block">
+                      <ArrowRight size={24} />
                     </div>
                   )}
 
@@ -455,11 +471,11 @@ export default function ResellerPage() {
                       {level.name}
                     </h3>
 
-                    <p className="mt-2 text-center text-sm font-bold text-slate-400">
-                      {level.points}
+                    <p className="mt-3 text-center text-sm font-black text-slate-400">
+                      {level.spend}
                     </p>
 
-                    <div className="mt-5 space-y-3 text-sm">
+                    <div className="mt-6 space-y-4 text-sm">
                       <div>
                         <p className="font-black text-slate-400">Discount</p>
                         <p className="font-black text-slate-950">
@@ -502,60 +518,62 @@ export default function ResellerPage() {
           </div>
 
           <div className="mx-auto mt-10 max-w-6xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-blue-950/5">
-            <table className="w-full min-w-[760px] text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50">
-                  <th className="p-5 text-left font-black text-slate-950">
-                    Features
-                  </th>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[760px] text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50">
+                    <th className="p-5 text-left font-black text-slate-950">
+                      Features
+                    </th>
 
-                  <th className="p-5 text-center font-black text-slate-950">
-                    Normal User
-                  </th>
+                    <th className="p-5 text-center font-black text-slate-950">
+                      Normal User
+                    </th>
 
-                  <th className="bg-blue-50 p-5 text-center font-black text-blue-600">
-                    Reseller
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {comparisonRows.map((row) => (
-                  <tr
-                    key={row.feature}
-                    className="border-b border-slate-100 last:border-b-0"
-                  >
-                    <td className="p-5 font-black text-slate-700">
-                      {row.feature}
-                    </td>
-
-                    <td className="p-5 text-center font-bold text-slate-500">
-                      {typeof row.normal === "boolean" ? (
-                        row.normal ? (
-                          <CheckCircle2 className="mx-auto text-green-600" />
-                        ) : (
-                          <X className="mx-auto text-red-500" />
-                        )
-                      ) : (
-                        row.normal
-                      )}
-                    </td>
-
-                    <td className="bg-blue-50/50 p-5 text-center font-black text-blue-600">
-                      {typeof row.reseller === "boolean" ? (
-                        row.reseller ? (
-                          <CheckCircle2 className="mx-auto text-green-600" />
-                        ) : (
-                          <X className="mx-auto text-red-500" />
-                        )
-                      ) : (
-                        row.reseller
-                      )}
-                    </td>
+                    <th className="bg-blue-50 p-5 text-center font-black text-blue-600">
+                      Reseller
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+
+                <tbody>
+                  {comparisonRows.map((row) => (
+                    <tr
+                      key={row.feature}
+                      className="border-b border-slate-100 last:border-b-0"
+                    >
+                      <td className="p-5 font-black text-slate-700">
+                        {row.feature}
+                      </td>
+
+                      <td className="p-5 text-center font-bold text-slate-500">
+                        {typeof row.normal === "boolean" ? (
+                          row.normal ? (
+                            <CheckCircle2 className="mx-auto text-green-600" />
+                          ) : (
+                            <X className="mx-auto text-red-500" />
+                          )
+                        ) : (
+                          row.normal
+                        )}
+                      </td>
+
+                      <td className="bg-blue-50/50 p-5 text-center font-black text-blue-600">
+                        {typeof row.reseller === "boolean" ? (
+                          row.reseller ? (
+                            <CheckCircle2 className="mx-auto text-green-600" />
+                          ) : (
+                            <X className="mx-auto text-red-500" />
+                          )
+                        ) : (
+                          row.reseller
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <div className="mt-12 overflow-hidden rounded-[2rem] bg-gradient-to-r from-blue-600 to-blue-700 p-8 text-white shadow-2xl shadow-blue-600/20 lg:p-10">
@@ -599,8 +617,14 @@ export default function ResellerPage() {
                 <div className="absolute bottom-20 right-36 flex h-20 w-20 items-center justify-center rounded-full bg-white/20">
                   <Star size={38} />
                 </div>
-                <Sparkles className="absolute right-2 top-4 text-white/70" size={42} />
-                <BarChart3 className="absolute right-52 top-12 text-white/70" size={56} />
+                <Sparkles
+                  className="absolute right-2 top-4 text-white/70"
+                  size={42}
+                />
+                <BarChart3
+                  className="absolute right-52 top-12 text-white/70"
+                  size={56}
+                />
               </div>
             </div>
           </div>
