@@ -506,7 +506,7 @@ export default function AdminSidebar() {
           {!minimized ? (
             <Link href="/admin" onClick={closeMobile}>
               <img
-                src="/logo.png"
+                src="/logoadmin.png"
                 alt="Ascend Service"
                 className="h-14 w-auto"
               />
