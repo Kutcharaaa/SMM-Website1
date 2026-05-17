@@ -107,7 +107,7 @@ const steps = [
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-[#f7faff] text-slate-950">
+    <main className="min-h-screen bg-[#f6f9ff] text-slate-950">
       <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/95 backdrop-blur-xl">
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 lg:px-8">
           <Link href="/" className="flex items-center gap-3">
@@ -159,9 +159,17 @@ export default function HomePage() {
         </div>
       </header>
 
-      <section className="relative overflow-hidden">
-        <div className="absolute right-0 top-0 h-[560px] w-[560px] rounded-full bg-blue-200/30 blur-3xl" />
-        <div className="absolute left-0 top-20 h-[420px] w-[420px] rounded-full bg-cyan-100/60 blur-3xl" />
+      <section className="relative overflow-hidden border-b border-slate-200/80 bg-[radial-gradient(circle_at_top_left,#e8f3ff_0%,transparent_32%),radial-gradient(circle_at_top_right,#dcecff_0%,transparent_30%),linear-gradient(135deg,#ffffff_0%,#f6f9ff_45%,#eef6ff_100%)]">
+        <div className="absolute inset-0 opacity-[0.45]">
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#2563eb12_1px,transparent_1px),linear-gradient(to_bottom,#2563eb12_1px,transparent_1px)] bg-[size:42px_42px]" />
+        </div>
+
+        <div className="absolute -left-24 top-20 h-[420px] w-[420px] rounded-full bg-blue-200/35 blur-3xl" />
+        <div className="absolute right-0 top-0 h-[560px] w-[560px] rounded-full bg-cyan-200/30 blur-3xl" />
+        <div className="absolute bottom-0 left-1/2 h-[360px] w-[520px] -translate-x-1/2 rounded-full bg-indigo-100/50 blur-3xl" />
+
+        <div className="absolute right-[-120px] top-28 hidden h-[320px] w-[320px] rotate-45 rounded-[4rem] border border-blue-200/60 bg-white/35 shadow-2xl shadow-blue-200/30 lg:block" />
+        <div className="absolute left-[-140px] bottom-10 hidden h-[280px] w-[280px] rotate-12 rounded-[4rem] border border-cyan-200/60 bg-white/40 shadow-2xl shadow-cyan-200/30 lg:block" />
 
         <div className="mx-auto grid max-w-7xl items-center gap-12 px-5 py-16 lg:grid-cols-[0.92fr_1.08fr] lg:px-8 lg:py-20">
           <div className="relative z-10">
@@ -387,9 +395,7 @@ export default function HomePage() {
                         </div>
 
                         <div>
-                          <p className="text-sm font-black">
-                            Secure Wallet
-                          </p>
+                          <p className="text-sm font-black">Secure Wallet</p>
 
                           <p className="mt-1 text-xs font-semibold text-blue-100">
                             Safe payments and order tracking.
