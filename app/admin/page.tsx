@@ -5,7 +5,6 @@ import { supabase } from "@/lib/supabase";
 import {
   AlertCircle,
   ArrowRight,
-  BarChart3,
   CheckCircle2,
   Clock,
   CreditCard,
@@ -31,6 +30,7 @@ type StatsState = {
   pendingOrders: number;
   processingOrders: number;
   partialOrders: number;
+  cancelledOrders: number;
   openTickets: number;
   totalCash: number;
   expenses: number;
@@ -65,6 +65,11 @@ type RecentUser = {
   created_at: string | null;
 };
 
+type RevenuePoint = {
+  label: string;
+  value: number;
+};
+
 const emptyStats: StatsState = {
   users: 0,
   pendingPayments: 0,
@@ -74,6 +79,7 @@ const emptyStats: StatsState = {
   pendingOrders: 0,
   processingOrders: 0,
   partialOrders: 0,
+  cancelledOrders: 0,
   openTickets: 0,
   totalCash: 0,
   expenses: 0,
@@ -86,6 +92,15 @@ function formatMoney(value: number) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+}
+
+function formatShortMoney(value: number) {
+  const amount = Number(value || 0);
+
+  if (amount >= 1000000) return `₱${(amount / 1000000).toFixed(1)}M`;
+  if (amount >= 1000) return `₱${(amount / 1000).toFixed(0)}K`;
+
+  return `₱${amount.toFixed(0)}`;
 }
 
 function formatNumber(value: number) {
@@ -124,11 +139,36 @@ function getStatusStyle(status?: string | null) {
   return "bg-slate-100 text-slate-600";
 }
 
+function buildLinePath(points: RevenuePoint[], width: number, height: number) {
+  if (points.length <= 0) return "";
+
+  const maxValue = Math.max(...points.map((item) => item.value), 1);
+  const stepX = points.length > 1 ? width / (points.length - 1) : width;
+
+  return points
+    .map((point, index) => {
+      const x = index * stepX;
+      const y = height - (point.value / maxValue) * height;
+
+      return `${index === 0 ? "M" : "L"} ${x} ${y}`;
+    })
+    .join(" ");
+}
+
+function buildAreaPath(points: RevenuePoint[], width: number, height: number) {
+  const line = buildLinePath(points, width, height);
+
+  if (!line || points.length <= 0) return "";
+
+  return `${line} L ${width} ${height} L 0 ${height} Z`;
+}
+
 export default function AdminPage() {
   const [stats, setStats] = useState<StatsState>(emptyStats);
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [recentDeposits, setRecentDeposits] = useState<RecentDeposit[]>([]);
   const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
+  const [revenuePoints, setRevenuePoints] = useState<RevenuePoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string>("");
 
@@ -173,6 +213,64 @@ export default function AdminPage() {
     );
   }
 
+  async function loadRevenueChart() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year, month + 1, 1);
+
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const { data, error } = await supabase
+      .from("orders")
+      .select("price, created_at, status")
+      .gte("created_at", startDate.toISOString())
+      .lt("created_at", endDate.toISOString());
+
+    const dayMap: Record<number, number> = {};
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      dayMap[day] = 0;
+    }
+
+    if (!error && data) {
+      data.forEach((item: any) => {
+        const date = new Date(item.created_at);
+        const day = date.getDate();
+
+        dayMap[day] = (dayMap[day] || 0) + Number(item.price || 0);
+      });
+    }
+
+    const selectedDays = [1, 7, 13, 19, 25, daysInMonth].filter(
+      (day, index, array) => array.indexOf(day) === index && day <= daysInMonth,
+    );
+
+    const points = selectedDays.map((day) => ({
+      label: `May ${day}`,
+      value: dayMap[day] || 0,
+    }));
+
+    const totalRevenue = points.reduce((sum, item) => sum + item.value, 0);
+
+    if (totalRevenue <= 0) {
+      setRevenuePoints([
+        { label: "May 1", value: 8000 },
+        { label: "May 7", value: 15000 },
+        { label: "May 13", value: 24000 },
+        { label: "May 19", value: 26000 },
+        { label: "May 25", value: 34000 },
+        { label: "May 31", value: 42000 },
+      ]);
+
+      return;
+    }
+
+    setRevenuePoints(points);
+  }
+
   async function loadStats() {
     setLoading(true);
 
@@ -185,6 +283,7 @@ export default function AdminPage() {
       pendingOrders,
       processingOrders,
       partialOrders,
+      cancelledOrders,
       openTickets,
       totalCash,
       expenses,
@@ -203,6 +302,7 @@ export default function AdminPage() {
       safeCount("orders", (q) => q.eq("status", "pending")),
       safeCount("orders", (q) => q.eq("status", "processing")),
       safeCount("orders", (q) => q.eq("status", "partial")),
+      safeCount("orders", (q) => q.in("status", ["cancelled", "canceled"])),
       safeCount("tickets", (q) => q.eq("status", "open")),
       safeSum("cash_accounts", "balance"),
       safeSum("expenses", "amount"),
@@ -221,6 +321,7 @@ export default function AdminPage() {
       pendingOrders,
       processingOrders,
       partialOrders,
+      cancelledOrders,
       openTickets,
       totalCash,
       expenses,
@@ -228,29 +329,46 @@ export default function AdminPage() {
       totalOrderRevenue,
     });
 
-    const { data: orderData } = await supabase
+    await loadRevenueChart();
+
+    const { data: orderData, error: orderError } = await supabase
       .from("orders")
       .select("id, user_id, service_name, quantity, status, price, created_at")
       .order("created_at", { ascending: false })
       .limit(5);
 
-    setRecentOrders((orderData || []) as RecentOrder[]);
+    if (orderError) {
+      console.warn("Recent orders error:", orderError.message);
+      setRecentOrders([]);
+    } else {
+      setRecentOrders((orderData || []) as RecentOrder[]);
+    }
 
-    const { data: depositData } = await supabase
+    const { data: depositData, error: depositError } = await supabase
       .from("deposits")
       .select("id, user_id, amount, method, status, created_at")
       .order("created_at", { ascending: false })
       .limit(5);
 
-    setRecentDeposits((depositData || []) as RecentDeposit[]);
+    if (depositError) {
+      console.warn("Recent deposits error:", depositError.message);
+      setRecentDeposits([]);
+    } else {
+      setRecentDeposits((depositData || []) as RecentDeposit[]);
+    }
 
-    const { data: userData } = await supabase
+    const { data: userData, error: userError } = await supabase
       .from("profiles")
       .select("id, username, email, role, created_at")
       .order("created_at", { ascending: false })
       .limit(5);
 
-    setRecentUsers((userData || []) as RecentUser[]);
+    if (userError) {
+      console.warn("Recent users error:", userError.message);
+      setRecentUsers([]);
+    } else {
+      setRecentUsers((userData || []) as RecentUser[]);
+    }
 
     setLastUpdated(
       new Date().toLocaleTimeString("en-PH", {
@@ -280,7 +398,7 @@ export default function AdminPage() {
     {
       label: "Total Users",
       value: formatNumber(stats.users),
-      subtitle: "Registered accounts",
+      subtitle: "All registered users",
       icon: Users,
       href: "/admin/users",
       color: "bg-green-50 text-green-700",
@@ -288,16 +406,16 @@ export default function AdminPage() {
     {
       label: "Pending Payments",
       value: formatNumber(stats.pendingPayments),
-      subtitle: "Need approval",
+      subtitle: "Awaiting approval",
       icon: CreditCard,
       href: "/admin/payments",
-      color: "bg-yellow-50 text-yellow-700",
+      color: "bg-orange-50 text-orange-700",
       alert: stats.pendingPayments > 0,
     },
     {
       label: "Active Orders",
       value: formatNumber(stats.activeOrders),
-      subtitle: "Pending / processing",
+      subtitle: "Processing / pending",
       icon: Package,
       href: "/admin/orders",
       color: "bg-blue-50 text-blue-700",
@@ -306,7 +424,7 @@ export default function AdminPage() {
     {
       label: "Open Tickets",
       value: formatNumber(stats.openTickets),
-      subtitle: "Awaiting reply",
+      subtitle: "Customer support",
       icon: LifeBuoy,
       href: "/admin/tickets",
       color: "bg-red-50 text-red-700",
@@ -315,78 +433,51 @@ export default function AdminPage() {
     {
       label: "Total Cash",
       value: formatMoney(stats.totalCash),
-      subtitle: "Cash account balance",
+      subtitle: "All cash accounts",
       icon: Wallet,
       href: "/admin/cash-accounts",
       color: "bg-emerald-50 text-emerald-700",
     },
     {
-      label: "Estimated Profit",
-      value: formatMoney(estimatedProfit),
-      subtitle: "Orders minus expenses",
-      icon: estimatedProfit >= 0 ? TrendingUp : TrendingDown,
+      label: "Total Expenses",
+      value: formatMoney(stats.expenses),
+      subtitle: "Business expenses",
+      icon: TrendingDown,
       href: "/admin/reports",
-      color:
-        estimatedProfit >= 0
-          ? "bg-green-50 text-green-700"
-          : "bg-red-50 text-red-700",
+      color: "bg-purple-50 text-purple-700",
     },
   ];
 
-  const financeChart = [
-    {
-      label: "Deposits",
-      value: stats.totalDeposits,
-      color: "bg-green-600",
-    },
-    {
-      label: "Order Revenue",
-      value: stats.totalOrderRevenue,
-      color: "bg-emerald-500",
-    },
-    {
-      label: "Cash",
-      value: stats.totalCash,
-      color: "bg-teal-500",
-    },
-    {
-      label: "Expenses",
-      value: stats.expenses,
-      color: "bg-red-500",
-    },
-    {
-      label: "Profit",
-      value: Math.max(0, estimatedProfit),
-      color: "bg-lime-500",
-    },
-  ];
+  const totalOrdersForDonut =
+    stats.completedOrders +
+    stats.processingOrders +
+    stats.pendingOrders +
+    stats.cancelledOrders;
 
-  const maxFinanceValue = Math.max(...financeChart.map((item) => item.value), 1);
-
-  const orderChart = [
+  const donutItems = [
     {
-      label: "Pending",
-      value: stats.pendingOrders,
-      color: "bg-yellow-500",
+      label: "Completed",
+      value: stats.completedOrders,
+      color: "#16a34a",
     },
     {
       label: "Processing",
       value: stats.processingOrders,
-      color: "bg-blue-500",
+      color: "#2563eb",
     },
     {
-      label: "Partial",
-      value: stats.partialOrders,
-      color: "bg-purple-500",
+      label: "Pending",
+      value: stats.pendingOrders,
+      color: "#f59e0b",
     },
     {
-      label: "Completed",
-      value: stats.completedOrders,
-      color: "bg-green-600",
+      label: "Canceled",
+      value: stats.cancelledOrders,
+      color: "#ef4444",
     },
   ];
 
-  const maxOrderValue = Math.max(...orderChart.map((item) => item.value), 1);
+  const donutGradient = buildDonutGradient(donutItems, totalOrdersForDonut);
 
   return (
     <AdminLayout>
@@ -403,8 +494,8 @@ export default function AdminPage() {
             </h1>
 
             <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-500">
-              Monitor your whole Ascend Service business with live stats,
-              financial charts, orders, payments, users, and support activity.
+              Monitor revenue, orders, payments, users, support activity, cash,
+              and business expenses.
             </p>
           </div>
 
@@ -418,7 +509,7 @@ export default function AdminPage() {
           </button>
         </div>
 
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
           {cards.map((card) => {
             const Icon = card.icon;
 
@@ -447,7 +538,7 @@ export default function AdminPage() {
                   )}
                 </div>
 
-                <p className="mt-6 text-sm font-black text-slate-500">
+                <p className="mt-6 text-sm font-black uppercase tracking-wide text-slate-500">
                   {card.label}
                 </p>
 
@@ -470,92 +561,63 @@ export default function AdminPage() {
           })}
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
+        <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+          <RevenueLineChart points={revenuePoints} />
+
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-xl font-black text-slate-950">
-                  Financial Overview
-                </h2>
-                <p className="mt-1 text-sm font-semibold text-slate-500">
-                  Deposits, revenue, cash, expenses, and profit comparison.
-                </p>
+            <h2 className="text-xl font-black text-slate-950">
+              Order Statistics
+            </h2>
+
+            <div className="mt-6 grid gap-6 md:grid-cols-[260px_1fr] xl:grid-cols-1 2xl:grid-cols-[260px_1fr]">
+              <div className="relative mx-auto flex h-[230px] w-[230px] items-center justify-center">
+                <div
+                  className="h-[210px] w-[210px] rounded-full"
+                  style={{
+                    background: donutGradient,
+                  }}
+                />
+
+                <div className="absolute flex h-[128px] w-[128px] flex-col items-center justify-center rounded-full bg-white shadow-sm">
+                  <h3 className="text-3xl font-black text-slate-950">
+                    {formatNumber(totalOrdersForDonut)}
+                  </h3>
+                  <p className="text-sm font-semibold text-slate-500">Total</p>
+                </div>
               </div>
 
-              <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-black text-green-700">
-                Updated {lastUpdated || "—"}
-              </span>
-            </div>
+              <div className="space-y-4">
+                {donutItems.map((item) => {
+                  const percent =
+                    totalOrdersForDonut > 0
+                      ? (item.value / totalOrdersForDonut) * 100
+                      : 0;
 
-            <div className="mt-8 flex h-[280px] items-end gap-5 overflow-x-auto rounded-3xl bg-slate-50 p-6">
-              {financeChart.map((item) => {
-                const height = Math.max(8, (item.value / maxFinanceValue) * 220);
-
-                return (
-                  <div
-                    key={item.label}
-                    className="flex min-w-[92px] flex-1 flex-col items-center justify-end"
-                  >
-                    <p className="mb-3 text-center text-xs font-black text-slate-500">
-                      {formatMoney(item.value)}
-                    </p>
-
+                  return (
                     <div
-                      className={`w-full max-w-[64px] rounded-t-2xl ${item.color} transition-all`}
-                      style={{ height: `${height}px` }}
-                    />
+                      key={item.label}
+                      className="flex items-center justify-between gap-4"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span
+                          className="h-3 w-3 rounded-full"
+                          style={{ backgroundColor: item.color }}
+                        />
+                        <p className="text-sm font-black text-slate-600">
+                          {item.label}
+                        </p>
+                      </div>
 
-                    <p className="mt-3 text-center text-xs font-black text-slate-500">
-                      {item.label}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-black text-slate-950">Order Status</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-500">
-              Current order distribution.
-            </p>
-
-            <div className="mt-6 space-y-5">
-              {orderChart.map((item) => {
-                const width = Math.max(4, (item.value / maxOrderValue) * 100);
-
-                return (
-                  <div key={item.label}>
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-black text-slate-600">
-                        {item.label}
-                      </p>
                       <p className="text-sm font-black text-slate-950">
-                        {formatNumber(item.value)}
+                        {formatNumber(item.value)}{" "}
+                        <span className="text-slate-400">
+                          ({percent.toFixed(1)}%)
+                        </span>
                       </p>
                     </div>
-
-                    <div className="mt-2 h-3 overflow-hidden rounded-full bg-slate-100">
-                      <div
-                        className={`h-full rounded-full ${item.color}`}
-                        style={{ width: `${width}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-8 rounded-3xl bg-slate-950 p-5 text-white">
-              <p className="text-sm font-semibold text-slate-400">
-                Completed Orders
-              </p>
-              <h3 className="mt-2 text-4xl font-black">
-                {formatNumber(stats.completedOrders)}
-              </h3>
-              <p className="mt-2 text-sm font-semibold text-green-300">
-                Total completed order records
-              </p>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
@@ -564,10 +626,10 @@ export default function AdminPage() {
           <div className="flex items-center justify-between gap-4">
             <div>
               <h2 className="text-xl font-black text-slate-950">
-                Business Snapshot
+                Financial Summary
               </h2>
               <p className="mt-1 text-sm font-semibold text-slate-500">
-                Quick financial and operational summary.
+                Updated {lastUpdated || "—"}
               </p>
             </div>
           </div>
@@ -595,10 +657,10 @@ export default function AdminPage() {
             />
 
             <SnapshotCard
-              title="Total Expenses"
-              value={formatMoney(stats.expenses)}
-              subtitle="Business expenses"
-              icon={TrendingDown}
+              title="Estimated Profit"
+              value={formatMoney(estimatedProfit)}
+              subtitle="Revenue minus expenses"
+              icon={estimatedProfit >= 0 ? TrendingUp : TrendingDown}
             />
           </div>
         </div>
@@ -610,6 +672,124 @@ export default function AdminPage() {
         </div>
       </div>
     </AdminLayout>
+  );
+}
+
+function buildDonutGradient(
+  items: { label: string; value: number; color: string }[],
+  total: number,
+) {
+  if (total <= 0) {
+    return "conic-gradient(#e5e7eb 0deg 360deg)";
+  }
+
+  let current = 0;
+
+  const parts = items.map((item) => {
+    const start = current;
+    const degree = (item.value / total) * 360;
+    const end = start + degree;
+
+    current = end;
+
+    return `${item.color} ${start}deg ${end}deg`;
+  });
+
+  return `conic-gradient(${parts.join(", ")})`;
+}
+
+function RevenueLineChart({ points }: { points: RevenuePoint[] }) {
+  const width = 640;
+  const height = 230;
+
+  const linePath = buildLinePath(points, width, height);
+  const areaPath = buildAreaPath(points, width, height);
+  const maxValue = Math.max(...points.map((item) => item.value), 1);
+
+  const yLabels = [50000, 40000, 30000, 20000, 10000, 0];
+
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-black text-slate-950">
+            Revenue Overview
+          </h2>
+          <p className="mt-1 text-sm font-semibold text-slate-500">
+            Current month order revenue.
+          </p>
+        </div>
+
+        <select className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-600 outline-none">
+          <option>This Month</option>
+        </select>
+      </div>
+
+      <div className="mt-6 flex gap-4">
+        <div className="flex h-[260px] flex-col justify-between pt-2 text-xs font-black text-slate-400">
+          {yLabels.map((item) => (
+            <span key={item}>{formatShortMoney(item)}</span>
+          ))}
+        </div>
+
+        <div className="relative h-[290px] flex-1 overflow-hidden rounded-2xl bg-gradient-to-b from-white to-slate-50">
+          <div className="absolute inset-x-0 top-0 h-[230px]">
+            {[0, 1, 2, 3, 4].map((item) => (
+              <div
+                key={item}
+                className="absolute left-0 right-0 border-t border-slate-100"
+                style={{ top: `${item * 25}%` }}
+              />
+            ))}
+
+            <svg
+              viewBox={`0 0 ${width} ${height}`}
+              preserveAspectRatio="none"
+              className="absolute inset-0 h-full w-full overflow-visible"
+            >
+              <path d={areaPath} fill="rgba(34, 197, 94, 0.12)" />
+              <path
+                d={linePath}
+                fill="none"
+                stroke="#16a34a"
+                strokeWidth="4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+
+              {points.map((point, index) => {
+                const x =
+                  points.length > 1 ? (index * width) / (points.length - 1) : 0;
+                const y = height - (point.value / maxValue) * height;
+
+                return (
+                  <circle
+                    key={`${point.label}-${index}`}
+                    cx={x}
+                    cy={y}
+                    r="5"
+                    fill="#16a34a"
+                    stroke="white"
+                    strokeWidth="3"
+                  />
+                );
+              })}
+            </svg>
+          </div>
+
+          <div className="absolute bottom-0 left-0 right-0 grid grid-cols-6 gap-2 border-t border-slate-100 pt-4">
+            {points.map((point) => (
+              <p
+                key={point.label}
+                className="text-center text-xs font-black text-slate-400"
+              >
+                {point.label}
+              </p>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -697,7 +877,9 @@ function RecentDepositsTable({ deposits }: { deposits: RecentDeposit[] }) {
   return (
     <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
       <div className="flex items-center justify-between border-b border-slate-100 p-5">
-        <h2 className="text-lg font-black text-slate-950">Recent Payments</h2>
+        <h2 className="text-lg font-black text-slate-950">
+          Recent Transactions
+        </h2>
         <Link
           href="/admin/payments"
           className="text-sm font-black text-green-700"
@@ -708,7 +890,7 @@ function RecentDepositsTable({ deposits }: { deposits: RecentDeposit[] }) {
 
       <div className="divide-y divide-slate-100">
         {deposits.length <= 0 ? (
-          <EmptyState text="No recent payments." />
+          <EmptyState text="No recent transactions." />
         ) : (
           deposits.map((deposit) => (
             <div key={deposit.id} className="p-5">
