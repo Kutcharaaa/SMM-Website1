@@ -28,6 +28,9 @@ type StatsState = {
   approvedDeposits: number;
   activeOrders: number;
   completedOrders: number;
+  pendingOrders: number;
+  processingOrders: number;
+  partialOrders: number;
   openTickets: number;
   totalCash: number;
   expenses: number;
@@ -68,6 +71,9 @@ const emptyStats: StatsState = {
   approvedDeposits: 0,
   activeOrders: 0,
   completedOrders: 0,
+  pendingOrders: 0,
+  processingOrders: 0,
+  partialOrders: 0,
   openTickets: 0,
   totalCash: 0,
   expenses: 0,
@@ -126,18 +132,13 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string>("");
 
-  async function safeCount(
-    table: string,
-    filter?: (query: any) => any,
-  ): Promise<number> {
+  async function safeCount(table: string, filter?: (query: any) => any) {
     let query = supabase.from(table).select("id", {
       count: "exact",
       head: true,
     });
 
-    if (filter) {
-      query = filter(query);
-    }
+    if (filter) query = filter(query);
 
     const { count, error } = await query;
 
@@ -149,12 +150,14 @@ export default function AdminPage() {
     return count || 0;
   }
 
-  async function safeSum(table: string, column: string, filter?: (query: any) => any) {
+  async function safeSum(
+    table: string,
+    column: string,
+    filter?: (query: any) => any,
+  ) {
     let query = supabase.from(table).select(column);
 
-    if (filter) {
-      query = filter(query);
-    }
+    if (filter) query = filter(query);
 
     const { data, error } = await query;
 
@@ -179,6 +182,9 @@ export default function AdminPage() {
       approvedDeposits,
       activeOrders,
       completedOrders,
+      pendingOrders,
+      processingOrders,
+      partialOrders,
       openTickets,
       totalCash,
       expenses,
@@ -187,9 +193,16 @@ export default function AdminPage() {
     ] = await Promise.all([
       safeCount("profiles"),
       safeCount("deposits", (q) => q.eq("status", "pending")),
-      safeCount("deposits", (q) => q.in("status", ["approved", "completed", "success", "paid"])),
-      safeCount("orders", (q) => q.in("status", ["pending", "processing", "partial"])),
+      safeCount("deposits", (q) =>
+        q.in("status", ["approved", "completed", "success", "paid"]),
+      ),
+      safeCount("orders", (q) =>
+        q.in("status", ["pending", "processing", "partial"]),
+      ),
       safeCount("orders", (q) => q.eq("status", "completed")),
+      safeCount("orders", (q) => q.eq("status", "pending")),
+      safeCount("orders", (q) => q.eq("status", "processing")),
+      safeCount("orders", (q) => q.eq("status", "partial")),
       safeCount("tickets", (q) => q.eq("status", "open")),
       safeSum("cash_accounts", "balance"),
       safeSum("expenses", "amount"),
@@ -205,6 +218,9 @@ export default function AdminPage() {
       approvedDeposits,
       activeOrders,
       completedOrders,
+      pendingOrders,
+      processingOrders,
+      partialOrders,
       openTickets,
       totalCash,
       expenses,
@@ -212,44 +228,29 @@ export default function AdminPage() {
       totalOrderRevenue,
     });
 
-    const { data: orderData, error: orderError } = await supabase
+    const { data: orderData } = await supabase
       .from("orders")
       .select("id, user_id, service_name, quantity, status, price, created_at")
       .order("created_at", { ascending: false })
       .limit(5);
 
-    if (orderError) {
-      console.warn("Recent orders error:", orderError.message);
-      setRecentOrders([]);
-    } else {
-      setRecentOrders((orderData || []) as RecentOrder[]);
-    }
+    setRecentOrders((orderData || []) as RecentOrder[]);
 
-    const { data: depositData, error: depositError } = await supabase
+    const { data: depositData } = await supabase
       .from("deposits")
       .select("id, user_id, amount, method, status, created_at")
       .order("created_at", { ascending: false })
       .limit(5);
 
-    if (depositError) {
-      console.warn("Recent deposits error:", depositError.message);
-      setRecentDeposits([]);
-    } else {
-      setRecentDeposits((depositData || []) as RecentDeposit[]);
-    }
+    setRecentDeposits((depositData || []) as RecentDeposit[]);
 
-    const { data: userData, error: userError } = await supabase
+    const { data: userData } = await supabase
       .from("profiles")
       .select("id, username, email, role, created_at")
       .order("created_at", { ascending: false })
       .limit(5);
 
-    if (userError) {
-      console.warn("Recent users error:", userError.message);
-      setRecentUsers([]);
-    } else {
-      setRecentUsers((userData || []) as RecentUser[]);
-    }
+    setRecentUsers((userData || []) as RecentUser[]);
 
     setLastUpdated(
       new Date().toLocaleTimeString("en-PH", {
@@ -312,7 +313,7 @@ export default function AdminPage() {
       alert: stats.openTickets > 0,
     },
     {
-      label: "Total Business Cash",
+      label: "Total Cash",
       value: formatMoney(stats.totalCash),
       subtitle: "Cash account balance",
       icon: Wallet,
@@ -325,9 +326,67 @@ export default function AdminPage() {
       subtitle: "Orders minus expenses",
       icon: estimatedProfit >= 0 ? TrendingUp : TrendingDown,
       href: "/admin/reports",
-      color: estimatedProfit >= 0 ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700",
+      color:
+        estimatedProfit >= 0
+          ? "bg-green-50 text-green-700"
+          : "bg-red-50 text-red-700",
     },
   ];
+
+  const financeChart = [
+    {
+      label: "Deposits",
+      value: stats.totalDeposits,
+      color: "bg-green-600",
+    },
+    {
+      label: "Order Revenue",
+      value: stats.totalOrderRevenue,
+      color: "bg-emerald-500",
+    },
+    {
+      label: "Cash",
+      value: stats.totalCash,
+      color: "bg-teal-500",
+    },
+    {
+      label: "Expenses",
+      value: stats.expenses,
+      color: "bg-red-500",
+    },
+    {
+      label: "Profit",
+      value: Math.max(0, estimatedProfit),
+      color: "bg-lime-500",
+    },
+  ];
+
+  const maxFinanceValue = Math.max(...financeChart.map((item) => item.value), 1);
+
+  const orderChart = [
+    {
+      label: "Pending",
+      value: stats.pendingOrders,
+      color: "bg-yellow-500",
+    },
+    {
+      label: "Processing",
+      value: stats.processingOrders,
+      color: "bg-blue-500",
+    },
+    {
+      label: "Partial",
+      value: stats.partialOrders,
+      color: "bg-purple-500",
+    },
+    {
+      label: "Completed",
+      value: stats.completedOrders,
+      color: "bg-green-600",
+    },
+  ];
+
+  const maxOrderValue = Math.max(...orderChart.map((item) => item.value), 1);
 
   return (
     <AdminLayout>
@@ -344,29 +403,19 @@ export default function AdminPage() {
             </h1>
 
             <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-500">
-              Monitor users, orders, payments, tickets, cash accounts, expenses,
-              and business performance in one place.
+              Monitor your whole Ascend Service business with live stats,
+              financial charts, orders, payments, users, and support activity.
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <button
-              onClick={loadStats}
-              disabled={loading}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 shadow-sm transition hover:border-green-300 hover:text-green-700 disabled:opacity-60"
-            >
-              <RefreshCw size={17} className={loading ? "animate-spin" : ""} />
-              Refresh
-            </button>
-
-            <Link
-              href="/admin/orders"
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-green-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-green-600/20 transition hover:bg-green-700"
-            >
-              View Orders
-              <ArrowRight size={17} />
-            </Link>
-          </div>
+          <button
+            onClick={loadStats}
+            disabled={loading}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 shadow-sm transition hover:border-green-300 hover:text-green-700 disabled:opacity-60"
+          >
+            <RefreshCw size={17} className={loading ? "animate-spin" : ""} />
+            Refresh
+          </button>
         </div>
 
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
@@ -380,7 +429,9 @@ export default function AdminPage() {
                 className="group rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-green-200 hover:shadow-xl hover:shadow-green-950/5"
               >
                 <div className="flex items-start justify-between gap-4">
-                  <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${card.color}`}>
+                  <div
+                    className={`flex h-14 w-14 items-center justify-center rounded-2xl ${card.color}`}
+                  >
                     <Icon size={27} />
                   </div>
 
@@ -419,15 +470,15 @@ export default function AdminPage() {
           })}
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[1fr_420px]">
+        <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-xl font-black text-slate-950">
-                  Business Snapshot
+                  Financial Overview
                 </h2>
                 <p className="mt-1 text-sm font-semibold text-slate-500">
-                  Quick financial and operation summary.
+                  Deposits, revenue, cash, expenses, and profit comparison.
                 </p>
               </div>
 
@@ -436,75 +487,119 @@ export default function AdminPage() {
               </span>
             </div>
 
-            <div className="mt-6 grid gap-4 md:grid-cols-2">
-              <SnapshotCard
-                title="Approved Deposits"
-                value={formatNumber(stats.approvedDeposits)}
-                subtitle={formatMoney(stats.totalDeposits)}
-                icon={CheckCircle2}
-              />
+            <div className="mt-8 flex h-[280px] items-end gap-5 overflow-x-auto rounded-3xl bg-slate-50 p-6">
+              {financeChart.map((item) => {
+                const height = Math.max(8, (item.value / maxFinanceValue) * 220);
 
-              <SnapshotCard
-                title="Completed Orders"
-                value={formatNumber(stats.completedOrders)}
-                subtitle="All completed orders"
-                icon={Package}
-              />
+                return (
+                  <div
+                    key={item.label}
+                    className="flex min-w-[92px] flex-1 flex-col items-center justify-end"
+                  >
+                    <p className="mb-3 text-center text-xs font-black text-slate-500">
+                      {formatMoney(item.value)}
+                    </p>
 
-              <SnapshotCard
-                title="Total Order Revenue"
-                value={formatMoney(stats.totalOrderRevenue)}
-                subtitle="Based on order price"
-                icon={DollarSign}
-              />
+                    <div
+                      className={`w-full max-w-[64px] rounded-t-2xl ${item.color} transition-all`}
+                      style={{ height: `${height}px` }}
+                    />
 
-              <SnapshotCard
-                title="Total Expenses"
-                value={formatMoney(stats.expenses)}
-                subtitle="Business expenses"
-                icon={TrendingDown}
-              />
+                    <p className="mt-3 text-center text-xs font-black text-slate-500">
+                      {item.label}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          <div className="rounded-3xl bg-slate-950 p-6 text-white shadow-sm">
-            <h2 className="text-xl font-black">Quick Actions</h2>
+          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-xl font-black text-slate-950">Order Status</h2>
+            <p className="mt-1 text-sm font-semibold text-slate-500">
+              Current order distribution.
+            </p>
 
-            <div className="mt-6 space-y-3">
-              <QuickAction
-                href="/admin/payments"
-                title="Review Pending Payments"
-                subtitle={`${stats.pendingPayments} pending payment${
-                  stats.pendingPayments === 1 ? "" : "s"
-                }`}
-                icon={CreditCard}
-              />
+            <div className="mt-6 space-y-5">
+              {orderChart.map((item) => {
+                const width = Math.max(4, (item.value / maxOrderValue) * 100);
 
-              <QuickAction
-                href="/admin/orders"
-                title="Manage Active Orders"
-                subtitle={`${stats.activeOrders} active order${
-                  stats.activeOrders === 1 ? "" : "s"
-                }`}
-                icon={Package}
-              />
+                return (
+                  <div key={item.label}>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-black text-slate-600">
+                        {item.label}
+                      </p>
+                      <p className="text-sm font-black text-slate-950">
+                        {formatNumber(item.value)}
+                      </p>
+                    </div>
 
-              <QuickAction
-                href="/admin/tickets"
-                title="Answer Support Tickets"
-                subtitle={`${stats.openTickets} open ticket${
-                  stats.openTickets === 1 ? "" : "s"
-                }`}
-                icon={LifeBuoy}
-              />
-
-              <QuickAction
-                href="/admin/services"
-                title="Manage Services"
-                subtitle="Update prices and availability"
-                icon={BarChart3}
-              />
+                    <div className="mt-2 h-3 overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className={`h-full rounded-full ${item.color}`}
+                        style={{ width: `${width}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
+
+            <div className="mt-8 rounded-3xl bg-slate-950 p-5 text-white">
+              <p className="text-sm font-semibold text-slate-400">
+                Completed Orders
+              </p>
+              <h3 className="mt-2 text-4xl font-black">
+                {formatNumber(stats.completedOrders)}
+              </h3>
+              <p className="mt-2 text-sm font-semibold text-green-300">
+                Total completed order records
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-black text-slate-950">
+                Business Snapshot
+              </h2>
+              <p className="mt-1 text-sm font-semibold text-slate-500">
+                Quick financial and operational summary.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <SnapshotCard
+              title="Approved Deposits"
+              value={formatNumber(stats.approvedDeposits)}
+              subtitle={formatMoney(stats.totalDeposits)}
+              icon={CheckCircle2}
+            />
+
+            <SnapshotCard
+              title="Completed Orders"
+              value={formatNumber(stats.completedOrders)}
+              subtitle="All completed orders"
+              icon={Package}
+            />
+
+            <SnapshotCard
+              title="Total Revenue"
+              value={formatMoney(stats.totalOrderRevenue)}
+              subtitle="Based on order price"
+              icon={DollarSign}
+            />
+
+            <SnapshotCard
+              title="Total Expenses"
+              value={formatMoney(stats.expenses)}
+              subtitle="Business expenses"
+              icon={TrendingDown}
+            />
           </div>
         </div>
 
@@ -544,41 +639,6 @@ function SnapshotCard({
 
       <p className="mt-4 text-sm font-semibold text-slate-400">{subtitle}</p>
     </div>
-  );
-}
-
-function QuickAction({
-  href,
-  title,
-  subtitle,
-  icon: Icon,
-}: {
-  href: string;
-  title: string;
-  subtitle: string;
-  icon: any;
-}) {
-  return (
-    <Link
-      href={href}
-      className="group flex items-center gap-4 rounded-2xl bg-white/10 p-4 transition hover:bg-white/15"
-    >
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-green-500/20 text-green-300">
-        <Icon size={23} />
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <h3 className="truncate text-sm font-black text-white">{title}</h3>
-        <p className="mt-1 truncate text-xs font-semibold text-slate-400">
-          {subtitle}
-        </p>
-      </div>
-
-      <ArrowRight
-        size={17}
-        className="text-slate-500 transition group-hover:translate-x-1 group-hover:text-green-300"
-      />
-    </Link>
   );
 }
 
@@ -638,7 +698,10 @@ function RecentDepositsTable({ deposits }: { deposits: RecentDeposit[] }) {
     <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
       <div className="flex items-center justify-between border-b border-slate-100 p-5">
         <h2 className="text-lg font-black text-slate-950">Recent Payments</h2>
-        <Link href="/admin/payments" className="text-sm font-black text-green-700">
+        <Link
+          href="/admin/payments"
+          className="text-sm font-black text-green-700"
+        >
           View All
         </Link>
       </div>
@@ -655,7 +718,8 @@ function RecentDepositsTable({ deposits }: { deposits: RecentDeposit[] }) {
                     {formatMoney(Number(deposit.amount || 0))}
                   </p>
                   <p className="mt-1 text-xs font-semibold text-slate-400">
-                    {deposit.method || "Payment"} • {formatDate(deposit.created_at)}
+                    {deposit.method || "Payment"} •{" "}
+                    {formatDate(deposit.created_at)}
                   </p>
                 </div>
 
