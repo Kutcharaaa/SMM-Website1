@@ -7,17 +7,16 @@ import {
   ArrowRight,
   BarChart3,
   CheckCircle2,
+  ChevronDown,
   Globe2,
   Headphones,
   Heart,
-  Lock,
   MessageCircle,
   Rocket,
   Search,
   Send,
   Share2,
   ShieldCheck,
-  ShoppingBag,
   Star,
   TrafficCone,
   UserPlus,
@@ -210,6 +209,123 @@ const featuredServices = [
   },
 ];
 
+const serviceFinderItems = [
+  {
+    service: "TikTok Followers",
+    platform: "TikTok",
+    category: "Followers",
+    price: "₱0.25",
+    icon: TikTokIcon,
+    color: "text-black",
+  },
+  {
+    service: "TikTok Views",
+    platform: "TikTok",
+    category: "Views",
+    price: "₱0.08",
+    icon: TikTokIcon,
+    color: "text-black",
+  },
+  {
+    service: "TikTok Likes",
+    platform: "TikTok",
+    category: "Likes",
+    price: "₱0.10",
+    icon: TikTokIcon,
+    color: "text-black",
+  },
+  {
+    service: "Instagram Likes",
+    platform: "Instagram",
+    category: "Likes",
+    price: "₱0.10",
+    icon: InstagramIcon,
+    color: "text-[#E4405F]",
+  },
+  {
+    service: "Instagram Followers",
+    platform: "Instagram",
+    category: "Followers",
+    price: "₱0.30",
+    icon: InstagramIcon,
+    color: "text-[#E4405F]",
+  },
+  {
+    service: "Instagram Views",
+    platform: "Instagram",
+    category: "Views",
+    price: "₱0.15",
+    icon: InstagramIcon,
+    color: "text-[#E4405F]",
+  },
+  {
+    service: "YouTube Views",
+    platform: "YouTube",
+    category: "Views",
+    price: "₱0.20",
+    icon: YouTubeIcon,
+    color: "text-[#FF0000]",
+  },
+  {
+    service: "YouTube Subscribers",
+    platform: "YouTube",
+    category: "Subscribers",
+    price: "₱1.50",
+    icon: YouTubeIcon,
+    color: "text-[#FF0000]",
+  },
+  {
+    service: "Facebook Page Likes",
+    platform: "Facebook",
+    category: "Likes",
+    price: "₱0.30",
+    icon: FacebookIcon,
+    color: "text-[#1877F2]",
+  },
+  {
+    service: "Facebook Followers",
+    platform: "Facebook",
+    category: "Followers",
+    price: "₱0.45",
+    icon: FacebookIcon,
+    color: "text-[#1877F2]",
+  },
+  {
+    service: "Telegram Members",
+    platform: "Telegram",
+    category: "Members",
+    price: "₱0.35",
+    icon: TelegramIcon,
+    color: "text-[#229ED9]",
+  },
+  {
+    service: "Telegram Views",
+    platform: "Telegram",
+    category: "Views",
+    price: "₱0.08",
+    icon: TelegramIcon,
+    color: "text-[#229ED9]",
+  },
+];
+
+const finderPlatforms = [
+  "All Platforms",
+  "TikTok",
+  "Instagram",
+  "YouTube",
+  "Facebook",
+  "Telegram",
+];
+
+const finderCategories = [
+  "All Categories",
+  "Followers",
+  "Likes",
+  "Views",
+  "Subscribers",
+  "Members",
+];
+
 const benefits = [
   {
     title: "Fast Delivery",
@@ -236,6 +352,10 @@ const benefits = [
 export default function ServicesPage() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedPlatform, setSelectedPlatform] = useState("TikTok");
+  const [selectedCategory, setSelectedCategory] = useState("Followers");
 
   useEffect(() => {
     async function checkSession() {
@@ -264,6 +384,22 @@ export default function ServicesPage() {
   const primaryHref = loggedIn ? "/dashboard" : "/register";
   const primaryLabel = loggedIn ? "View Dashboard" : "Get Started";
   const orderHref = loggedIn ? "/dashboard/new-order" : "/register";
+
+  const filteredFinderServices = serviceFinderItems.filter((item) => {
+    const matchesSearch =
+      item.service.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.platform.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.category.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesPlatform =
+      selectedPlatform === "All Platforms" || item.platform === selectedPlatform;
+
+    const matchesCategory =
+      selectedCategory === "All Categories" ||
+      item.category === selectedCategory;
+
+    return matchesSearch && matchesPlatform && matchesCategory;
+  });
 
   return (
     <main className="min-h-screen bg-[#f6f9ff] text-slate-950">
@@ -305,7 +441,7 @@ export default function ServicesPage() {
               </Link>
 
               <Link
-                href="/support"
+                href="/dashboard/tickets"
                 className="inline-flex items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-8 py-4 text-base font-black text-slate-900 shadow-sm transition hover:border-blue-300 hover:text-blue-600"
               >
                 <Headphones size={20} />
@@ -338,77 +474,121 @@ export default function ServicesPage() {
                 Find the right service
               </h2>
 
-              <div className="mt-6 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5">
-                <Search size={20} className="text-slate-400" />
-                <p className="text-sm font-semibold text-slate-400">
-                  Search service...
-                </p>
+              <div className="mt-6 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 transition focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-50">
+                <Search size={20} className="shrink-0 text-slate-400" />
+
+                <input
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search service..."
+                  className="w-full bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400"
+                />
               </div>
 
               <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-xs font-black uppercase tracking-wider text-slate-400">
+                <div className="relative">
+                  <p className="mb-2 text-xs font-black uppercase tracking-wider text-slate-400">
                     Select Platform
                   </p>
 
-                  <div className="mt-3 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <TikTokIcon size={22} />
-                      <span className="text-sm font-black text-slate-950">
-                        TikTok
-                      </span>
-                    </div>
+                  <select
+                    value={selectedPlatform}
+                    onChange={(e) => setSelectedPlatform(e.target.value)}
+                    className="h-[68px] w-full appearance-none rounded-2xl border border-slate-200 bg-slate-50 px-4 pr-10 text-sm font-black text-slate-950 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-50"
+                  >
+                    {finderPlatforms.map((platform) => (
+                      <option key={platform} value={platform}>
+                        {platform}
+                      </option>
+                    ))}
+                  </select>
 
-                    <span className="text-slate-400">⌄</span>
-                  </div>
+                  <ChevronDown
+                    size={18}
+                    className="pointer-events-none absolute bottom-6 right-4 text-slate-400"
+                  />
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-xs font-black uppercase tracking-wider text-slate-400">
+                <div className="relative">
+                  <p className="mb-2 text-xs font-black uppercase tracking-wider text-slate-400">
                     Select Category
                   </p>
 
-                  <div className="mt-3 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <Users size={21} className="text-blue-600" />
-                      <span className="text-sm font-black text-slate-950">
-                        Followers
-                      </span>
-                    </div>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="h-[68px] w-full appearance-none rounded-2xl border border-slate-200 bg-slate-50 px-4 pr-10 text-sm font-black text-slate-950 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-50"
+                  >
+                    {finderCategories.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
 
-                    <span className="text-slate-400">⌄</span>
-                  </div>
+                  <ChevronDown
+                    size={18}
+                    className="pointer-events-none absolute bottom-6 right-4 text-slate-400"
+                  />
                 </div>
               </div>
 
               <div className="mt-6">
-                <p className="text-sm font-black text-slate-950">
-                  Popular Services
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-black text-slate-950">
+                    Popular Services
+                  </p>
+
+                  <p className="text-xs font-black text-slate-400">
+                    {filteredFinderServices.length} found
+                  </p>
+                </div>
 
                 <div className="mt-4 space-y-3">
-                  {featuredServices.slice(0, 4).map((item) => {
-                    const Icon = item.icon;
+                  {filteredFinderServices.length <= 0 ? (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-center">
+                      <p className="text-sm font-black text-slate-700">
+                        No services found
+                      </p>
 
-                    return (
-                      <div
-                        key={item.service}
-                        className="flex items-center justify-between rounded-2xl p-2 transition hover:bg-slate-50"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Icon size={22} className={item.color} />
+                      <p className="mt-1 text-xs font-semibold text-slate-400">
+                        Try another platform or category.
+                      </p>
+                    </div>
+                  ) : (
+                    filteredFinderServices.slice(0, 5).map((item) => {
+                      const Icon = item.icon;
 
-                          <p className="text-sm font-black text-slate-950">
-                            {item.service}
-                          </p>
-                        </div>
+                      return (
+                        <Link
+                          key={`${item.platform}-${item.service}`}
+                          href={orderHref}
+                          className="flex items-center justify-between rounded-2xl p-2 transition hover:bg-slate-50"
+                        >
+                          <div className="flex min-w-0 items-center gap-3">
+                            <Icon
+                              size={22}
+                              className={`shrink-0 ${item.color}`}
+                            />
 
-                        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-600">
-                          From {item.price}
-                        </span>
-                      </div>
-                    );
-                  })}
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-black text-slate-950">
+                                {item.service}
+                              </p>
+
+                              <p className="text-xs font-semibold text-slate-400">
+                                {item.platform} • {item.category}
+                              </p>
+                            </div>
+                          </div>
+
+                          <span className="shrink-0 rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-600">
+                            From {item.price}
+                          </span>
+                        </Link>
+                      );
+                    })
+                  )}
                 </div>
               </div>
             </div>
@@ -533,7 +713,9 @@ export default function ServicesPage() {
                   <tr>
                     <th className="p-5 text-left font-black">Service</th>
                     <th className="p-5 text-left font-black">Platform</th>
-                    <th className="p-5 text-left font-black">Starting Price</th>
+                    <th className="p-5 text-left font-black">
+                      Starting Price
+                    </th>
                     <th className="p-5 text-left font-black">Delivery</th>
                     <th className="p-5 text-left font-black">Status</th>
                     <th className="p-5 text-right font-black">Action</th>
@@ -676,19 +858,17 @@ export default function ServicesPage() {
 
               <div className="rounded-3xl bg-white/10 p-6">
                 <div className="space-y-4">
-                  {[
-                    "Special Discounts",
-                    "Earn Points",
-                    "More Profit",
-                  ].map((item) => (
-                    <div
-                      key={item}
-                      className="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3"
-                    >
-                      <CheckCircle2 size={20} className="text-green-300" />
-                      <span className="text-sm font-black">{item}</span>
-                    </div>
-                  ))}
+                  {["Special Discounts", "Earn Points", "More Profit"].map(
+                    (item) => (
+                      <div
+                        key={item}
+                        className="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3"
+                      >
+                        <CheckCircle2 size={20} className="text-green-300" />
+                        <span className="text-sm font-black">{item}</span>
+                      </div>
+                    ),
+                  )}
                 </div>
 
                 <div className="mt-6 flex justify-center">
