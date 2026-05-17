@@ -1,5 +1,6 @@
 import Link from "next/link";
 import PublicNavbar from "@/components/PublicNavbar";
+import PublicHeroActions from "@/components/PublicHeroActions";
 import {
   ArrowRight,
   Rocket,
@@ -102,24 +103,7 @@ export default function HomePage() {
               major platforms with fast, secure, and reliable SMM services.
             </p>
 
-            <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-              <Link
-                href="/register"
-                className="inline-flex items-center justify-center gap-3 rounded-2xl bg-blue-600 px-8 py-4 text-base font-black text-white shadow-xl shadow-blue-600/20 transition hover:bg-blue-700"
-              >
-                <Rocket size={20} />
-                Get Started
-              </Link>
-
-              <Link
-                href="/services"
-                className="inline-flex items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-8 py-4 text-base font-black text-slate-900 shadow-sm transition hover:border-blue-300 hover:text-blue-600"
-              >
-                <Lock size={20} />
-                View Services
-                <ArrowRight size={18} />
-              </Link>
-            </div>
+<PublicHeroActions />
 
             <div className="mt-8 grid max-w-xl grid-cols-3 gap-5">
               {[
