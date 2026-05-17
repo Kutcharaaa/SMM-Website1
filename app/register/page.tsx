@@ -45,7 +45,8 @@ const benefits = [
 export default function RegisterPage() {
   const router = useRouter();
 
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -77,23 +78,6 @@ export default function RegisterPage() {
     checkCurrentSession();
   }, [router]);
 
-  function splitName(name: string) {
-    const cleanName = name.trim().replace(/\s+/g, " ");
-    const parts = cleanName.split(" ");
-
-    if (parts.length <= 1) {
-      return {
-        firstname: cleanName,
-        lastname: "",
-      };
-    }
-
-    return {
-      firstname: parts[0],
-      lastname: parts.slice(1).join(" "),
-    };
-  }
-
   async function checkEmailExists(cleanEmail: string) {
     try {
       const response = await fetch("/api/auth/check-email", {
@@ -121,12 +105,18 @@ export default function RegisterPage() {
     setErrorMessage("");
     setSuccessMessage("");
 
-    const cleanFullName = fullName.trim();
+    const cleanFirstName = firstName.trim();
+    const cleanLastName = lastName.trim();
     const cleanUsername = username.trim();
     const cleanEmail = email.trim().toLowerCase();
 
-    if (!cleanFullName) {
-      setErrorMessage("Please enter your full name.");
+    if (!cleanFirstName) {
+      setErrorMessage("Please enter your first name.");
+      return;
+    }
+
+    if (!cleanLastName) {
+      setErrorMessage("Please enter your last name.");
       return;
     }
 
@@ -182,16 +172,14 @@ export default function RegisterPage() {
       return;
     }
 
-    const { firstname, lastname } = splitName(cleanFullName);
-
     const { data, error } = await supabase.auth.signUp({
       email: cleanEmail,
       password,
       options: {
         data: {
           username: cleanUsername,
-          firstname,
-          lastname,
+          firstname: cleanFirstName,
+          lastname: cleanLastName,
         },
       },
     });
@@ -199,7 +187,10 @@ export default function RegisterPage() {
     if (error) {
       const message = error.message.toLowerCase();
 
-      if (message.includes("already registered") || message.includes("already exists")) {
+      if (
+        message.includes("already registered") ||
+        message.includes("already exists")
+      ) {
         setErrorMessage("Email already exists. Please login instead.");
       } else {
         setErrorMessage(error.message);
@@ -210,16 +201,22 @@ export default function RegisterPage() {
     }
 
     if (data.user) {
-      await supabase.from("profiles").upsert({
+      const { error: profileError } = await supabase.from("profiles").upsert({
         id: data.user.id,
         email: cleanEmail,
         username: cleanUsername,
-        firstname,
-        lastname,
+        firstname: cleanFirstName,
+        lastname: cleanLastName,
         role: "user",
         plan: "starter",
         balance: 0,
       });
+
+      if (profileError) {
+        setErrorMessage(profileError.message);
+        setLoading(false);
+        return;
+      }
     }
 
     localStorage.setItem("ascend_remember_me", "true");
@@ -348,7 +345,7 @@ export default function RegisterPage() {
                 <div className="grid gap-5 sm:grid-cols-2">
                   <div>
                     <label className="text-sm font-black text-slate-700">
-                      Full Name
+                      First Name
                     </label>
 
                     <div className="mt-2 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 transition focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-50">
@@ -356,9 +353,9 @@ export default function RegisterPage() {
 
                       <input
                         type="text"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        placeholder="Enter your full name"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        placeholder="Enter your first name"
                         className="w-full bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400"
                       />
                     </div>
@@ -366,20 +363,38 @@ export default function RegisterPage() {
 
                   <div>
                     <label className="text-sm font-black text-slate-700">
-                      Username
+                      Last Name
                     </label>
 
                     <div className="mt-2 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 transition focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-50">
-                      <AtSign size={20} className="shrink-0 text-slate-400" />
+                      <User size={20} className="shrink-0 text-slate-400" />
 
                       <input
                         type="text"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        placeholder="Choose a username"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        placeholder="Enter your last name"
                         className="w-full bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400"
                       />
                     </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-black text-slate-700">
+                    Username
+                  </label>
+
+                  <div className="mt-2 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 transition focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-50">
+                    <AtSign size={20} className="shrink-0 text-slate-400" />
+
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      placeholder="Choose a username"
+                      className="w-full bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400"
+                    />
                   </div>
                 </div>
 
