@@ -10,12 +10,7 @@ import {
   TrendingUp,
   ShoppingBag,
   BarChart3,
-  CheckCircle2,
   Lock,
-  Facebook,
-  Youtube,
-  Send,
-  Instagram,
   MoreHorizontal,
 } from "lucide-react";
 
@@ -28,25 +23,25 @@ const platforms = [
   },
   {
     name: "Facebook",
-    icon: Facebook,
+    icon: FacebookIcon,
     color: "text-[#1877F2]",
     bg: "bg-blue-50",
   },
   {
     name: "YouTube",
-    icon: Youtube,
+    icon: YouTubeIcon,
     color: "text-[#FF0000]",
     bg: "bg-red-50",
   },
   {
     name: "Instagram",
-    icon: Instagram,
+    icon: InstagramIcon,
     color: "text-[#E4405F]",
     bg: "bg-pink-50",
   },
   {
     name: "Telegram",
-    icon: Send,
+    icon: TelegramIcon,
     color: "text-[#229ED9]",
     bg: "bg-sky-50",
   },
@@ -329,9 +324,11 @@ export default function HomePage() {
                             <p className="text-xs font-bold text-slate-400">
                               {title}
                             </p>
+
                             <h4 className="mt-2 text-xl font-black text-slate-950">
                               {value}
                             </h4>
+
                             <p className="mt-1 text-xs font-black text-green-600">
                               {growth}
                             </p>
@@ -344,6 +341,7 @@ export default function HomePage() {
                           <h4 className="font-black text-slate-950">
                             Recent Orders
                           </h4>
+
                           <span className="text-xs font-black text-blue-600">
                             View All
                           </span>
@@ -360,9 +358,11 @@ export default function HomePage() {
                               className="grid grid-cols-[90px_1fr_110px] items-center gap-4 px-4 py-4 text-sm"
                             >
                               <p className="font-bold text-slate-500">{id}</p>
+
                               <p className="font-black text-slate-800">
                                 {service}
                               </p>
+
                               <span
                                 className={`rounded-full px-3 py-1 text-center text-xs font-black ${
                                   status === "Completed"
@@ -385,12 +385,15 @@ export default function HomePage() {
                 <div className="mx-auto h-24 w-20 rounded-[1.5rem] bg-slate-950 p-2">
                   <div className="h-full rounded-[1rem] bg-white p-2">
                     <div className="h-2 w-8 rounded-full bg-slate-200" />
+
                     <p className="mt-4 text-[10px] font-bold text-slate-400">
                       Balance
                     </p>
+
                     <p className="text-sm font-black text-slate-950">
                       ₱245.60
                     </p>
+
                     <div className="mt-3 rounded-lg bg-blue-600 py-1 text-center text-[9px] font-black text-white">
                       Add Funds
                     </div>
@@ -443,6 +446,7 @@ export default function HomePage() {
                   <h3 className="text-lg font-black text-slate-950">
                     {feature.title}
                   </h3>
+
                   <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
                     {feature.text}
                   </p>
@@ -459,6 +463,7 @@ export default function HomePage() {
             <h2 className="text-3xl font-black text-slate-950">
               Popular Platforms
             </h2>
+
             <p className="mt-3 text-base font-medium text-slate-500">
               Everything you need to grow, all in one place.
             </p>
@@ -531,6 +536,7 @@ export default function HomePage() {
                   <p className="text-xs font-black uppercase text-slate-400">
                     {title}
                   </p>
+
                   <p className="mt-2 text-xl font-black text-slate-950">
                     {value}
                   </p>
@@ -582,6 +588,7 @@ export default function HomePage() {
                   <p className="text-xs font-black uppercase text-slate-400">
                     {title}
                   </p>
+
                   <p className="mt-2 text-xl font-black text-slate-950">
                     {value}
                   </p>
@@ -606,6 +613,7 @@ export default function HomePage() {
             <h2 className="text-3xl font-black text-slate-950">
               How It Works
             </h2>
+
             <p className="mt-3 text-base font-medium text-slate-500">
               Simple steps to start growing today.
             </p>
@@ -657,7 +665,7 @@ export default function HomePage() {
             </p>
 
             <div className="mt-5 flex gap-3">
-              {[TelegramIcon, Facebook, TikTokIcon, Instagram, Youtube].map(
+              {[TelegramIcon, FacebookIcon, TikTokIcon, InstagramIcon, YouTubeIcon].map(
                 (Icon, index) => (
                   <div
                     key={index}
@@ -747,7 +755,7 @@ function TikTokIcon({ size = 24 }: { size?: number }) {
   );
 }
 
-function SpotifyIcon({ size = 24 }: { size?: number }) {
+function FacebookIcon({ size = 24 }: { size?: number }) {
   return (
     <svg
       width={size}
@@ -757,7 +765,37 @@ function SpotifyIcon({ size = 24 }: { size?: number }) {
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
-      <path d="M128 20C68.4 20 20 68.4 20 128s48.4 108 108 108 108-48.4 108-108S187.6 20 128 20Zm49.5 156.2c-2.4 3.9-7.5 5.1-11.4 2.7-31.2-19-70.5-23.3-116.7-12.8-4.5 1-8.9-1.8-9.9-6.2-1-4.5 1.8-8.9 6.2-9.9 50.6-11.5 94.3-6.5 130.9 15.8 3.9 2.4 5.2 7.5 2.9 11.4Zm15.2-33.8c-3 4.9-9.4 6.4-14.3 3.4-35.7-21.9-90.1-28.2-132.4-15.4-5.5 1.7-11.3-1.4-13-6.9-1.7-5.5 1.4-11.3 6.9-13 48.3-14.7 108.3-7.6 149.4 17.5 4.9 3 6.4 9.4 3.4 14.4Zm1.3-35.2c-42.8-25.4-113.4-27.8-154.3-15.4-6.5 2-13.4-1.7-15.4-8.2-2-6.5 1.7-13.4 8.2-15.4 47-14.2 124.9-11.4 174.1 17.8 5.9 3.5 7.8 11 4.3 16.9-3.5 5.8-11 7.8-16.9 4.3Z" />
+      <path d="M232 128a104 104 0 1 0-120.25 102.7v-72.65H85.35V128h26.4v-22.9c0-26.05 15.52-40.45 39.25-40.45 11.36 0 23.25 2.03 23.25 2.03v25.55h-13.1c-12.9 0-16.9 8-16.9 16.2V128h28.75l-4.6 30.05h-24.15v72.65A104.03 104.03 0 0 0 232 128Z" />
+    </svg>
+  );
+}
+
+function YouTubeIcon({ size = 24 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 256 256"
+      fill="currentColor"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path d="M234.3 73.1a29.2 29.2 0 0 0-20.5-20.6C195.7 47.6 128 47.6 128 47.6s-67.7 0-85.8 4.9a29.2 29.2 0 0 0-20.5 20.6C16.8 91.3 16.8 128 16.8 128s0 36.7 4.9 54.9a29.2 29.2 0 0 0 20.5 20.6c18.1 4.9 85.8 4.9 85.8 4.9s67.7 0 85.8-4.9a29.2 29.2 0 0 0 20.5-20.6c4.9-18.2 4.9-54.9 4.9-54.9s0-36.7-4.9-54.9ZM105.8 162.6V93.4L164 128l-58.2 34.6Z" />
+    </svg>
+  );
+}
+
+function InstagramIcon({ size = 24 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 256 256"
+      fill="currentColor"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path d="M128 82.7A45.3 45.3 0 1 0 173.3 128 45.35 45.35 0 0 0 128 82.7Zm0 74.7a29.4 29.4 0 1 1 29.4-29.4 29.43 29.43 0 0 1-29.4 29.4ZM176.6 80.9a10.6 10.6 0 1 1 10.6 10.6 10.6 10.6 0 0 1-10.6-10.6ZM224 128c0-30.5-.1-34.3-.7-46.2-.6-11.9-2.4-20-5.2-27a55.1 55.1 0 0 0-31-31c-7-2.8-15.1-4.6-27-5.2C148.3 18.1 144.5 18 128 18s-20.3.1-32.1.6c-11.9.6-20 2.4-27 5.2a55.1 55.1 0 0 0-31 31c-2.8 7-4.6 15.1-5.2 27C32.1 93.7 32 97.5 32 128s.1 34.3.7 46.2c.6 11.9 2.4 20 5.2 27a55.1 55.1 0 0 0 31 31c7 2.8 15.1 4.6 27 5.2 11.8.5 15.6.6 32.1.6s20.3-.1 32.1-.6c11.9-.6 20-2.4 27-5.2a55.1 55.1 0 0 0 31-31c2.8-7 4.6-15.1 5.2-27 .6-11.9.7-15.7.7-46.2Z" />
     </svg>
   );
 }
@@ -773,6 +811,21 @@ function TelegramIcon({ size = 24 }: { size?: number }) {
       aria-hidden="true"
     >
       <path d="M226.6 35.7 18.9 115.8c-14.2 5.7-14.1 13.7-2.6 17.2l53.3 16.6 20.4 62.6c2.6 7.1 1.3 9.9 8.8 9.9 5.8 0 8.4-2.6 11.6-5.8l27.9-27.1 58 42.8c10.7 5.9 18.4 2.8 21.1-9.9l38.2-179.9c3.9-15.7-6-22.8-19-16.5ZM79.9 145.8l121.4-76.5c6.1-3.7 11.7-1.7 7.1 2.4L104.4 165.6l-4 42.9-20.5-62.7Z" />
+    </svg>
+  );
+}
+
+function SpotifyIcon({ size = 24 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 256 256"
+      fill="currentColor"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path d="M128 20C68.4 20 20 68.4 20 128s48.4 108 108 108 108-48.4 108-108S187.6 20 128 20Zm49.5 156.2c-2.4 3.9-7.5 5.1-11.4 2.7-31.2-19-70.5-23.3-116.7-12.8-4.5 1-8.9-1.8-9.9-6.2-1-4.5 1.8-8.9 6.2-9.9 50.6-11.5 94.3-6.5 130.9 15.8 3.9 2.4 5.2 7.5 2.9 11.4Zm15.2-33.8c-3 4.9-9.4 6.4-14.3 3.4-35.7-21.9-90.1-28.2-132.4-15.4-5.5 1.7-11.3-1.4-13-6.9-1.7-5.5 1.4-11.3 6.9-13 48.3-14.7 108.3-7.6 149.4 17.5 4.9 3 6.4 9.4 3.4 14.4Zm1.3-35.2c-42.8-25.4-113.4-27.8-154.3-15.4-6.5 2-13.4-1.7-15.4-8.2-2-6.5 1.7-13.4 8.2-15.4 47-14.2 124.9-11.4 174.1 17.8 5.9 3.5 7.8 11 4.3 16.9-3.5 5.8-11 7.8-16.9 4.3Z" />
     </svg>
   );
 }
