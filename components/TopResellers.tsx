@@ -1,7 +1,6 @@
 "use client";
 
 import { supabase } from "@/lib/supabase";
-import { useDisplayCurrency } from "@/lib/useDisplayCurrency";
 import { Trophy, Crown, Gem, ShieldCheck, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -10,7 +9,7 @@ type Reseller = {
   username: string | null;
   reseller_level: string | null;
   total_spent: number | null;
-  total_orders?: number | null;
+  total_orders: number;
 };
 
 function maskName(name: string) {
@@ -56,12 +55,24 @@ export default function TopResellers() {
   const [allRankings, setAllRankings] = useState<Reseller[]>([]);
   const [open, setOpen] = useState(false);
 
-  const { formatAmount } = useDisplayCurrency();
+  async function getOrderCount(userId: string) {
+    const { count, error } = await supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId);
+
+    if (error) {
+      console.log("Order count error:", error.message);
+      return 0;
+    }
+
+    return count || 0;
+  }
 
   async function loadTopResellers() {
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, username, reseller_level, total_spent, total_orders")
+      .select("id, username, reseller_level, total_spent")
       .gt("total_spent", 0)
       .order("total_spent", { ascending: false })
       .limit(50);
@@ -75,12 +86,32 @@ export default function TopResellers() {
 
     const rows = data || [];
 
-    setAllRankings(rows);
-    setTopResellers(rows.slice(0, 3));
+    const rowsWithOrders: Reseller[] = await Promise.all(
+      rows.map(async (reseller) => {
+        const totalOrders = await getOrderCount(reseller.id);
+
+        return {
+          id: reseller.id,
+          username: reseller.username,
+          reseller_level: reseller.reseller_level,
+          total_spent: reseller.total_spent,
+          total_orders: totalOrders,
+        };
+      }),
+    );
+
+    setAllRankings(rowsWithOrders);
+    setTopResellers(rowsWithOrders.slice(0, 3));
   }
 
   useEffect(() => {
     loadTopResellers();
+
+    const interval = setInterval(() => {
+      loadTopResellers();
+    }, 10000);
+
+    return () => clearInterval(interval);
   }, []);
 
   function ResellerRow({
@@ -128,11 +159,12 @@ export default function TopResellers() {
 
         <div className="text-right">
           <h5 className="text-sm font-black text-slate-950">
-            {formatAmount(reseller.total_spent || 0)}
+            ₱{Number(reseller.total_spent || 0).toLocaleString()}
           </h5>
 
           <p className="mt-1 text-xs font-semibold text-slate-400">
-            {Number(reseller.total_orders || 0).toLocaleString()} orders
+            {Number(reseller.total_orders || 0).toLocaleString()}{" "}
+            {Number(reseller.total_orders || 0) === 1 ? "order" : "orders"}
           </p>
         </div>
       </div>
@@ -162,7 +194,11 @@ export default function TopResellers() {
             </div>
           ) : (
             topResellers.map((reseller, index) => (
-              <ResellerRow key={reseller.id} reseller={reseller} index={index} />
+              <ResellerRow
+                key={reseller.id}
+                reseller={reseller}
+                index={index}
+              />
             ))
           )}
         </div>
