@@ -5,24 +5,16 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { useToast } from "@/components/ToastProvider";
 import { supabase } from "@/lib/supabase";
 import {
-  BadgeCheck,
   Check,
   CheckCircle2,
-  ChevronDown,
-  ChevronRight,
   Copy,
   ExternalLink,
   Eye,
   Filter,
-  Gamepad2,
-  Globe2,
   Grid3X3,
   Heart,
   Info,
   Link as LinkIcon,
-  MessageSquare,
-  Minus,
-  Music,
   Package,
   Plus,
   RefreshCw,
@@ -50,6 +42,7 @@ type Order = {
   current_count: number;
   status: string;
   created_at: string;
+  order_source?: string | null;
 };
 
 type Service = {
@@ -131,7 +124,7 @@ export default function OrdersPage() {
       return;
     }
 
-    setOrders(data || []);
+    setOrders((data || []) as Order[]);
     setLoading(false);
   }
 
@@ -142,7 +135,7 @@ export default function OrdersPage() {
       .eq("status", "active")
       .order("category");
 
-    setServices(serviceData || []);
+    setServices((serviceData || []) as Service[]);
 
     const { data: authData } = await supabase.auth.getUser();
 
@@ -154,53 +147,48 @@ export default function OrdersPage() {
       .eq("id", authData.user.id)
       .single();
 
-    if (profileData) setProfile(profileData);
+    if (profileData) setProfile(profileData as Profile);
   }
 
-useEffect(() => {
-  async function refreshOrders() {
-    try {
-      await fetch("/api/orders/sync-status", {
-        method: "POST",
-        headers: {
-          "x-internal-sync": "true",
-        },
-      });
-    } catch (error) {
-      console.error("SYNC_ERROR:", error);
+  useEffect(() => {
+    async function refreshOrders() {
+      try {
+        await fetch("/api/orders/sync-status", {
+          method: "POST",
+          headers: {
+            "x-internal-sync": "true",
+          },
+        });
+      } catch (error) {
+        console.error("SYNC_ERROR:", error);
+      }
+
+      await loadOrders();
+      await loadOrderData();
     }
 
-    await loadOrders();
-    await loadOrderData();
-  }
-
-  refreshOrders();
-
-  const savedFavorites =
-    window.localStorage.getItem("favorite_services");
-
-  if (savedFavorites) {
-    try {
-      setFavoriteServiceIds(
-        JSON.parse(savedFavorites)
-      );
-    } catch {
-      setFavoriteServiceIds([]);
-    }
-  }
-
-  const interval = setInterval(() => {
     refreshOrders();
-  }, 30000);
 
-  return () => clearInterval(interval);
-}, []);
+    const savedFavorites = window.localStorage.getItem("favorite_services");
+
+    if (savedFavorites) {
+      try {
+        setFavoriteServiceIds(JSON.parse(savedFavorites));
+      } catch {
+        setFavoriteServiceIds([]);
+      }
+    }
+
+    const interval = setInterval(() => {
+      refreshOrders();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const totalOrders = orders.length;
   const completedOrders = orders.filter((o) => o.status === "completed").length;
-  const processingOrders = orders.filter(
-    (o) => o.status === "processing",
-  ).length;
+  const processingOrders = orders.filter((o) => o.status === "processing").length;
   const totalSpent = orders.reduce(
     (sum, order) => sum + Number(order.price || 0),
     0,
@@ -213,7 +201,8 @@ useEffect(() => {
       const matchesSearch =
         order.id.toLowerCase().includes(keyword) ||
         order.service_name?.toLowerCase().includes(keyword) ||
-        order.link?.toLowerCase().includes(keyword);
+        order.link?.toLowerCase().includes(keyword) ||
+        getOrderSource(order).toLowerCase().includes(keyword);
 
       const matchesStatus =
         statusFilter === "all" ? true : order.status === statusFilter;
@@ -366,6 +355,12 @@ useEffect(() => {
       return "bg-red-50 text-red-600";
     if (status === "processing") return "bg-blue-50 text-blue-600";
     return "bg-yellow-50 text-yellow-600";
+  }
+
+  function getOrderSource(order: Order) {
+    return (order.order_source || "dashboard").toLowerCase() === "api"
+      ? "api"
+      : "dashboard";
   }
 
   function resetOrderForm() {
@@ -549,7 +544,7 @@ useEffect(() => {
                   <input
                     value={orderSearch}
                     onChange={(e) => setOrderSearch(e.target.value)}
-                    placeholder="Search by service, link, or order ID..."
+                    placeholder="Search by service, link, source, or order ID..."
                     className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 pr-11 text-sm font-semibold outline-none transition focus:border-blue-500"
                   />
                 </div>
@@ -577,11 +572,12 @@ useEffect(() => {
 
             <div className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[950px] text-sm">
+                <table className="w-full min-w-[1050px] text-sm">
                   <thead className="bg-slate-50 text-slate-500">
                     <tr>
                       <th className="p-5 text-left font-black">Order ID</th>
                       <th className="p-5 text-left font-black">Service</th>
+                      <th className="p-5 text-left font-black">Source</th>
                       <th className="p-5 text-left font-black">Quantity</th>
                       <th className="p-5 text-left font-black">Charge</th>
                       <th className="p-5 text-left font-black">Progress</th>
@@ -595,7 +591,7 @@ useEffect(() => {
                     {loading ? (
                       <tr>
                         <td
-                          colSpan={8}
+                          colSpan={9}
                           className="p-10 text-center text-slate-500"
                         >
                           Loading orders...
@@ -603,7 +599,7 @@ useEffect(() => {
                       </tr>
                     ) : filteredOrders.length <= 0 ? (
                       <tr>
-                        <td colSpan={8} className="p-16">
+                        <td colSpan={9} className="p-16">
                           <div className="flex flex-col items-center justify-center text-center">
                             <div className="flex h-28 w-28 items-center justify-center rounded-full bg-blue-50 text-blue-600">
                               <ShoppingBag size={50} />
@@ -660,6 +656,10 @@ useEffect(() => {
                               <p className="mt-1 max-w-xs truncate text-xs font-medium text-slate-500">
                                 {order.link}
                               </p>
+                            </td>
+
+                            <td className="p-5">
+                              <SourceBadge source={getOrderSource(order)} />
                             </td>
 
                             <td className="p-5 font-bold text-slate-700">
@@ -779,6 +779,10 @@ useEffect(() => {
                       </span>
                     </div>
 
+                    <div className="mt-4">
+                      <SourceBadge source={getOrderSource(sideOrder)} />
+                    </div>
+
                     <div className="mt-6 rounded-2xl border border-slate-100 p-4">
                       <h4 className="font-black text-slate-950">
                         {sideOrder.service_name}
@@ -804,6 +808,11 @@ useEffect(() => {
                     </div>
 
                     <div className="mt-5 space-y-4">
+                      <SideDetail
+                        label="Source"
+                        value={getOrderSource(sideOrder) === "api" ? "API" : "Dashboard"}
+                      />
+
                       <SideDetail
                         label="Quantity"
                         value={Number(sideOrder.quantity || 0).toLocaleString()}
@@ -899,7 +908,7 @@ useEffect(() => {
 
         {orderModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm">
-            <div className="flex max-h-[94vh] w-full max-w-[1500px] flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-2xl">
+            <div className="flex max-h-[94vh] w-full max-w-[1280px] flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-2xl">
               <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
                 <div className="flex items-center gap-4">
                   <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
@@ -924,14 +933,17 @@ useEffect(() => {
                 </button>
               </div>
 
-              <div className="grid min-h-0 flex-1 overflow-hidden xl:grid-cols-[1fr_430px]">
+              <div className="grid min-h-0 flex-1 overflow-hidden xl:grid-cols-[1fr_420px]">
                 <div className="min-h-0 overflow-y-auto p-6 pb-10">
                   <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                     <StepHeader step="1" title="Choose Platform" />
 
-                    <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8">
+                    <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7">
                       {networks
-                        .filter((item) => item.name !== "Website" && item.name !== "Reviews")
+                        .filter(
+                          (item) =>
+                            item.name !== "Website" && item.name !== "Reviews",
+                        )
                         .map((item) => {
                           const active = network === item.name;
 
@@ -1019,7 +1031,11 @@ useEffect(() => {
                     <div className="mt-4 flex flex-wrap gap-3">
                       <ServiceFilterChip
                         active={serviceFilter === "favorites"}
-                        onClick={() => setServiceFilter(serviceFilter === "favorites" ? "all" : "favorites")}
+                        onClick={() =>
+                          setServiceFilter(
+                            serviceFilter === "favorites" ? "all" : "favorites",
+                          )
+                        }
                         icon={Star}
                         label="Favorites"
                       />
@@ -1037,19 +1053,31 @@ useEffect(() => {
                       />
                       <ServiceFilterChip
                         active={serviceFilter === "fast"}
-                        onClick={() => setServiceFilter(serviceFilter === "fast" ? "all" : "fast")}
+                        onClick={() =>
+                          setServiceFilter(
+                            serviceFilter === "fast" ? "all" : "fast",
+                          )
+                        }
                         icon={Zap}
                         label="Fast"
                       />
                       <ServiceFilterChip
                         active={serviceFilter === "refill"}
-                        onClick={() => setServiceFilter(serviceFilter === "refill" ? "all" : "refill")}
+                        onClick={() =>
+                          setServiceFilter(
+                            serviceFilter === "refill" ? "all" : "refill",
+                          )
+                        }
                         icon={RotateCcw}
                         label="Refill"
                       />
                       <ServiceFilterChip
                         active={serviceFilter === "quality"}
-                        onClick={() => setServiceFilter(serviceFilter === "quality" ? "all" : "quality")}
+                        onClick={() =>
+                          setServiceFilter(
+                            serviceFilter === "quality" ? "all" : "quality",
+                          )
+                        }
                         icon={ShieldCheck}
                         label="High Quality"
                       />
@@ -1065,335 +1093,219 @@ useEffect(() => {
                             No matching services found
                           </h5>
                           <p className="mt-2 text-sm font-semibold text-slate-500">
-                            Search directly by service ID or service name. Category is optional.
+                            Search directly by service ID or service name.
                           </p>
                         </div>
                       ) : (
-                        filteredServices.slice(0, 12).map((service) => {
+                        filteredServices.map((service) => {
+                          const active = selectedServiceId === service.id;
                           const tags = getServiceTags(service);
-                          const publicId = getPublicServiceId(service);
-                          const isSelected = selectedServiceId === service.id;
-                          const isFavorite = favoriteServiceIds.includes(service.id);
+                          const favorite = favoriteServiceIds.includes(service.id);
 
                           return (
-                            <div
+                            <button
                               key={service.id}
-                              className={`group flex items-center gap-4 rounded-2xl border p-4 transition ${
-                                isSelected
-                                  ? "border-blue-600 bg-blue-50/70 shadow-sm"
-                                  : "border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/30"
+                              onClick={() => setSelectedServiceId(service.id)}
+                              className={`w-full rounded-2xl border p-4 text-left transition ${
+                                active
+                                  ? "border-blue-600 bg-blue-50 shadow-sm"
+                                  : "border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/40"
                               }`}
                             >
-                              <button
-                                type="button"
-                                onClick={() => setSelectedServiceId(service.id)}
-                                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition ${
-                                  isSelected
-                                    ? "border-blue-600 bg-blue-600 text-white"
-                                    : "border-slate-200 bg-white text-transparent hover:border-blue-400"
-                                }`}
-                              >
-                                <Check size={14} strokeWidth={3} />
-                              </button>
+                              <div className="flex gap-4">
+                                <div
+                                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${
+                                    active
+                                      ? "bg-blue-600 text-white"
+                                      : "bg-slate-100 text-slate-600"
+                                  }`}
+                                >
+                                  <ShoppingCart size={22} />
+                                </div>
 
-                              <button
-                                type="button"
-                                onClick={() => setSelectedServiceId(service.id)}
-                                className="flex min-w-0 flex-1 items-center gap-4 text-left"
-                              >
-                                <span className="flex h-14 min-w-[82px] items-center justify-center rounded-2xl bg-blue-50 px-4 text-base font-black text-blue-600">
-                                  #{publicId}
-                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-black text-slate-600">
+                                      ID {getPublicServiceId(service)}
+                                    </span>
 
-                                <span className="min-w-0 flex-1">
-                                  <span className="block truncate text-base font-black text-slate-950">
-                                    {service.name}
-                                  </span>
-
-                                  <span className="mt-2 flex flex-wrap items-center gap-2">
                                     {tags.map((tag) => (
                                       <span
                                         key={tag}
-                                        className={`rounded-md px-2 py-0.5 text-[10px] font-black ${
-                                          tag === "CHEAP"
-                                            ? "bg-green-100 text-green-700"
-                                            : tag === "FAST"
-                                              ? "bg-blue-100 text-blue-700"
-                                              : tag === "REFILL"
-                                                ? "bg-orange-100 text-orange-700"
-                                                : "bg-purple-100 text-purple-700"
-                                        }`}
+                                        className="rounded-lg bg-blue-100 px-2 py-1 text-xs font-black text-blue-600"
                                       >
                                         {tag}
                                       </span>
                                     ))}
 
-                                    <span className="text-xs font-semibold text-slate-500">
-                                      Min {service.min_quantity} • Max {service.max_quantity}
+                                    {active && (
+                                      <span className="rounded-lg bg-green-100 px-2 py-1 text-xs font-black text-green-600">
+                                        SELECTED
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <p className="mt-2 line-clamp-2 font-black text-slate-950">
+                                    {service.name}
+                                  </p>
+
+                                  <p className="mt-1 text-xs font-semibold text-slate-500">
+                                    {service.category}
+                                  </p>
+
+                                  <div className="mt-3 flex flex-wrap gap-3 text-xs font-bold text-slate-600">
+                                    <span>
+                                      ₱{Number(service.price_per_1000 || 0).toFixed(2)}
+                                      /1k
                                     </span>
-                                  </span>
+                                    <span>
+                                      Min {Number(service.min_quantity || 0).toLocaleString()}
+                                    </span>
+                                    <span>
+                                      Max {Number(service.max_quantity || 0).toLocaleString()}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <span
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    toggleFavoriteService(service.id);
+                                  }}
+                                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${
+                                    favorite
+                                      ? "border-red-200 bg-red-50 text-red-500"
+                                      : "border-slate-200 text-slate-400 hover:text-red-500"
+                                  }`}
+                                >
+                                  <Heart
+                                    size={18}
+                                    fill={favorite ? "currentColor" : "none"}
+                                  />
                                 </span>
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => toggleFavoriteService(service.id)}
-                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition ${
-                                  isFavorite
-                                    ? "bg-yellow-50 text-yellow-500"
-                                    : "bg-slate-50 text-slate-400 hover:bg-yellow-50 hover:text-yellow-500"
-                                }`}
-                              >
-                                <Star size={19} fill={isFavorite ? "currentColor" : "none"} />
-                              </button>
-
-                              <div className="hidden text-right sm:block">
-                                <p className="text-lg font-black text-blue-600">
-                                  ₱{Number(service.price_per_1000 || 0).toFixed(2)}
-                                  <span className="text-xs font-bold text-slate-400"> / 1000</span>
-                                </p>
                               </div>
-
-                              <ChevronRight size={20} className="hidden text-slate-400 sm:block" />
-                            </div>
+                            </button>
                           );
                         })
                       )}
                     </div>
-
-                    {filteredServices.length > 12 && (
-                      <div className="mt-4 flex justify-center border-t border-slate-100 pt-4">
-                        <p className="text-sm font-bold text-blue-600">
-                          Showing first 12 results. Use search to narrow services.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-5 grid gap-5 lg:grid-cols-2">
-                    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-                      <StepHeader step="3" title="Enter Link" />
-                      <div className="relative mt-4">
-                        <LinkIcon
-                          size={19}
-                          className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                        />
-                        <input
-                          type="url"
-                          placeholder="https://www.tiktok.com/@username"
-                          value={link}
-                          onChange={(e) => setLink(e.target.value)}
-                          className="h-14 w-full rounded-2xl border border-slate-200 pl-12 pr-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-                      <StepHeader step="4" title="Quantity" />
-                      <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
-                        <div className="flex h-14 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setQuantity(String(Math.max(0, Number(quantity || 0) - 100)))
-                            }
-                            className="flex w-14 items-center justify-center text-slate-700 transition hover:bg-slate-50"
-                          >
-                            <Minus size={20} />
-                          </button>
-
-                          <input
-                            type="number"
-                            value={quantity}
-                            onChange={(e) => setQuantity(e.target.value)}
-                            placeholder="1000"
-                            className="w-28 border-x border-slate-200 text-center text-lg font-black text-slate-950 outline-none"
-                          />
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setQuantity(String(Number(quantity || 0) + 100))
-                            }
-                            className="flex w-14 items-center justify-center text-slate-700 transition hover:bg-slate-50"
-                          >
-                            <Plus size={20} />
-                          </button>
-                        </div>
-
-                        <div className="text-xs font-bold text-slate-500">
-                          <p>Min: {selectedService?.min_quantity || 0}</p>
-                          <p>Max: {selectedService?.max_quantity || 0}</p>
-                        </div>
-                      </div>
-                    </div>
                   </div>
 
                   <div className="mt-5 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-                    <StepHeader step="5" title="Notes" optional />
-                    <div className="relative mt-4">
-                      <MessageSquare
-                        size={19}
-                        className="absolute left-4 top-4 text-slate-400"
-                      />
-                      <textarea
-                        placeholder="Add any notes or special instructions..."
-                        rows={3}
-                        value={notes}
-                        maxLength={200}
-                        onChange={(e) => setNotes(e.target.value)}
-                        className="w-full resize-none rounded-2xl border border-slate-200 py-4 pl-12 pr-16 text-sm font-semibold text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
-                      />
-                      <span className="absolute bottom-4 right-4 text-xs font-bold text-slate-400">
-                        {notes.length} / 200
-                      </span>
-                    </div>
-                  </div>
+                    <StepHeader step="3" title="Order Details" />
 
-                  <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-blue-100 bg-blue-50 px-5 py-4 text-sm font-semibold text-blue-700 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-3">
-                      <Info size={19} />
-                      <span>
-                        Make sure your link is correct. We are not responsible for wrong links.
-                      </span>
-                    </div>
+                    <div className="mt-5 grid gap-4">
+                      <div>
+                        <label className="text-sm font-black text-slate-700">
+                          Link
+                        </label>
+                        <div className="relative mt-2">
+                          <LinkIcon
+                            size={18}
+                            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                          />
+                          <input
+                            value={link}
+                            onChange={(e) => setLink(e.target.value)}
+                            placeholder="Paste your social media link here"
+                            className="h-14 w-full rounded-2xl border border-slate-200 pl-12 pr-4 text-sm font-semibold outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                          />
+                        </div>
+                      </div>
 
-                    <a
-                      href="/dashboard/tickets"
-                      className="font-black text-blue-700 hover:text-blue-800"
-                    >
-                      Need help? Contact Support
-                    </a>
+                      <div>
+                        <label className="text-sm font-black text-slate-700">
+                          Quantity
+                        </label>
+                        <input
+                          value={quantity}
+                          onChange={(e) => setQuantity(e.target.value)}
+                          type="number"
+                          placeholder="Enter quantity"
+                          className="mt-2 h-14 w-full rounded-2xl border border-slate-200 px-4 text-sm font-semibold outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm font-black text-slate-700">
+                          Note
+                        </label>
+                        <textarea
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          placeholder="Optional note"
+                          className="mt-2 min-h-[90px] w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <aside className="flex min-h-0 flex-col border-t border-slate-100 bg-white p-6 xl:border-l xl:border-t-0">
-                  <div className="flex min-h-0 flex-1 flex-col">
-                    <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-1 pb-5">
-                    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-xl font-black text-slate-950">
-                          Order Summary
-                        </h4>
+                <aside className="hidden min-h-0 overflow-y-auto border-l border-slate-200 bg-slate-50 p-6 xl:block">
+                  <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+                    <h4 className="text-lg font-black text-slate-950">
+                      Order Summary
+                    </h4>
 
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-50 text-purple-600">
-                          <Wallet size={22} />
-                        </div>
-                      </div>
-
-                      <div className="mt-6 space-y-4">
-                        <SummaryDetail
-                          label="Service"
-                          value={selectedService?.name || "Select a service"}
-                        />
-                        <SummaryDetail
-                          label="Service ID"
-                          value={selectedService ? `#${getPublicServiceId(selectedService)}` : "N/A"}
-                        />
-                        <SummaryDetail
-                          label="Quantity"
-                          value={Number(quantity || 0).toLocaleString()}
-                        />
-                        <SummaryDetail
-                          label="Price per 1000"
-                          value={
-                            selectedService
-                              ? `₱${Number(selectedService.price_per_1000 || 0).toFixed(2)}`
-                              : "₱0.00"
-                          }
-                        />
-                      </div>
-
-                      <div className="my-5 border-t border-dashed border-slate-200" />
-
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-black text-slate-950">
-                          Total Charge
-                        </p>
-                        <p className="text-2xl font-black text-blue-600">
-                          ₱{estimatedCharge.toFixed(2)}
-                        </p>
-                      </div>
-
-                      <div className="mt-3 flex items-center justify-between">
-                        <p className="text-sm font-bold text-slate-500">
-                          Your Balance
-                        </p>
-                        <p className="text-lg font-black text-green-600">
-                          ₱{Number(profile?.balance || 0).toFixed(2)}
-                        </p>
-                      </div>
-
-                      <div
-                        className={`mt-5 flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold ${
-                          Number(profile?.balance || 0) >= estimatedCharge
-                            ? "bg-green-50 text-green-700"
-                            : "bg-red-50 text-red-600"
-                        }`}
-                      >
-                        <CheckCircle2 size={18} />
-                        {Number(profile?.balance || 0) >= estimatedCharge
-                          ? "You have sufficient balance to place this order."
-                          : "You may need to add funds before placing this order."}
-                      </div>
+                    <div className="mt-5 space-y-4">
+                      <SideDetail
+                        label="Selected Service"
+                        value={selectedService?.name || "No service selected"}
+                      />
+                      <SideDetail
+                        label="Service ID"
+                        value={getPublicServiceId(selectedService)}
+                      />
+                      <SideDetail
+                        label="Category"
+                        value={selectedService?.category || "N/A"}
+                      />
+                      <SideDetail
+                        label="Min / Max"
+                        value={
+                          selectedService
+                            ? `${Number(
+                                selectedService.min_quantity || 0,
+                              ).toLocaleString()} / ${Number(
+                                selectedService.max_quantity || 0,
+                              ).toLocaleString()}`
+                            : "N/A"
+                        }
+                      />
+                      <SideDetail
+                        label="Rate"
+                        value={
+                          selectedService
+                            ? `₱${Number(
+                                selectedService.price_per_1000 || 0,
+                              ).toFixed(2)} / 1,000`
+                            : "N/A"
+                        }
+                      />
+                      <SideDetail
+                        label="Estimated Charge"
+                        value={`₱${estimatedCharge.toFixed(2)}`}
+                      />
+                      <SideDetail
+                        label="Wallet Balance"
+                        value={`₱${Number(profile?.balance || 0).toFixed(2)}`}
+                      />
                     </div>
 
-                    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-xl font-black text-slate-950">
-                          Service Details
-                        </h4>
-                        <Info size={19} className="text-blue-600" />
-                      </div>
-
-                      {selectedService ? (
-                        <div className="mt-5 space-y-4">
-                          <SummaryDetail
-                            label="Start Time"
-                            value={getDetail("Start Time")}
-                          />
-                          <SummaryDetail label="Speed" value={getDetail("Speed")} />
-                          <SummaryDetail label="Refill" value={getDetail("Refill")} />
-                          <SummaryDetail
-                            label="Quality"
-                            value={getServiceTags(selectedService).includes("HQ") ? "High Quality" : "N/A"}
-                          />
-                          <SummaryDetail
-                            label="Type"
-                            value={network === "Everything" ? "All Platforms" : network}
-                          />
-                          <SummaryDetail
-                            label="Max Quantity"
-                            value={Number(selectedService.max_quantity || 0).toLocaleString()}
-                          />
-
-                          </div>
-                      ) : (
-                        <div className="mt-5 rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm font-semibold text-slate-500">
-                          Select a service to preview details.
-                        </div>
-                      )}
+                    <div className="mt-5 rounded-2xl bg-blue-50 p-4 text-sm font-semibold text-blue-700">
+                      {selectedService
+                        ? "Review your order before placing it."
+                        : "Select a service to see details here."}
                     </div>
 
-                    </div>
-
-                    <div className="shrink-0 border-t border-slate-100 bg-white pt-5">
-                      <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-                        <button
-                          onClick={handleOrder}
-                          disabled={placingOrder || !canPlaceOrder}
-                          className="flex w-full items-center justify-center gap-3 rounded-2xl bg-blue-600 py-4 text-lg font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          <ShoppingCart size={24} />
-                          {placingOrder ? "Placing Order..." : "Place Order"}
-                        </button>
-
-                        <p className="mt-3 flex items-center justify-center gap-2 text-center text-xs font-semibold text-slate-400">
-                          <ShieldCheck size={14} />
-                          Your order will be processed securely.
-                        </p>
-                      </div>
-                    </div>
+                    <button
+                      onClick={handleOrder}
+                      disabled={!canPlaceOrder || placingOrder}
+                      className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {placingOrder ? "Placing Order..." : "Place Order"}
+                      <Sparkles size={18} />
+                    </button>
                   </div>
                 </aside>
               </div>
@@ -1405,24 +1317,74 @@ useEffect(() => {
   );
 }
 
-function StepHeader({
-  step,
+function StatCard({
+  icon: Icon,
   title,
-  optional = false,
+  value,
+  subtitle,
+  color,
 }: {
-  step: string;
+  icon: any;
   title: string;
-  optional?: boolean;
+  value: string;
+  subtitle: string;
+  color: string;
 }) {
   return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex items-center gap-5">
+        <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${color}`}>
+          <Icon size={26} />
+        </div>
+
+        <div>
+          <p className="text-xs font-black uppercase tracking-wide text-slate-500">
+            {title}
+          </p>
+          <h3 className="mt-2 text-2xl font-black text-slate-950">{value}</h3>
+          <p className="mt-1 text-sm font-semibold text-slate-400">{subtitle}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SourceBadge({ source }: { source: "api" | "dashboard" }) {
+  if (source === "api") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-3 py-1 text-xs font-black text-purple-700">
+        <Zap size={13} />
+        API
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-3 py-1 text-xs font-black text-blue-700">
+      <ShoppingCart size={13} />
+      Dashboard
+    </span>
+  );
+}
+
+function SideDetail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-3 last:border-b-0 last:pb-0">
+      <p className="text-sm font-bold text-slate-500">{label}</p>
+      <p className="max-w-[210px] text-right text-sm font-black text-slate-800">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function StepHeader({ step, title }: { step: string; title: string }) {
+  return (
     <div className="flex items-center gap-3">
-      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-sm font-black text-white">
+      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-sm font-black text-white">
         {step}
       </span>
       <h4 className="text-lg font-black text-slate-950">{title}</h4>
-      {optional && (
-        <span className="text-sm font-semibold text-slate-500">(Optional)</span>
-      )}
     </div>
   );
 }
@@ -1440,111 +1402,25 @@ function ServiceFilterChip({
 }) {
   return (
     <button
-      type="button"
       onClick={onClick}
-      className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-black transition ${
+      className={`flex h-10 items-center gap-2 rounded-xl border px-4 text-xs font-black transition ${
         active
-          ? "border-blue-600 bg-blue-50 text-blue-600"
+          ? "border-blue-600 bg-blue-50 text-blue-700"
           : "border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-600"
       }`}
     >
-      <Icon size={16} />
+      <Icon size={15} />
       {label}
     </button>
   );
 }
 
 function PlatformIcon({ name }: { name: string }) {
-  const simpleIcons: Record<string, string> = {
-    TikTok: "tiktok",
-    Instagram: "instagram",
-    YouTube: "youtube",
-    Facebook: "facebook",
-    Telegram: "telegram",
-    Twitter: "x",
-    Spotify: "spotify",
-    Twitch: "twitch",
-    Discord: "discord",
-    Google: "google",
-  };
+  const icon = networks.find((item) => item.name === name)?.icon || "•";
 
-  if (simpleIcons[name]) {
-    return (
-      <img
-        src={`https://cdn.simpleicons.org/${simpleIcons[name]}`}
-        alt={`${name} icon`}
-        className="h-8 w-8 object-contain"
-      />
-    );
-  }
-
-  if (name === "Website") return <Globe2 size={31} />;
-  if (name === "Others") return <MoreIcon />;
-  if (name === "Everything") return <Grid3X3 size={30} />;
-  if (name === "Reviews") return <Star size={30} />;
-
-  return <Globe2 size={30} />;
-}
-
-function MoreIcon() {
   return (
-    <div className="flex items-center gap-1 text-slate-700">
-      <span className="h-1.5 w-1.5 rounded-full bg-current" />
-      <span className="h-1.5 w-1.5 rounded-full bg-current" />
-      <span className="h-1.5 w-1.5 rounded-full bg-current" />
-    </div>
-  );
-}
-
-
-function StatCard({
-  icon: Icon,
-  title,
-  value,
-  subtitle,
-  color,
-}: {
-  icon: any;
-  title: string;
-  value: string;
-  subtitle: string;
-  color: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="flex items-center gap-5">
-        <div
-          className={`flex h-14 w-14 items-center justify-center rounded-2xl ${color}`}
-        >
-          <Icon size={26} />
-        </div>
-
-        <div>
-          <p className="text-sm font-bold text-slate-500">{title}</p>
-          <h3 className="mt-2 text-3xl font-black text-slate-950">{value}</h3>
-          <p className="mt-1 text-sm font-medium text-slate-400">{subtitle}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SideDetail({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-5">
-      <p className="text-sm font-bold text-slate-500">{label}</p>
-      <p className="text-right text-sm font-black text-slate-900">{value}</p>
-    </div>
-  );
-}
-
-function SummaryDetail({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-3 last:border-b-0 last:pb-0">
-      <p className="text-sm font-bold text-slate-500">{label}</p>
-      <p className="text-right text-sm font-black text-slate-900">
-        {value || "N/A"}
-      </p>
-    </div>
+    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-lg">
+      {icon}
+    </span>
   );
 }
