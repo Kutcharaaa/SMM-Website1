@@ -968,7 +968,7 @@ export default function AdminPage() {
         <div className="grid gap-6 xl:grid-cols-3">
           <RecentOrdersTable orders={recentOrders} />
           <RecentDepositsTable deposits={recentDeposits} />
-          <RecentUsersTable users={recentUsers} />
+          <RecentUsersTable users={recentUsers} orders={orders} />
         </div>
       </div>
     </AdminLayout>
@@ -1357,7 +1357,51 @@ function RecentDepositsTable({ deposits }: { deposits: DepositRow[] }) {
   );
 }
 
-function RecentUsersTable({ users }: { users: UserRow[] }) {
+function RecentUsersTable({
+  users,
+  orders,
+}: {
+  users: UserRow[];
+  orders: OrderRow[];
+}) {
+  function getUserDisplayName(user: UserRow) {
+    return user.username || "User";
+  }
+
+  function getUserTotalOrders(userId: string) {
+    return orders.filter((order) => order.user_id === userId).length;
+  }
+
+  function getUserRoleBadge(role?: string | null) {
+    const clean = cleanStatus(role);
+
+    if (clean === "super_admin") {
+      return {
+        label: "Developer",
+        className: "bg-purple-50 text-purple-700 ring-purple-100",
+      };
+    }
+
+    if (clean === "head_admin") {
+      return {
+        label: "Head Admin",
+        className: "bg-red-50 text-red-700 ring-red-100",
+      };
+    }
+
+    if (clean === "admin") {
+      return {
+        label: "Admin",
+        className: "bg-blue-50 text-blue-700 ring-blue-100",
+      };
+    }
+
+    return {
+      label: "User",
+      className: "bg-green-50 text-green-700 ring-green-100",
+    };
+  }
+
   return (
     <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
       <div className="flex items-center justify-between border-b border-slate-100 p-5">
@@ -1372,25 +1416,45 @@ function RecentUsersTable({ users }: { users: UserRow[] }) {
         {users.length <= 0 ? (
           <EmptyState text="No recent users." />
         ) : (
-          users.map((user) => (
-            <div key={user.id} className="p-5">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-green-50 text-sm font-black text-green-700">
-                  {(user.username || "U").charAt(0).toUpperCase()}
-                </div>
+          users.map((user) => {
+            const badge = getUserRoleBadge(user.role);
+            const displayName = getUserDisplayName(user);
+            const totalOrders = getUserTotalOrders(user.id);
 
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-black text-slate-950">
-                    {user.username || "User"}
-                  </p>
+            return (
+              <div key={user.id} className="p-5 transition hover:bg-slate-50/70">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-green-50 text-sm font-black text-green-700">
+                    {displayName.charAt(0).toUpperCase()}
+                  </div>
 
-                  <p className="truncate text-xs font-semibold text-slate-400">
-                    {user.role || "user"} • {formatDate(user.created_at)}
-                  </p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-4">
+                      <p className="truncate text-sm font-black text-slate-950">
+                        {displayName}
+                      </p>
+
+                      <span
+                        className={`shrink-0 rounded-full px-3 py-1 text-xs font-black ring-1 ${badge.className}`}
+                      >
+                        {badge.label}
+                      </span>
+                    </div>
+
+                    <div className="mt-1 flex items-center justify-between gap-4">
+                      <p className="truncate text-xs font-semibold text-slate-400">
+                        {formatNumber(totalOrders)} Total Orders
+                      </p>
+
+                      <p className="shrink-0 text-xs font-semibold text-slate-400">
+                        {formatDate(user.created_at)}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
