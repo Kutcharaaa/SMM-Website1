@@ -6,6 +6,7 @@ import UserProfile from "@/components/UserProfile";
 import { Menu } from "lucide-react";
 
 import { supabase } from "@/lib/supabase";
+import { useDisplayCurrency } from "@/lib/useDisplayCurrency";
 import { useEffect, useState } from "react";
 
 type DashboardTopbarProps = {
@@ -19,26 +20,38 @@ export default function DashboardTopbar({
   const [balance, setBalance] = useState(0);
   const [plan, setPlan] = useState("Starter");
 
+  const { code, formatAmount, formatPhpAmount } = useDisplayCurrency();
+
+  async function loadProfile() {
+    const { data: authData } = await supabase.auth.getUser();
+
+    if (!authData.user) return;
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("username, balance, plan")
+      .eq("id", authData.user.id)
+      .single();
+
+    if (profile) {
+      setUsername(profile.username || "User");
+      setBalance(Number(profile.balance || 0));
+      setPlan(profile.plan || "Starter");
+    }
+  }
+
   useEffect(() => {
-    async function loadProfile() {
-      const { data: authData } = await supabase.auth.getUser();
+    loadProfile();
 
-      if (!authData.user) return;
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("username, balance, plan")
-        .eq("id", authData.user.id)
-        .single();
-
-      if (profile) {
-        setUsername(profile.username || "User");
-        setBalance(profile.balance || 0);
-        setPlan(profile.plan || "Starter");
-      }
+    function handleFocus() {
+      loadProfile();
     }
 
-    loadProfile();
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+    };
   }, []);
 
   return (
@@ -75,9 +88,22 @@ export default function DashboardTopbar({
               Wallet Balance
             </p>
 
-            <p className="mt-1 text-2xl font-black text-blue-600">
-              ₱{Number(balance).toFixed(2)}
+            <p
+              className="mt-1 text-2xl font-black text-blue-600"
+              title={
+                code === "PHP"
+                  ? "Wallet balance stored in PHP"
+                  : `Stored value: ${formatPhpAmount(balance)} PHP`
+              }
+            >
+              {formatAmount(balance)}
             </p>
+
+            {code !== "PHP" && (
+              <p className="mt-0.5 text-[10px] font-bold text-slate-400">
+                Displayed in {code}
+              </p>
+            )}
           </div>
 
           <NotificationsDropdown />
