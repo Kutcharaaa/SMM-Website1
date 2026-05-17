@@ -36,7 +36,7 @@ const navItems = [
   },
   {
     name: "API",
-    href: "/api",
+    href: "/api2",
   },
   {
     name: "Support",
