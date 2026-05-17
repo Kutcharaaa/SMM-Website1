@@ -4,6 +4,7 @@ import DashboardGuard from "@/components/DashboardGuard";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useToast } from "@/components/ToastProvider";
 import { supabase } from "@/lib/supabase";
+import { useDisplayCurrency } from "@/lib/useDisplayCurrency";
 import {
   Check,
   CheckCircle2,
@@ -81,6 +82,7 @@ const networks = [
 
 export default function OrdersPage() {
   const { showToast } = useToast();
+  const { formatAmount } = useDisplayCurrency();
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -527,7 +529,7 @@ export default function OrdersPage() {
               <StatCard
                 icon={Wallet}
                 title="Total Spent"
-                value={`₱${totalSpent.toFixed(2)}`}
+                value={formatAmount(totalSpent)}
                 subtitle="All time spending"
                 color="bg-purple-50 text-purple-600"
               />
@@ -667,7 +669,7 @@ export default function OrdersPage() {
                             </td>
 
                             <td className="p-5 font-black text-blue-600">
-                              ₱{Number(order.price || 0).toFixed(2)}
+                              {formatAmount(order.price)}
                             </td>
 
                             <td className="p-5">
@@ -820,7 +822,7 @@ export default function OrdersPage() {
 
                       <SideDetail
                         label="Charge"
-                        value={`₱${Number(sideOrder.price || 0).toFixed(2)}`}
+                        value={formatAmount(sideOrder.price)}
                       />
 
                       <SideDetail
@@ -1155,7 +1157,7 @@ export default function OrdersPage() {
 
                                   <div className="mt-3 flex flex-wrap gap-3 text-xs font-bold text-slate-600">
                                     <span>
-                                      ₱{Number(service.price_per_1000 || 0).toFixed(2)}
+                                      {formatAmount(service.price_per_1000)}
                                       /1k
                                     </span>
                                     <span>
@@ -1276,19 +1278,17 @@ export default function OrdersPage() {
                         label="Rate"
                         value={
                           selectedService
-                            ? `₱${Number(
-                                selectedService.price_per_1000 || 0,
-                              ).toFixed(2)} / 1,000`
+                            ? `${formatAmount(selectedService.price_per_1000)} / 1,000`
                             : "N/A"
                         }
                       />
                       <SideDetail
                         label="Estimated Charge"
-                        value={`₱${estimatedCharge.toFixed(2)}`}
+                        value={formatAmount(estimatedCharge)}
                       />
                       <SideDetail
                         label="Wallet Balance"
-                        value={`₱${Number(profile?.balance || 0).toFixed(2)}`}
+                        value={formatAmount(profile?.balance || 0)}
                       />
                     </div>
 
