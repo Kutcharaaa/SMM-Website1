@@ -52,6 +52,23 @@ type MockCommission = {
   date: string;
 };
 
+type IconName =
+  | "revenue"
+  | "chart"
+  | "profit"
+  | "percent"
+  | "expense"
+  | "orders"
+  | "active"
+  | "completed"
+  | "bank"
+  | "convert"
+  | "users"
+  | "clock"
+  | "refresh"
+  | "export"
+  | "close";
+
 const periodOptions: { label: string; value: Period }[] = [
   { label: "This Day", value: "day" },
   { label: "This Week", value: "week" },
@@ -288,6 +305,239 @@ function getTrendBuckets(period: Period) {
   return buckets;
 }
 
+function SvgIcon({ name, className = "" }: { name: IconName; className?: string }) {
+  const baseClass = `h-5 w-5 ${className}`;
+
+  if (name === "revenue") {
+    return (
+      <svg className={baseClass} viewBox="0 0 24 24" fill="none">
+        <path d="M12 2v20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path
+          d="M17 6.5C16.1 5.6 14.5 5 12.7 5C9.9 5 8 6.4 8 8.5C8 12.5 17 10.3 17 15.5C17 17.6 15.1 19 12.3 19C10.2 19 8.4 18.2 7.4 17"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      </svg>
+    );
+  }
+
+  if (name === "chart") {
+    return (
+      <svg className={baseClass} viewBox="0 0 24 24" fill="none">
+        <path d="M4 19V5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path d="M4 19H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path
+          d="M7 15L11 11L14 13L19 7"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+  if (name === "profit") {
+    return (
+      <svg className={baseClass} viewBox="0 0 24 24" fill="none">
+        <path
+          d="M12 21C16.97 21 21 16.97 21 12C21 7.03 16.97 3 12 3V12L18.36 18.36"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M12 3C7.03 3 3 7.03 3 12C3 16.97 7.03 21 12 21"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      </svg>
+    );
+  }
+
+  if (name === "percent") {
+    return (
+      <svg className={baseClass} viewBox="0 0 24 24" fill="none">
+        <path d="M19 5L5 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <circle cx="7" cy="7" r="2.5" stroke="currentColor" strokeWidth="2" />
+        <circle cx="17" cy="17" r="2.5" stroke="currentColor" strokeWidth="2" />
+      </svg>
+    );
+  }
+
+  if (name === "expense") {
+    return (
+      <svg className={baseClass} viewBox="0 0 24 24" fill="none">
+        <rect x="3" y="6" width="18" height="13" rx="3" stroke="currentColor" strokeWidth="2" />
+        <path d="M3 10H21" stroke="currentColor" strokeWidth="2" />
+        <path d="M7 15H11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (name === "orders") {
+    return (
+      <svg className={baseClass} viewBox="0 0 24 24" fill="none">
+        <path d="M8 6H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path d="M8 12H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path d="M8 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path d="M3 6H3.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+        <path d="M3 12H3.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+        <path d="M3 18H3.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (name === "active") {
+    return (
+      <svg className={baseClass} viewBox="0 0 24 24" fill="none">
+        <path
+          d="M12 8V12L15 14"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+      </svg>
+    );
+  }
+
+  if (name === "completed") {
+    return (
+      <svg className={baseClass} viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+        <path
+          d="M8 12.5L10.5 15L16.5 9"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+  if (name === "bank") {
+    return (
+      <svg className={baseClass} viewBox="0 0 24 24" fill="none">
+        <path d="M3 10H21L12 4L3 10Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+        <path d="M5 10V18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path d="M9 10V18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path d="M15 10V18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path d="M19 10V18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path d="M3 20H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (name === "convert") {
+    return (
+      <svg className={baseClass} viewBox="0 0 24 24" fill="none">
+        <path
+          d="M17 3L21 7L17 11"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path d="M3 7H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path
+          d="M7 21L3 17L7 13"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path d="M3 17H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (name === "users") {
+    return (
+      <svg className={baseClass} viewBox="0 0 24 24" fill="none">
+        <path
+          d="M16 19C16 16.8 14.2 15 12 15H7C4.8 15 3 16.8 3 19"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+        <circle cx="9.5" cy="8" r="3" stroke="currentColor" strokeWidth="2" />
+        <path
+          d="M21 19C21 17.1 19.7 15.5 18 15.1"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+        <path
+          d="M16.5 5.2C17.9 5.8 18.6 7.4 18 8.8C17.7 9.6 17 10.2 16.2 10.5"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      </svg>
+    );
+  }
+
+  if (name === "clock") {
+    return (
+      <svg className={baseClass} viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+        <path d="M12 7V12L15 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (name === "refresh") {
+    return (
+      <svg className={baseClass} viewBox="0 0 24 24" fill="none">
+        <path
+          d="M20 11C19.5 7.1 16.1 4 12 4C9.7 4 7.6 5 6.1 6.6L4 8.7"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path d="M4 4V8.7H8.7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path
+          d="M4 13C4.5 16.9 7.9 20 12 20C14.3 20 16.4 19 17.9 17.4L20 15.3"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path d="M20 20V15.3H15.3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (name === "export") {
+    return (
+      <svg className={baseClass} viewBox="0 0 24 24" fill="none">
+        <path d="M12 3V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path
+          d="M8 11L12 15L16 11"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path d="M5 21H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg className={baseClass} viewBox="0 0 24 24" fill="none">
+      <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function StatusBadge({ status }: { status: string | null | undefined }) {
   const value = normalizeStatus(status);
 
@@ -330,7 +580,7 @@ function MetricCard({
   value: string;
   subtitle: string;
   trend?: string;
-  icon: string;
+  icon: IconName;
   tone?: "green" | "blue" | "purple" | "orange" | "red" | "teal";
   mock?: boolean;
 }) {
@@ -349,19 +599,17 @@ function MetricCard({
     <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
       <div className="mb-5 flex items-start justify-between">
         <div
-          className={`flex h-12 w-12 items-center justify-center rounded-2xl text-xl ${toneClass}`}
+          className={`flex h-12 w-12 items-center justify-center rounded-2xl ${toneClass}`}
         >
-          {icon}
+          <SvgIcon name={icon} />
         </div>
 
         <div className="flex items-center gap-2">
-          {mock && (
+          {mock ? (
             <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-orange-700 ring-1 ring-orange-100">
               Mock
             </span>
-          )}
-
-          {!mock && (
+          ) : (
             <span className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-black text-emerald-700">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
               Live
@@ -443,19 +691,23 @@ function AccountingLineChart({
           <h3 className="text-xl font-black text-slate-950">
             Revenue, Profit & Expense Trend
           </h3>
+
           <div className="mt-3 flex flex-wrap gap-4 text-xs font-black text-slate-500">
             <span className="flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
               Revenue
             </span>
+
             <span className="flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
               Gross Profit
             </span>
+
             <span className="flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full bg-purple-500" />
               Net Profit
             </span>
+
             <span className="flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
               Expenses
@@ -484,6 +736,7 @@ function AccountingLineChart({
                   stroke="#e2e8f0"
                   strokeDasharray="5 5"
                 />
+
                 <text
                   x={8}
                   y={y + 4}
@@ -565,11 +818,13 @@ function ProfitBreakdown({
   grossProfit,
   expenses,
   netProfit,
+  revenue,
 }: {
   providerCost: number;
   grossProfit: number;
   expenses: number;
   netProfit: number;
+  revenue: number;
 }) {
   const safeNetProfit = Math.max(netProfit, 0);
   const total = Math.max(1, providerCost + grossProfit + expenses + safeNetProfit);
@@ -582,6 +837,9 @@ function ProfitBreakdown({
   const p1 = providerPercent;
   const p2 = providerPercent + grossPercent;
   const p3 = providerPercent + grossPercent + expensesPercent;
+
+  const grossMargin = revenue > 0 ? (grossProfit / revenue) * 100 : 0;
+  const netMargin = revenue > 0 ? (netProfit / revenue) * 100 : 0;
 
   const donutStyle = {
     background: `conic-gradient(#ef4444 0% ${p1}%, #2563eb ${p1}% ${p2}%, #f59e0b ${p2}% ${p3}%, #16a34a ${p3}% 100%)`,
@@ -615,39 +873,66 @@ function ProfitBreakdown({
   ];
 
   return (
-    <div className="rounded-[26px] border border-slate-200 bg-white p-6 shadow-sm">
-      <h3 className="text-xl font-black text-slate-950">Profit Breakdown</h3>
+    <div className="flex h-full flex-col rounded-[26px] border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="mb-5">
+        <h3 className="text-xl font-black text-slate-950">Profit Breakdown</h3>
+        <p className="mt-1 text-sm font-semibold text-slate-500">
+          Accounting distribution based on selected period.
+        </p>
+      </div>
 
-      <div className="mt-8 flex flex-col items-center gap-8 lg:flex-row">
-        <div
-          className="relative flex h-52 w-52 shrink-0 items-center justify-center rounded-full"
-          style={donutStyle}
-        >
-          <div className="flex h-28 w-28 flex-col items-center justify-center rounded-full bg-white shadow-inner">
-            <p className="text-xl font-black text-slate-950">{money(netProfit)}</p>
-            <p className="text-xs font-black text-slate-500">Net Profit</p>
+      <div className="flex flex-1 flex-col justify-between gap-5">
+        <div className="flex flex-col items-center gap-5 sm:flex-row">
+          <div
+            className="relative flex h-40 w-40 shrink-0 items-center justify-center rounded-full"
+            style={donutStyle}
+          >
+            <div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-white shadow-inner">
+              <p className="text-lg font-black text-slate-950">{money(netProfit)}</p>
+              <p className="text-[11px] font-black text-slate-500">Net Profit</p>
+            </div>
+          </div>
+
+          <div className="w-full space-y-3">
+            {items.map((item) => (
+              <div
+                key={item.label}
+                className="flex items-center justify-between gap-4 text-sm"
+              >
+                <div className="flex items-center gap-3">
+                  <span className={`h-3 w-3 rounded-full ${item.dot}`} />
+                  <span className="font-black text-slate-700">{item.label}</span>
+                </div>
+
+                <div className="text-right">
+                  <p className="font-black text-slate-950">{money(item.value)}</p>
+                  <p className="text-xs font-bold text-slate-500">
+                    {item.percent.toFixed(1)}%
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="w-full space-y-4">
-          {items.map((item) => (
-            <div
-              key={item.label}
-              className="flex items-center justify-between gap-4 text-sm"
-            >
-              <div className="flex items-center gap-3">
-                <span className={`h-3 w-3 rounded-full ${item.dot}`} />
-                <span className="font-black text-slate-700">{item.label}</span>
-              </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl bg-emerald-50 p-4 ring-1 ring-emerald-100">
+            <p className="text-xs font-black uppercase tracking-wide text-emerald-700">
+              Gross Margin
+            </p>
+            <h4 className="mt-1 text-xl font-black text-emerald-900">
+              {grossMargin.toFixed(2)}%
+            </h4>
+          </div>
 
-              <div className="text-right">
-                <p className="font-black text-slate-950">{money(item.value)}</p>
-                <p className="text-xs font-bold text-slate-500">
-                  {item.percent.toFixed(1)}%
-                </p>
-              </div>
-            </div>
-          ))}
+          <div className="rounded-2xl bg-blue-50 p-4 ring-1 ring-blue-100">
+            <p className="text-xs font-black uppercase tracking-wide text-blue-700">
+              Net Margin
+            </p>
+            <h4 className="mt-1 text-xl font-black text-blue-900">
+              {netMargin.toFixed(2)}%
+            </h4>
+          </div>
         </div>
       </div>
     </div>
@@ -657,12 +942,12 @@ function ProfitBreakdown({
 function TableShell({
   title,
   children,
-  viewAll,
+  onViewAll,
   mock,
 }: {
   title: string;
   children: React.ReactNode;
-  viewAll?: boolean;
+  onViewAll?: () => void;
   mock?: boolean;
 }) {
   return (
@@ -678,14 +963,57 @@ function TableShell({
           )}
         </div>
 
-        {viewAll && (
-          <button className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-black text-slate-700 transition hover:bg-slate-50">
+        {onViewAll && (
+          <button
+            onClick={onViewAll}
+            className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-black text-slate-700 transition hover:bg-slate-50"
+          >
             View All
           </button>
         )}
       </div>
 
       {children}
+    </div>
+  );
+}
+
+function DataModal({
+  title,
+  subtitle,
+  open,
+  onClose,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  open: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+      <div className="max-h-[88vh] w-full max-w-6xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
+          <div>
+            <h2 className="text-2xl font-black text-slate-950">{title}</h2>
+            {subtitle && (
+              <p className="mt-1 text-sm font-semibold text-slate-500">{subtitle}</p>
+            )}
+          </div>
+
+          <button
+            onClick={onClose}
+            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 text-slate-600 transition hover:bg-slate-50"
+          >
+            <SvgIcon name="close" />
+          </button>
+        </div>
+
+        <div className="max-h-[70vh] overflow-auto p-6">{children}</div>
+      </div>
     </div>
   );
 }
@@ -697,6 +1025,14 @@ export default function AdminAnalyticsPage() {
   const [period, setPeriod] = useState<Period>("month");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [activeModal, setActiveModal] = useState<
+    | null
+    | "orders"
+    | "expenses"
+    | "cash"
+    | "pointConversions"
+    | "commissions"
+  >(null);
 
   async function loadData() {
     setLoading(true);
@@ -900,13 +1236,15 @@ export default function AdminAnalyticsPage() {
 
                 <button
                   onClick={loadData}
-                  className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50"
+                  className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50"
                 >
-                  ↻ Refresh
+                  <SvgIcon name="refresh" className="h-4 w-4" />
+                  Refresh
                 </button>
 
-                <button className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50">
-                  Export ▾
+                <button className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50">
+                  <SvgIcon name="export" className="h-4 w-4" />
+                  Export
                 </button>
               </div>
             </div>
@@ -923,6 +1261,7 @@ export default function AdminAnalyticsPage() {
                   <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">
                     Selected Period
                   </p>
+
                   <h2 className="mt-1 text-xl font-black text-slate-950">
                     {range.label}
                   </h2>
@@ -941,7 +1280,7 @@ export default function AdminAnalyticsPage() {
                 value={money(totalRevenue)}
                 subtitle="Total paid order amount"
                 trend="↑ 18.6%"
-                icon="💵"
+                icon="revenue"
                 tone="green"
               />
 
@@ -950,7 +1289,7 @@ export default function AdminAnalyticsPage() {
                 value={money(grossProfit)}
                 subtitle="Revenue minus provider cost"
                 trend="↑ 15.2%"
-                icon="📈"
+                icon="chart"
                 tone="blue"
               />
 
@@ -959,7 +1298,7 @@ export default function AdminAnalyticsPage() {
                 value={money(netProfit)}
                 subtitle="Gross profit minus expenses"
                 trend={netProfit >= 0 ? "↑ 12.8%" : "↓ 5.4%"}
-                icon="◔"
+                icon="profit"
                 tone="purple"
               />
 
@@ -968,7 +1307,7 @@ export default function AdminAnalyticsPage() {
                 value={money(estimatedProfitFrom30PercentMargin)}
                 subtitle="Estimated based on 30% margin"
                 trend="↑ 18.6%"
-                icon="%"
+                icon="percent"
                 tone="orange"
               />
             </div>
@@ -979,7 +1318,7 @@ export default function AdminAnalyticsPage() {
                 value={money(totalExpenses)}
                 subtitle="All business expenses"
                 trend="↓ 5.4%"
-                icon="💳"
+                icon="expense"
                 tone="red"
               />
 
@@ -988,7 +1327,7 @@ export default function AdminAnalyticsPage() {
                 value={String(filteredOrders.length)}
                 subtitle="All orders in selected period"
                 trend="↑ 11.3%"
-                icon="🧾"
+                icon="orders"
                 tone="blue"
               />
 
@@ -997,7 +1336,7 @@ export default function AdminAnalyticsPage() {
                 value={String(activeOrders)}
                 subtitle="Pending / Processing / Partial"
                 trend="↓ 3.2%"
-                icon="⏳"
+                icon="active"
                 tone="orange"
               />
 
@@ -1006,7 +1345,7 @@ export default function AdminAnalyticsPage() {
                 value={String(completedOrders)}
                 subtitle="Completed orders"
                 trend="↑ 14.6%"
-                icon="✓"
+                icon="completed"
                 tone="green"
               />
             </div>
@@ -1016,7 +1355,7 @@ export default function AdminAnalyticsPage() {
                 title="Cash Accounts"
                 value={money(totalBusinessMoney)}
                 subtitle="Total balance in all accounts"
-                icon="🏦"
+                icon="bank"
                 tone="teal"
               />
 
@@ -1025,7 +1364,7 @@ export default function AdminAnalyticsPage() {
                 value={money(totalPointConversions)}
                 subtitle="Total amount converted"
                 trend="↑ 9.5%"
-                icon="↻"
+                icon="convert"
                 tone="purple"
                 mock
               />
@@ -1035,7 +1374,7 @@ export default function AdminAnalyticsPage() {
                 value={money(totalCommissions)}
                 subtitle="Total commissions of all users"
                 trend="↑ 8.3%"
-                icon="👥"
+                icon="users"
                 tone="orange"
                 mock
               />
@@ -1044,7 +1383,7 @@ export default function AdminAnalyticsPage() {
                 title="Pending Payouts"
                 value={money(pendingPayouts)}
                 subtitle="Unpaid commissions"
-                icon="◷"
+                icon="clock"
                 tone="red"
                 mock
               />
@@ -1058,11 +1397,15 @@ export default function AdminAnalyticsPage() {
                 grossProfit={grossProfit}
                 expenses={totalExpenses}
                 netProfit={netProfit}
+                revenue={totalRevenue}
               />
             </div>
 
             <div className="mb-6 grid gap-6 xl:grid-cols-3">
-              <TableShell title="Recent Orders" viewAll>
+              <TableShell
+                title="Recent Orders"
+                onViewAll={() => setActiveModal("orders")}
+              >
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[760px] text-sm">
                     <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -1134,7 +1477,10 @@ export default function AdminAnalyticsPage() {
                 </div>
               </TableShell>
 
-              <TableShell title="Recent Expenses" viewAll>
+              <TableShell
+                title="Recent Expenses"
+                onViewAll={() => setActiveModal("expenses")}
+              >
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[520px] text-sm">
                     <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -1185,7 +1531,10 @@ export default function AdminAnalyticsPage() {
                 </div>
               </TableShell>
 
-              <TableShell title="Cash Accounts" viewAll>
+              <TableShell
+                title="Cash Accounts"
+                onViewAll={() => setActiveModal("cash")}
+              >
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[520px] text-sm">
                     <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -1238,7 +1587,11 @@ export default function AdminAnalyticsPage() {
             </div>
 
             <div className="grid gap-6 xl:grid-cols-2">
-              <TableShell title="Reseller Point Conversions" viewAll mock>
+              <TableShell
+                title="Reseller Point Conversions"
+                onViewAll={() => setActiveModal("pointConversions")}
+                mock
+              >
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[680px] text-sm">
                     <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -1283,7 +1636,11 @@ export default function AdminAnalyticsPage() {
                 </div>
               </TableShell>
 
-              <TableShell title="User Commissions" viewAll mock>
+              <TableShell
+                title="User Commissions"
+                onViewAll={() => setActiveModal("commissions")}
+                mock
+              >
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[680px] text-sm">
                     <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -1330,7 +1687,40 @@ export default function AdminAnalyticsPage() {
             </div>
           </div>
         </section>
-      </main>
-    </AdminGuard>
-  );
-}
+
+        <DataModal
+          open={activeModal === "orders"}
+          onClose={() => setActiveModal(null)}
+          title="All Recent Orders"
+          subtitle="Full order accounting report for the selected period."
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px] text-sm">
+              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-5 py-4 text-left">Order ID</th>
+                  <th className="px-5 py-4 text-left">Service</th>
+                  <th className="px-5 py-4 text-left">Revenue</th>
+                  <th className="px-5 py-4 text-left">Provider Cost</th>
+                  <th className="px-5 py-4 text-left">Profit</th>
+                  <th className="px-5 py-4 text-left">Status</th>
+                  <th className="px-5 py-4 text-left">Date</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {filteredOrders.map((order) => (
+                  <tr key={order.id} className="border-t border-slate-100">
+                    <td className="px-5 py-4 font-black text-slate-600">
+                      #{order.id.slice(0, 8)}
+                    </td>
+
+                    <td className="px-5 py-4 font-bold text-slate-700">
+                      {order.service_name || "Unknown Service"}
+                    </td>
+
+                    <td className="px-5 py-4 font-black text-emerald-600">
+                      {money(toNumber(order.price))}
+                    </td>
+
+                    <td className="px-5 py-4 font-black text-red
