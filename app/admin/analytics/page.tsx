@@ -11,12 +11,16 @@ type ModalType = "orders" | "expenses" | "cashAccounts" | "pointConversions" | "
 
 type Order = {
   id: string;
-  price: number | string | null;
-  provider_cost: number | string | null;
-  profit: number | string | null;
-  status: string | null;
+  user_id?: string | null;
   service_name: string | null;
+  quantity?: number | string | null;
+  status: string | null;
+  price: number | string | null;
   created_at: string;
+
+  // Optional only. Do not require these columns from Supabase query.
+  provider_cost?: number | string | null;
+  profit?: number | string | null;
 };
 
 type Expense = {
@@ -137,8 +141,20 @@ function isInsidePeriod(dateValue: string | null | undefined, period: Period) {
 
 function getOrderProfit(order: Order) {
   const savedProfit = toNumber(order.profit);
-  if (savedProfit !== 0) return savedProfit;
-  return toNumber(order.price) - toNumber(order.provider_cost);
+
+  if (savedProfit !== 0) {
+    return savedProfit;
+  }
+
+  const providerCost = toNumber(order.provider_cost);
+
+  if (providerCost > 0) {
+    return toNumber(order.price) - providerCost;
+  }
+
+  // Fallback while provider_cost/profit is not selected or not available.
+  // This keeps order-related analytics syncing instead of breaking.
+  return 0;
 }
 
 function getTrendBuckets(period: Period) {
@@ -563,10 +579,10 @@ export default function AdminAnalyticsPage() {
     setLoading(true);
     setMessage("");
 
-    const { data: orderData, error: orderError } = await supabase
-      .from("orders")
-      .select("id, price, provider_cost, profit, status, service_name, created_at")
-      .order("created_at", { ascending: false });
+const { data: orderData, error: orderError } = await supabase
+  .from("orders")
+  .select("id, user_id, service_name, quantity, status, price, created_at")
+  .order("created_at", { ascending: false });
 
     if (orderError) {
       setMessage(orderError.message);
@@ -618,14 +634,22 @@ export default function AdminAnalyticsPage() {
 
   const totalBusinessMoney = cashAccounts.reduce((sum, account) => sum + toNumber(account.balance), 0);
   const totalRevenue = filteredOrders.reduce((sum, order) => sum + toNumber(order.price), 0);
-  const totalProviderCost = filteredOrders.reduce((sum, order) => sum + toNumber(order.provider_cost), 0);
+const totalProviderCost = filteredOrders.reduce(
+  (sum, order) => sum + toNumber(order.provider_cost),
+  0
+);
   const grossProfit = filteredOrders.reduce((sum, order) => sum + getOrderProfit(order), 0);
   const totalExpenses = filteredExpenses.reduce((sum, expense) => sum + toNumber(expense.amount), 0);
   const netProfit = grossProfit - totalExpenses;
   const estimatedProfitFrom30PercentMargin = totalRevenue * 0.3;
 
-  const completedOrders = filteredOrders.filter((order) => normalizeStatus(order.status) === "completed").length;
-  const activeOrders = filteredOrders.filter((order) => ["pending", "processing", "partial"].includes(normalizeStatus(order.status))).length;
+const completedOrders = filteredOrders.filter(
+  (order) => normalizeStatus(order.status) === "completed"
+).length;
+
+const activeOrders = filteredOrders.filter((order) =>
+  ["pending", "processing", "partial"].includes(normalizeStatus(order.status))
+).length;
 
   const totalPointConversions = mockPointConversions.reduce((sum, item) => sum + item.amount, 0);
   const totalCommissions = mockCommissions.reduce((sum, item) => sum + item.amount, 0);
