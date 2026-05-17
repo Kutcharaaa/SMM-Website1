@@ -224,156 +224,176 @@ export default function HomePage() {
           </div>
 
           <div className="relative z-10">
-            <div className="relative mx-auto max-w-[720px]">
-              <div className="absolute -right-2 top-6 hidden rounded-3xl bg-white p-5 shadow-2xl shadow-blue-900/10 ring-1 ring-slate-200 lg:block">
+            <div className="relative mx-auto max-w-[680px]">
+              <div className="absolute -right-10 top-6 hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl shadow-blue-950/10 lg:block">
                 <p className="text-xs font-black uppercase tracking-wider text-slate-400">
-                  Order Success Rate
+                  Orders Completed
                 </p>
-                <p className="mt-2 text-3xl font-black text-slate-950">
-                  99.8%
-                </p>
-                <div className="mt-3 h-2 w-36 overflow-hidden rounded-full bg-slate-100">
-                  <div className="h-full w-[92%] rounded-full bg-green-500" />
-                </div>
-              </div>
 
-              <div className="absolute -left-4 top-24 hidden rounded-3xl bg-white p-5 shadow-2xl shadow-blue-900/10 ring-1 ring-slate-200 lg:block">
-                <p className="text-xs font-black uppercase tracking-wider text-slate-400">
-                  Followers
-                </p>
                 <p className="mt-2 text-3xl font-black text-slate-950">
-                  +12,540
+                  128.6K
                 </p>
+
                 <p className="mt-1 text-sm font-black text-green-600">
-                  +24.5% growth
+                  +23.1% this month
                 </p>
               </div>
 
-              <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl shadow-blue-950/10">
-                <div className="grid min-h-[420px] grid-cols-[220px_1fr]">
-                  <aside className="hidden bg-gradient-to-b from-[#0d3d9b] via-[#0a2d75] to-[#071a45] p-5 text-white md:block">
-                    <img
-                      src="/logo.png"
-                      alt="Ascend Service"
-                      className="h-10 w-auto"
-                    />
+              <div className="absolute -left-8 top-24 hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-2xl shadow-blue-950/10 lg:block">
+                <p className="text-xs font-black uppercase tracking-wider text-slate-400">
+                  Active Platforms
+                </p>
 
-                    <div className="mt-7 space-y-2">
-                      {[
-                        "Dashboard",
-                        "New Order",
-                        "Orders",
-                        "Services",
-                        "Add Funds",
-                        "Tickets",
-                        "Affiliates",
-                        "API",
-                        "Settings",
-                      ].map((item, index) => (
-                        <div
-                          key={item}
-                          className={`rounded-2xl px-4 py-3 text-sm font-bold ${
-                            index === 0
-                              ? "bg-blue-600 text-white"
-                              : "text-blue-100"
-                          }`}
-                        >
-                          {item}
-                        </div>
-                      ))}
-                    </div>
-                  </aside>
+                <p className="mt-2 text-3xl font-black text-slate-950">
+                  100+
+                </p>
 
-                  <div className="bg-[#f8fbff]">
-                    <div className="flex h-20 items-center justify-between border-b border-slate-200 bg-white px-6">
+                <p className="mt-1 text-sm font-black text-blue-600">
+                  Services available
+                </p>
+              </div>
+
+              <div className="relative overflow-hidden rounded-[2.2rem] border border-slate-200 bg-white p-6 shadow-2xl shadow-blue-950/10">
+                <div className="absolute right-0 top-0 h-72 w-72 rounded-full bg-blue-100/70 blur-3xl" />
+                <div className="absolute bottom-0 left-0 h-72 w-72 rounded-full bg-cyan-100/60 blur-3xl" />
+
+                <div className="relative grid gap-5 lg:grid-cols-[1fr_0.9fr]">
+                  <div className="rounded-[1.7rem] border border-slate-200 bg-[#f8fbff] p-6">
+                    <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-xs font-bold text-slate-400">
-                          Welcome back,
+                        <p className="text-xs font-black uppercase tracking-wider text-blue-600">
+                          Start Growing
                         </p>
-                        <h3 className="text-xl font-black text-slate-950">
-                          Creator
+
+                        <h3 className="mt-2 text-2xl font-black text-slate-950">
+                          New Order
                         </h3>
                       </div>
 
-                      <div className="text-right">
-                        <p className="text-xs font-bold text-slate-400">
-                          Balance
-                        </p>
-                        <p className="text-2xl font-black text-blue-600">
-                          ₱12,845.00
-                        </p>
+                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-600/20">
+                        <Rocket size={27} />
                       </div>
                     </div>
 
-                    <div className="p-6">
-                      <div className="grid gap-4 md:grid-cols-4">
-                        {[
-                          ["Total Orders", "2,568", "+12.5%"],
-                          ["Active Orders", "342", "+8.3%"],
-                          ["Spent Balance", "₱12,845", "+15.7%"],
-                          ["Reseller Points", "1,250", "+10.2%"],
-                        ].map(([title, value, growth]) => (
-                          <div
-                            key={title}
-                            className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-                          >
-                            <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                              <BarChart3 size={18} />
-                            </div>
+                    <div className="mt-6 space-y-4">
+                      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                        <p className="text-xs font-black uppercase tracking-wider text-slate-400">
+                          Platform
+                        </p>
 
-                            <p className="text-xs font-bold text-slate-400">
-                              {title}
-                            </p>
-
-                            <h4 className="mt-2 text-xl font-black text-slate-950">
-                              {value}
-                            </h4>
-
-                            <p className="mt-1 text-xs font-black text-green-600">
-                              {growth}
-                            </p>
+                        <div className="mt-3 flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-pink-50 text-pink-600">
+                            <InstagramIcon size={22} />
                           </div>
-                        ))}
+
+                          <p className="font-black text-slate-950">
+                            Instagram Growth
+                          </p>
+                        </div>
                       </div>
 
-                      <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                        <div className="flex items-center justify-between border-b border-slate-100 p-4">
-                          <h4 className="font-black text-slate-950">
-                            Recent Orders
-                          </h4>
+                      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                        <p className="text-xs font-black uppercase tracking-wider text-slate-400">
+                          Service
+                        </p>
 
-                          <span className="text-xs font-black text-blue-600">
-                            View All
+                        <p className="mt-2 font-black text-slate-950">
+                          Followers • Likes • Views
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                        <p className="text-xs font-black uppercase tracking-wider text-slate-400">
+                          Estimated Delivery
+                        </p>
+
+                        <div className="mt-3 flex items-center justify-between">
+                          <p className="text-2xl font-black text-slate-950">
+                            Fast
+                          </p>
+
+                          <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-black text-green-600">
+                            Active
                           </span>
                         </div>
+                      </div>
 
-                        <div className="divide-y divide-slate-100">
-                          {[
-                            ["#123456", "Instagram Followers", "Completed"],
-                            ["#123455", "TikTok Views", "Processing"],
-                            ["#123454", "YouTube Subscribers", "Completed"],
-                          ].map(([id, service, status]) => (
+                      <div className="rounded-2xl bg-blue-600 py-4 text-center text-sm font-black text-white shadow-lg shadow-blue-600/20">
+                        Submit Order
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-5">
+                    <div className="rounded-[1.7rem] border border-slate-200 bg-white p-6 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-wider text-slate-400">
+                            Growth Performance
+                          </p>
+
+                          <h3 className="mt-2 text-3xl font-black text-slate-950">
+                            +25.8K
+                          </h3>
+                        </div>
+
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-green-50 text-green-600">
+                          <TrendingUp size={25} />
+                        </div>
+                      </div>
+
+                      <div className="mt-6 flex h-24 items-end gap-2">
+                        {[35, 48, 42, 62, 58, 76, 88, 70, 95].map(
+                          (height, index) => (
                             <div
-                              key={id}
-                              className="grid grid-cols-[90px_1fr_110px] items-center gap-4 px-4 py-4 text-sm"
+                              key={index}
+                              className="flex-1 rounded-t-xl bg-blue-600/90"
+                              style={{ height: `${height}%` }}
+                            />
+                          ),
+                        )}
+                      </div>
+
+                      <p className="mt-4 text-sm font-black text-green-600">
+                        +18.4% growth this week
+                      </p>
+                    </div>
+
+                    <div className="rounded-[1.7rem] border border-slate-200 bg-white p-6 shadow-sm">
+                      <p className="text-xs font-black uppercase tracking-wider text-slate-400">
+                        Popular Platforms
+                      </p>
+
+                      <div className="mt-5 grid grid-cols-3 gap-3">
+                        {platforms.slice(0, 6).map((platform) => {
+                          const Icon = platform.icon;
+
+                          return (
+                            <div
+                              key={platform.name}
+                              className={`flex h-14 items-center justify-center rounded-2xl border border-slate-200 ${platform.bg} ${platform.color}`}
                             >
-                              <p className="font-bold text-slate-500">{id}</p>
-
-                              <p className="font-black text-slate-800">
-                                {service}
-                              </p>
-
-                              <span
-                                className={`rounded-full px-3 py-1 text-center text-xs font-black ${
-                                  status === "Completed"
-                                    ? "bg-green-50 text-green-600"
-                                    : "bg-yellow-50 text-yellow-600"
-                                }`}
-                              >
-                                {status}
-                              </span>
+                              <Icon size={25} />
                             </div>
-                          ))}
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="rounded-[1.7rem] border border-slate-200 bg-blue-600 p-6 text-white shadow-lg shadow-blue-600/20">
+                      <div className="flex items-center gap-4">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
+                          <ShieldCheck size={25} />
+                        </div>
+
+                        <div>
+                          <p className="text-sm font-black">
+                            Secure Wallet
+                          </p>
+
+                          <p className="mt-1 text-xs font-semibold text-blue-100">
+                            Safe payments and order tracking.
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -381,43 +401,25 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <div className="absolute bottom-8 right-8 hidden w-56 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-2xl shadow-blue-950/10 lg:block">
-                <div className="mx-auto h-24 w-20 rounded-[1.5rem] bg-slate-950 p-2">
-                  <div className="h-full rounded-[1rem] bg-white p-2">
-                    <div className="h-2 w-8 rounded-full bg-slate-200" />
-
-                    <p className="mt-4 text-[10px] font-bold text-slate-400">
-                      Balance
+              <div className="mt-6 grid gap-4 sm:grid-cols-3">
+                {[
+                  ["50K+", "Happy Users"],
+                  ["99.9%", "Uptime"],
+                  ["4.9/5", "User Rating"],
+                ].map(([value, label]) => (
+                  <div
+                    key={label}
+                    className="rounded-3xl border border-slate-200 bg-white p-5 text-center shadow-sm"
+                  >
+                    <p className="text-2xl font-black text-slate-950">
+                      {value}
                     </p>
 
-                    <p className="text-sm font-black text-slate-950">
-                      ₱245.60
+                    <p className="mt-1 text-sm font-bold text-slate-500">
+                      {label}
                     </p>
-
-                    <div className="mt-3 rounded-lg bg-blue-600 py-1 text-center text-[9px] font-black text-white">
-                      Add Funds
-                    </div>
                   </div>
-                </div>
-
-                <p className="mt-3 text-center text-xs font-black text-slate-500">
-                  Mobile friendly dashboard
-                </p>
-              </div>
-
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
-                {platforms.slice(0, 6).map((platform) => {
-                  const Icon = platform.icon;
-
-                  return (
-                    <div
-                      key={platform.name}
-                      className={`flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-sm ${platform.color}`}
-                    >
-                      <Icon size={24} />
-                    </div>
-                  );
-                })}
+                ))}
               </div>
             </div>
           </div>
