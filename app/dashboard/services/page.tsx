@@ -3,6 +3,7 @@
 import DashboardSidebar from "@/components/DashboardSidebar";
 import DashboardTopbar from "@/components/DashboardTopbar";
 import { supabase } from "@/lib/supabase";
+import { useDisplayCurrency } from "@/lib/useDisplayCurrency";
 import {
   Box,
   Eye,
@@ -170,6 +171,7 @@ export default function DashboardServicesPage() {
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [quantity, setQuantity] = useState("1000");
   const [currentPage, setCurrentPage] = useState(1);
+  const { formatAmount } = useDisplayCurrency();
 
   async function loadServices() {
     setLoading(true);
@@ -403,7 +405,7 @@ const filteredServices = useMemo(() => {
               <StatCard
                 icon={Tag}
                 title="Cheapest Rate"
-                value={`₱${cheapestRate.toFixed(4)}`}
+                value={formatAmount(cheapestRate)}
                 subtitle="Starting from"
                 color="bg-orange-50 text-orange-500"
               />
@@ -567,7 +569,7 @@ const filteredServices = useMemo(() => {
                             </td>
 
                             <td className="p-5 font-black text-blue-600">
-                              ₱{service.price.toFixed(2)}
+                              {formatAmount(service.price)}
                             </td>
 
                             <td className="p-5 font-bold text-slate-700">
@@ -778,7 +780,7 @@ const filteredServices = useMemo(() => {
 
                     <SmallCard
                       title="Price / 1000"
-                      value={`₱${selectedService.price.toFixed(2)}`}
+                      value={formatAmount(selectedService.price)}
                     />
 
                     <SmallCard
@@ -813,7 +815,7 @@ const filteredServices = useMemo(() => {
                       </p>
 
                       <p className="text-xl font-black text-green-600">
-                        ₱{estimatedCharge.toFixed(2)}
+                        {formatAmount(estimatedCharge)}
                       </p>
                     </div>
 
