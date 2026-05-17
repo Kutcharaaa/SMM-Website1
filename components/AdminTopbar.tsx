@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
-import { usePathname } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import {
   Bell,
   CalendarDays,
@@ -10,147 +9,169 @@ import {
   Search,
   ShieldCheck,
 } from "lucide-react";
-import UserProfile from "@/components/UserProfile";
-import AdminNotificationsDropdown from "@/components/AdminNotificationsDropdown";
+import { useEffect, useState } from "react";
 
-const pageTitles: Record<string, { title: string; subtitle: string }> = {
-  "/admin": {
-    title: "Admin Dashboard",
-    subtitle: "Welcome back, Kutchara 👋",
-  },
-  "/admin/dashboard": {
-    title: "Admin Dashboard",
-    subtitle: "Welcome back, Kutchara 👋",
-  },
-  "/admin/analytics": {
-    title: "Analytics / Reports",
-    subtitle: "Accounting overview for revenue, profit, expenses, and reports.",
-  },
-  "/admin/orders": {
-    title: "Orders",
-    subtitle: "Manage and monitor customer orders.",
-  },
-  "/admin/new-order-monitor": {
-    title: "New Order Monitor",
-    subtitle: "Track new and active order activity.",
-  },
-  "/admin/order-refunds": {
-    title: "Order Refunds",
-    subtitle: "Review and manage order refund requests.",
-  },
-  "/admin/payment-methods": {
-    title: "Payment Methods",
-    subtitle: "Manage available add fund payment methods.",
-  },
-  "/admin/cash-accounts": {
-    title: "Cash Accounts",
-    subtitle: "Track business cash accounts and balances.",
-  },
-  "/admin/services": {
-    title: "Services",
-    subtitle: "Manage panel services and provider pricing.",
-  },
-  "/admin/users": {
-    title: "Users",
-    subtitle: "Manage users, roles, and account details.",
-  },
-  "/admin/tickets": {
-    title: "Tickets",
-    subtitle: "Manage customer support tickets.",
-  },
-  "/admin/settings": {
-    title: "Settings",
-    subtitle: "Manage platform configuration and system options.",
-  },
+type AdminProfile = {
+  id: string;
+  username?: string | null;
+  firstname?: string | null;
+  lastname?: string | null;
+  email?: string | null;
+  role?: string | null;
+  avatar_url?: string | null;
 };
 
 export default function AdminTopbar() {
-  const pathname = usePathname();
+  const [profile, setProfile] = useState<AdminProfile | null>(null);
+  const [notificationCount, setNotificationCount] = useState(0);
 
-  const page = useMemo(() => {
-    return (
-      pageTitles[pathname] || {
-        title: "Admin Dashboard",
-        subtitle:
-          "Manage users, providers, services, payments, orders, and platform activity.",
-      }
-    );
-  }, [pathname]);
-
-  const today = useMemo(() => {
-    return new Date().toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
+  useEffect(() => {
+    loadAdminTopbarData();
   }, []);
 
+  async function loadAdminTopbarData() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return;
+
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("id, username, firstname, lastname, email, role, avatar_url")
+      .eq("id", user.id)
+      .single();
+
+    setProfile((profileData || null) as AdminProfile | null);
+
+    const { count: pendingPayments } = await supabase
+      .from("deposits")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending");
+
+    const { count: activeOrders } = await supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .in("status", ["pending", "processing", "partial"]);
+
+    const { count: openTickets } = await supabase
+      .from("tickets")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "open");
+
+    setNotificationCount(
+      Number(pendingPayments || 0) +
+        Number(activeOrders || 0) +
+        Number(openTickets || 0)
+    );
+  }
+
+  function getDisplayName() {
+    if (profile?.username) return profile.username;
+
+    const fullName = `${profile?.firstname || ""} ${
+      profile?.lastname || ""
+    }`.trim();
+
+    return fullName || "Admin User";
+  }
+
+  function getRoleLabel() {
+    if (profile?.role === "super_admin") return "Super Admin";
+    if (profile?.role === "head_admin") return "Head Admin";
+    return "Admin";
+  }
+
+  function getInitial() {
+    return getDisplayName().charAt(0).toUpperCase();
+  }
+
+  const today = new Date().toLocaleDateString("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur-xl">
-      <div className="flex min-h-[78px] items-center justify-between gap-4 px-4 lg:px-8">
-        <div className="flex min-w-0 items-center gap-4">
-          <button
-            type="button"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-950 lg:hidden"
-            aria-label="Open sidebar"
-          >
-            <Menu size={20} />
+    <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
+      <div className="flex min-h-[88px] items-center justify-between gap-5 px-4 py-4 lg:px-8">
+        <div className="flex items-center gap-4">
+          <button className="hidden h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm lg:flex">
+            <Menu size={21} />
           </button>
 
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="truncate text-xl font-black tracking-tight text-slate-950 sm:text-2xl">
-                {page.title}
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-black tracking-tight text-slate-950">
+                Admin Dashboard
               </h1>
 
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700 ring-1 ring-emerald-100">
+              <span className="hidden rounded-full bg-green-50 px-3 py-1 text-xs font-black text-green-700 sm:inline-flex">
                 <ShieldCheck size={13} />
-                Super Admin
+                <span className="ml-1">{getRoleLabel()}</span>
               </span>
             </div>
 
-            <p className="mt-1 truncate text-sm font-semibold text-slate-500">
-              {page.subtitle}
+            <p className="mt-1 text-sm font-semibold text-slate-500">
+              Welcome back, {getDisplayName()} 👋
             </p>
           </div>
         </div>
 
-        <div className="hidden flex-1 justify-center px-6 xl:flex">
-          <div className="flex h-11 w-full max-w-[560px] items-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="flex h-full w-12 items-center justify-center text-slate-400">
-              <Search size={18} />
-            </div>
+        <div className="hidden flex-1 justify-center px-8 xl:flex">
+          <div className="flex h-12 w-full max-w-[460px] items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 shadow-sm transition focus-within:border-green-300 focus-within:ring-4 focus-within:ring-green-50">
+            <Search size={20} className="text-slate-400" />
 
             <input
-              type="text"
               placeholder="Search anything..."
-              className="h-full min-w-0 flex-1 bg-transparent text-sm font-semibold text-slate-700 outline-none placeholder:text-slate-400"
+              className="w-full bg-transparent text-sm font-semibold text-slate-700 outline-none placeholder:text-slate-400"
             />
 
-            <div className="mr-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-black text-slate-400">
+            <span className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-black text-slate-400">
               Ctrl /
-            </div>
+            </span>
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-3">
-          <div className="hidden sm:block">
-            <AdminNotificationsDropdown />
-          </div>
+        <div className="flex items-center gap-3">
+          <button className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-green-300 hover:text-green-700">
+            <Bell size={21} />
 
-          <div className="hidden min-w-[210px] items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm lg:flex">
-            <UserProfile />
+            {notificationCount > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-6 min-w-6 items-center justify-center rounded-full bg-green-600 px-1 text-[11px] font-black text-white">
+                {notificationCount > 99 ? "99+" : notificationCount}
+              </span>
+            )}
+          </button>
+
+          <div className="hidden items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 shadow-sm md:flex">
+            {profile?.avatar_url ? (
+              <img
+                src={profile.avatar_url}
+                alt={getDisplayName()}
+                className="h-10 w-10 rounded-xl object-cover"
+              />
+            ) : (
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-100 text-sm font-black text-green-700">
+                {getInitial()}
+              </div>
+            )}
+
+            <div>
+              <p className="max-w-[130px] truncate text-sm font-black text-slate-950">
+                {getDisplayName()}
+              </p>
+              <p className="text-xs font-semibold text-slate-500">
+                {getRoleLabel()}
+              </p>
+            </div>
 
             <ChevronDown size={16} className="text-slate-400" />
           </div>
 
-          <div className="hidden h-11 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-800 shadow-sm lg:flex">
-            <span>{today}</span>
+          <div className="hidden items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 shadow-sm lg:flex">
             <CalendarDays size={17} className="text-slate-400" />
-          </div>
-
-          <div className="lg:hidden">
-            <UserProfile />
+            {today}
           </div>
         </div>
       </div>
