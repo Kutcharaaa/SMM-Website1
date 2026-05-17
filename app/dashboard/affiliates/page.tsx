@@ -32,6 +32,7 @@ type ProfileData = {
   lastname?: string | null;
   full_name?: string | null;
   avatar_url?: string | null;
+  referral_code?: string | null;
 };
 
 type ReferralRecord = {
@@ -287,12 +288,11 @@ export default function AffiliatesPage() {
     loadAffiliateData();
   }, []);
 
-  const referralCode = useMemo(() => {
-    if (profile?.username) return profile.username;
-    if (profile?.firstname) return profile.firstname.toLowerCase();
-    if (profile?.id) return profile.id.slice(0, 8);
-    return "user";
-  }, [profile]);
+const referralCode = useMemo(() => {
+  if (profile?.referral_code) return profile.referral_code;
+  if (profile?.id) return profile.id;
+  return "user";
+}, [profile]);
 
   const referralLink =
     typeof window !== "undefined"

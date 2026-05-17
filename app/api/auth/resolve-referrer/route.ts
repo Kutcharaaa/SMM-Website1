@@ -10,7 +10,6 @@ function isUuid(value: string) {
 export async function POST(request: Request) {
   try {
     const { ref } = await request.json();
-
     const cleanRef = String(ref || "").trim();
 
     if (!cleanRef) {
@@ -43,15 +42,15 @@ export async function POST(request: Request) {
 
     let query = adminSupabase
       .from("profiles")
-      .select("id, username, firstname, lastname")
+      .select("id, username, firstname, lastname, referral_code")
       .limit(1);
 
     if (isUuid(cleanRef)) {
       query = query.eq("id", cleanRef);
-    } else if (cleanRef.length === 8) {
-      query = query.or(`username.ilike.${cleanRef},id.ilike.${cleanRef}%`);
     } else {
-      query = query.ilike("username", cleanRef);
+      query = query.or(
+        `referral_code.ilike.${cleanRef},username.ilike.${cleanRef}`,
+      );
     }
 
     const { data, error } = await query.maybeSingle();
