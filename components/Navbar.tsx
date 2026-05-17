@@ -2,69 +2,90 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { LayoutDashboard, ShieldCheck, Menu, X } from "lucide-react";
+import { useEffect, useState } from "react";
 
 type Profile = {
   username: string | null;
   role: string | null;
+  avatar_url: string | null;
 };
 
-export default function Navbar() {
+const navItems = [
+  { name: "Home", href: "/" },
+  { name: "Services", href: "/services" },
+  { name: "Reseller", href: "/reseller" },
+  { name: "Affiliates", href: "/affiliates" },
+  { name: "API", href: "/api" },
+  { name: "Support", href: "/support" },
+];
+
+function getRoleLabel(role: string) {
+  if (role === "super_admin") return "Developer";
+  if (role === "head_admin") return "Head Admin";
+  if (role === "admin") return "Admin";
+  return "User";
+}
+
+function isAdminRole(role: string) {
+  return role === "admin" || role === "head_admin" || role === "super_admin";
+}
+
+export default function PublicNavbar() {
   const pathname = usePathname();
 
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
-  const [userEmail, setUserEmail] = useState("");
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loadingAuth, setLoadingAuth] = useState(true);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loggedIn, setLoggedIn] = useState(false);
+  const [profile, setProfile] = useState<Profile>({
+    username: null,
+    role: "user",
+    avatar_url: null,
+  });
 
-  const navLinks = [
-    { name: "Home", href: "/" },
-    { name: "Services", href: "/services" },
-    { name: "Reseller", href: "/reseller" },
-    { name: "API", href: "/api" },
-    { name: "Support", href: "/support" },
-  ];
-
-  const isAdmin =
-    profile?.role === "admin" ||
-    profile?.role === "head_admin" ||
-    profile?.role === "super_admin";
-
-  async function loadUser() {
-    setLoadingAuth(true);
+  async function loadSession() {
+    setLoading(true);
 
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
+      data: { session },
+    } = await supabase.auth.getSession();
 
-    if (!user) {
-      setProfile(null);
-      setUserEmail("");
-      setLoadingAuth(false);
+    if (!session?.user) {
+      setLoggedIn(false);
+      setProfile({
+        username: null,
+        role: "user",
+        avatar_url: null,
+      });
+      setLoading(false);
       return;
     }
 
-    setUserEmail(user.email || "");
+    setLoggedIn(true);
 
     const { data } = await supabase
       .from("profiles")
-      .select("username, role")
-      .eq("id", user.id)
+      .select("username, role, avatar_url")
+      .eq("id", session.user.id)
       .single();
 
-    setProfile(data || null);
-    setLoadingAuth(false);
+    setProfile({
+      username: data?.username || session.user.email?.split("@")[0] || "User",
+      role: data?.role || "user",
+      avatar_url: data?.avatar_url || null,
+    });
+
+    setLoading(false);
   }
 
   useEffect(() => {
-    loadUser();
+    loadSession();
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(() => {
-      loadUser();
+      loadSession();
     });
 
     return () => {
@@ -72,208 +93,226 @@ export default function Navbar() {
     };
   }, []);
 
-  async function logout() {
-    await supabase.auth.signOut();
-    setProfile(null);
-    setUserEmail("");
-    setProfileOpen(false);
-    setMenuOpen(false);
-    window.location.href = "/";
-  }
-
-  function getInitial() {
-    const name = profile?.username || userEmail || "U";
-    return name.charAt(0).toUpperCase();
-  }
+  const role = profile.role || "user";
+  const username = profile.username || "User";
+  const adminAccess = isAdminRole(role);
+  const avatarInitial = username.charAt(0).toUpperCase();
 
   return (
-    <header className="border-b border-zinc-800 backdrop-blur-xl bg-black/70 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-5">
-        <Link href="/">
-          <img
-            src="/logo.png"
-            alt="Ascend Service"
-            className="h-14 w-auto cursor-pointer"
-          />
+    <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/95 backdrop-blur-xl">
+      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 lg:px-8">
+        <Link href="/" className="flex items-center gap-3">
+          <img src="/logo.png" alt="Ascend Service" className="h-12 w-auto" />
         </Link>
 
-        <nav className="hidden md:flex items-center gap-8 text-sm">
-          {navLinks.map((link) => {
-            const isActive = pathname === link.href;
+        <nav className="hidden items-center gap-2 lg:flex">
+          {navItems.map((item) => {
+            const active =
+              item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
 
             return (
               <Link
-                key={link.name}
-                href={link.href}
-                className={`transition font-medium ${
-                  isActive ? "text-blue-400" : "text-white hover:text-blue-400"
+                key={item.name}
+                href={item.href}
+                className={`rounded-2xl px-5 py-3 text-sm font-black transition ${
+                  active
+                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                    : "text-slate-200 hover:bg-white/10 hover:text-white"
                 }`}
               >
-                {link.name}
+                {item.name}
               </Link>
             );
           })}
+        </nav>
 
-          {!loadingAuth && !profile && (
+        <div className="hidden items-center gap-3 lg:flex">
+          {!loading && !loggedIn && (
             <>
-              <Link href="/login" className="hover:text-blue-400 transition">
+              <Link
+                href="/login"
+                className="rounded-2xl border border-slate-700 bg-slate-900 px-6 py-3 text-sm font-black text-white shadow-sm transition hover:border-blue-500 hover:text-blue-400"
+              >
                 Login
               </Link>
 
               <Link
                 href="/register"
-                className="bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded-xl font-semibold transition"
+                className="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
               >
                 Get Started
               </Link>
             </>
           )}
 
-          {!loadingAuth && profile && (
-            <div className="relative">
-              <button
-                onClick={() => setProfileOpen(!profileOpen)}
-                className="h-11 w-11 rounded-full bg-blue-600 hover:bg-blue-700 font-black text-white transition"
-              >
-                {getInitial()}
-              </button>
+          {!loading && loggedIn && (
+            <>
+              <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900 px-4 py-2">
+                <div className="text-right">
+                  <p className="text-sm font-black leading-5 text-white">{username}</p>
 
-              {profileOpen && (
-                <div className="absolute right-0 mt-4 w-64 rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl overflow-hidden">
-                  <div className="p-4 border-b border-zinc-800">
-                    <p className="font-bold text-white">
-                      {profile.username || "User"}
-                    </p>
-                    <p className="text-xs text-zinc-500 truncate">
-                      {userEmail}
-                    </p>
-                  </div>
+                  <div className="mt-1 flex justify-end gap-1">
+                    <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-black text-white">
+                      User
+                    </span>
 
-                  <div className="p-2">
-                    <Link
-                      href="/dashboard"
-                      onClick={() => setProfileOpen(false)}
-                      className="block rounded-xl px-4 py-3 text-zinc-300 hover:bg-zinc-900 hover:text-white transition"
-                    >
-                      User Dashboard
-                    </Link>
-
-                    {isAdmin && (
-                      <Link
-                        href="/admin"
-                        onClick={() => setProfileOpen(false)}
-                        className="block rounded-xl px-4 py-3 text-blue-400 hover:bg-zinc-900 transition"
-                      >
-                        Admin Dashboard
-                      </Link>
+                    {adminAccess && (
+                      <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-black text-white">
+                        {getRoleLabel(role)}
+                      </span>
                     )}
-
-                    <button
-                      onClick={logout}
-                      className="w-full text-left rounded-xl px-4 py-3 text-red-400 hover:bg-red-500/10 transition"
-                    >
-                      Logout
-                    </button>
                   </div>
                 </div>
+
+                <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-slate-700 bg-slate-800 text-sm font-black text-white">
+                  {profile.avatar_url ? (
+                    <img
+                      src={profile.avatar_url}
+                      alt={username}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    avatarInitial
+                  )}
+                </div>
+              </div>
+
+              {adminAccess && (
+                <Link
+                  href="/admin"
+                  className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700"
+                >
+                  <ShieldCheck size={17} />
+                  Admin Dashboard
+                </Link>
               )}
-            </div>
+
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
+              >
+                <LayoutDashboard size={17} />
+                Dashboard
+              </Link>
+            </>
           )}
-        </nav>
+        </div>
 
         <button
-          onClick={() => setMenuOpen(!menuOpen)}
-          className="md:hidden flex flex-col gap-1"
+          onClick={() => setMobileOpen(true)}
+          className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-700 bg-slate-900 text-white lg:hidden"
         >
-          <span className="w-6 h-[2px] bg-white"></span>
-          <span className="w-6 h-[2px] bg-white"></span>
-          <span className="w-6 h-[2px] bg-white"></span>
+          <Menu size={22} />
         </button>
       </div>
 
-      {menuOpen && (
-        <div className="md:hidden border-t border-zinc-800 bg-black/95 backdrop-blur-xl">
-          <div className="flex flex-col px-6 py-6 gap-5">
-            {navLinks.map((link) => {
-              const isActive = pathname === link.href;
+      {mobileOpen && (
+        <div className="fixed inset-0 z-[999] bg-slate-950/70 backdrop-blur-sm lg:hidden">
+          <div className="ml-auto h-full w-[310px] bg-slate-950 p-5 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <img src="/logo.png" alt="Ascend Service" className="h-10 w-auto" />
 
-              return (
-                <Link
-                  key={link.name}
-                  href={link.href}
-                  className={`transition font-medium ${
-                    isActive ? "text-blue-400" : "text-white hover:text-blue-400"
-                  }`}
-                  onClick={() => setMenuOpen(false)}
-                >
-                  {link.name}
-                </Link>
-              );
-            })}
+              <button
+                onClick={() => setMobileOpen(false)}
+                className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
 
-            {!loadingAuth && !profile && (
-              <>
-                <Link
-                  href="/login"
-                  className="hover:text-blue-400 transition"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Login
-                </Link>
+            <div className="mt-8 space-y-2">
+              {navItems.map((item) => {
+                const active =
+                  item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
 
-                <Link
-                  href="/register"
-                  className="bg-blue-600 hover:bg-blue-700 px-5 py-3 rounded-xl font-semibold transition text-center"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Get Started
-                </Link>
-              </>
-            )}
-
-            {!loadingAuth && profile && (
-              <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
-                <div className="flex items-center gap-3 border-b border-zinc-800 pb-4 mb-4">
-                  <div className="h-11 w-11 rounded-full bg-blue-600 flex items-center justify-center font-black">
-                    {getInitial()}
-                  </div>
-
-                  <div>
-                    <p className="font-bold">{profile.username || "User"}</p>
-                    <p className="text-xs text-zinc-500 truncate max-w-[220px]">
-                      {userEmail}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-2">
+                return (
                   <Link
-                    href="/dashboard"
-                    onClick={() => setMenuOpen(false)}
-                    className="rounded-xl px-4 py-3 text-zinc-300 hover:bg-zinc-900"
+                    key={item.name}
+                    href={item.href}
+                    onClick={() => setMobileOpen(false)}
+                    className={`block rounded-2xl px-4 py-3 text-sm font-black transition ${
+                      active ? "bg-blue-600 text-white" : "text-slate-200 hover:bg-white/10"
+                    }`}
                   >
-                    User Dashboard
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </div>
+
+            <div className="mt-8 border-t border-slate-800 pt-5">
+              {!loading && !loggedIn && (
+                <div className="space-y-3">
+                  <Link
+                    href="/login"
+                    onClick={() => setMobileOpen(false)}
+                    className="block rounded-2xl border border-slate-700 bg-slate-900 px-5 py-3 text-center text-sm font-black text-white"
+                  >
+                    Login
                   </Link>
 
-                  {isAdmin && (
+                  <Link
+                    href="/register"
+                    onClick={() => setMobileOpen(false)}
+                    className="block rounded-2xl bg-blue-600 px-5 py-3 text-center text-sm font-black text-white"
+                  >
+                    Get Started
+                  </Link>
+                </div>
+              )}
+
+              {!loading && loggedIn && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-4">
+                    <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-slate-800 text-sm font-black text-white">
+                      {profile.avatar_url ? (
+                        <img
+                          src={profile.avatar_url}
+                          alt={username}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        avatarInitial
+                      )}
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-black text-white">{username}</p>
+
+                      <div className="mt-1 flex gap-1">
+                        <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-black text-white">
+                          User
+                        </span>
+
+                        {adminAccess && (
+                          <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-black text-white">
+                            {getRoleLabel(role)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {adminAccess && (
                     <Link
                       href="/admin"
-                      onClick={() => setMenuOpen(false)}
-                      className="rounded-xl px-4 py-3 text-blue-400 hover:bg-zinc-900"
+                      onClick={() => setMobileOpen(false)}
+                      className="block rounded-2xl bg-emerald-600 px-5 py-3 text-center text-sm font-black text-white"
                     >
                       Admin Dashboard
                     </Link>
                   )}
 
-                  <button
-                    onClick={logout}
-                    className="text-left rounded-xl px-4 py-3 text-red-400 hover:bg-red-500/10"
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setMobileOpen(false)}
+                    className="block rounded-2xl bg-blue-600 px-5 py-3 text-center text-sm font-black text-white"
                   >
-                    Logout
-                  </button>
+                    Dashboard
+                  </Link>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       )}

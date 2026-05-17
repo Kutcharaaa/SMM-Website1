@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PublicNavbar from "@/components/PublicNavbar";
 import {
   ArrowRight,
   Rocket,
@@ -15,48 +16,13 @@ import {
 } from "lucide-react";
 
 const platforms = [
-  {
-    name: "TikTok",
-    icon: TikTokIcon,
-    color: "text-black",
-    bg: "bg-slate-50",
-  },
-  {
-    name: "Facebook",
-    icon: FacebookIcon,
-    color: "text-[#1877F2]",
-    bg: "bg-blue-50",
-  },
-  {
-    name: "YouTube",
-    icon: YouTubeIcon,
-    color: "text-[#FF0000]",
-    bg: "bg-red-50",
-  },
-  {
-    name: "Instagram",
-    icon: InstagramIcon,
-    color: "text-[#E4405F]",
-    bg: "bg-pink-50",
-  },
-  {
-    name: "Telegram",
-    icon: TelegramIcon,
-    color: "text-[#229ED9]",
-    bg: "bg-sky-50",
-  },
-  {
-    name: "Spotify",
-    icon: SpotifyIcon,
-    color: "text-[#1DB954]",
-    bg: "bg-green-50",
-  },
-  {
-    name: "More",
-    icon: MoreHorizontal,
-    color: "text-slate-700",
-    bg: "bg-slate-50",
-  },
+  { name: "TikTok", icon: TikTokIcon, color: "text-black", bg: "bg-slate-50" },
+  { name: "Facebook", icon: FacebookIcon, color: "text-[#1877F2]", bg: "bg-blue-50" },
+  { name: "YouTube", icon: YouTubeIcon, color: "text-[#FF0000]", bg: "bg-red-50" },
+  { name: "Instagram", icon: InstagramIcon, color: "text-[#E4405F]", bg: "bg-pink-50" },
+  { name: "Telegram", icon: TelegramIcon, color: "text-[#229ED9]", bg: "bg-sky-50" },
+  { name: "Spotify", icon: SpotifyIcon, color: "text-[#1DB954]", bg: "bg-green-50" },
+  { name: "More", icon: MoreHorizontal, color: "text-slate-700", bg: "bg-slate-50" },
 ];
 
 const features = [
@@ -108,56 +74,7 @@ const steps = [
 export default function HomePage() {
   return (
     <main className="min-h-screen bg-[#f6f9ff] text-slate-950">
-      <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/95 backdrop-blur-xl">
-        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 lg:px-8">
-          <Link href="/" className="flex items-center gap-3">
-            <img
-              src="/logo.png"
-              alt="Ascend Service"
-              className="h-12 w-auto"
-            />
-          </Link>
-
-          <nav className="hidden items-center gap-2 lg:flex">
-            {[
-              ["Home", "/"],
-              ["Services", "/services"],
-              ["Reseller", "/reseller"],
-              ["Affiliates", "/affiliates"],
-              ["API", "/api"],
-              ["Support", "/support"],
-            ].map(([name, href]) => (
-              <Link
-                key={name}
-                href={href}
-                className={`rounded-2xl px-5 py-3 text-sm font-black transition ${
-                  name === "Home"
-                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
-                    : "text-slate-200 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                {name}
-              </Link>
-            ))}
-          </nav>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="hidden rounded-2xl border border-slate-700 bg-slate-900 px-6 py-3 text-sm font-black text-white shadow-sm transition hover:border-blue-500 hover:text-blue-400 sm:block"
-            >
-              Login
-            </Link>
-
-            <Link
-              href="/register"
-              className="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
-            >
-              Get Started
-            </Link>
-          </div>
-        </div>
-      </header>
+      <PublicNavbar />
 
       <section className="relative overflow-hidden border-b border-slate-200/80 bg-[radial-gradient(circle_at_top_left,#e8f3ff_0%,transparent_32%),radial-gradient(circle_at_top_right,#dcecff_0%,transparent_30%),linear-gradient(135deg,#ffffff_0%,#f6f9ff_45%,#eef6ff_100%)]">
         <div className="absolute inset-0 opacity-[0.45]">
@@ -205,26 +122,18 @@ export default function HomePage() {
             </div>
 
             <div className="mt-8 grid max-w-xl grid-cols-3 gap-5">
-              <div>
-                <p className="text-2xl font-black text-slate-950">50K+</p>
-                <p className="mt-1 text-sm font-semibold text-slate-500">
-                  Happy Users
-                </p>
-              </div>
-
-              <div>
-                <p className="text-2xl font-black text-slate-950">99.9%</p>
-                <p className="mt-1 text-sm font-semibold text-slate-500">
-                  Uptime
-                </p>
-              </div>
-
-              <div>
-                <p className="text-2xl font-black text-slate-950">4.9/5</p>
-                <p className="mt-1 text-sm font-semibold text-slate-500">
-                  Rating
-                </p>
-              </div>
+              {[
+                ["50K+", "Happy Users"],
+                ["99.9%", "Uptime"],
+                ["4.9/5", "Rating"],
+              ].map(([value, label]) => (
+                <div key={label}>
+                  <p className="text-2xl font-black text-slate-950">{value}</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    {label}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -237,7 +146,6 @@ export default function HomePage() {
                       <p className="text-xs font-black uppercase tracking-wider text-blue-600">
                         Start Growing
                       </p>
-
                       <h3 className="mt-2 text-2xl font-black text-slate-950">
                         New Order
                       </h3>
@@ -258,7 +166,6 @@ export default function HomePage() {
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-pink-50 text-pink-600">
                           <InstagramIcon size={22} />
                         </div>
-
                         <p className="font-black text-slate-950">
                           Instagram Growth
                         </p>
@@ -269,7 +176,6 @@ export default function HomePage() {
                       <p className="text-xs font-black uppercase tracking-wider text-slate-400">
                         Service
                       </p>
-
                       <p className="mt-2 font-black text-slate-950">
                         Followers • Likes • Views
                       </p>
@@ -281,10 +187,7 @@ export default function HomePage() {
                       </p>
 
                       <div className="mt-3 flex items-center justify-between">
-                        <p className="text-2xl font-black text-slate-950">
-                          Fast
-                        </p>
-
+                        <p className="text-2xl font-black text-slate-950">Fast</p>
                         <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-black text-green-600">
                           Active
                         </span>
@@ -304,7 +207,6 @@ export default function HomePage() {
                         <p className="text-xs font-black uppercase tracking-wider text-slate-400">
                           Growth Performance
                         </p>
-
                         <h3 className="mt-2 text-3xl font-black text-slate-950">
                           +25.8K
                         </h3>
@@ -361,7 +263,6 @@ export default function HomePage() {
 
                       <div>
                         <p className="text-sm font-black">Secure Wallet</p>
-
                         <p className="mt-1 text-xs font-semibold text-blue-100">
                           Safe payments and order tracking.
                         </p>
@@ -384,7 +285,6 @@ export default function HomePage() {
                     <p className="text-2xl font-black text-slate-950">
                       {value}
                     </p>
-
                     <p className="mt-1 text-sm font-bold text-slate-500">
                       {label}
                     </p>
@@ -418,7 +318,6 @@ export default function HomePage() {
                   <h3 className="text-lg font-black text-slate-950">
                     {feature.title}
                   </h3>
-
                   <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
                     {feature.text}
                   </p>
@@ -435,7 +334,6 @@ export default function HomePage() {
             <h2 className="text-3xl font-black text-slate-950">
               Popular Platforms
             </h2>
-
             <p className="mt-3 text-base font-medium text-slate-500">
               Everything you need to grow, all in one place.
             </p>
@@ -460,7 +358,6 @@ export default function HomePage() {
                   <h3 className="mt-4 text-base font-black text-slate-950">
                     {platform.name}
                   </h3>
-
                   <p className="mt-1 text-xs font-bold text-slate-400">
                     Popular Services
                   </p>
@@ -479,11 +376,9 @@ export default function HomePage() {
                 <div className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-600">
                   Reseller Program
                 </div>
-
                 <h2 className="mt-4 text-3xl font-black text-slate-950">
                   Start your own SMM business
                 </h2>
-
                 <p className="mt-3 max-w-xl text-sm font-medium leading-7 text-slate-500">
                   Earn points, unlock discounts, convert points to balance, and
                   grow as a reseller with Ascend Service.
@@ -508,7 +403,6 @@ export default function HomePage() {
                   <p className="text-xs font-black uppercase text-slate-400">
                     {title}
                   </p>
-
                   <p className="mt-2 text-xl font-black text-slate-950">
                     {value}
                   </p>
@@ -531,11 +425,9 @@ export default function HomePage() {
                 <div className="inline-flex rounded-full bg-green-50 px-3 py-1 text-xs font-black text-green-600">
                   Affiliate Program
                 </div>
-
                 <h2 className="mt-4 text-3xl font-black text-slate-950">
                   Earn by inviting new users
                 </h2>
-
                 <p className="mt-3 max-w-xl text-sm font-medium leading-7 text-slate-500">
                   Share your referral link and earn commission when your
                   referrals become qualified users.
@@ -560,7 +452,6 @@ export default function HomePage() {
                   <p className="text-xs font-black uppercase text-slate-400">
                     {title}
                   </p>
-
                   <p className="mt-2 text-xl font-black text-slate-950">
                     {value}
                   </p>
@@ -582,10 +473,7 @@ export default function HomePage() {
       <section className="bg-white px-5 py-14 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="text-center">
-            <h2 className="text-3xl font-black text-slate-950">
-              How It Works
-            </h2>
-
+            <h2 className="text-3xl font-black text-slate-950">How It Works</h2>
             <p className="mt-3 text-base font-medium text-slate-500">
               Simple steps to start growing today.
             </p>
@@ -611,7 +499,6 @@ export default function HomePage() {
                   <h3 className="mt-5 text-lg font-black text-slate-950">
                     {step.title}
                   </h3>
-
                   <p className="mt-2 text-sm font-medium leading-6 text-slate-500">
                     {step.text}
                   </p>
@@ -625,11 +512,7 @@ export default function HomePage() {
       <footer className="border-t border-slate-200 bg-[#f8fbff] px-5 py-12 lg:px-8">
         <div className="mx-auto grid max-w-7xl gap-10 md:grid-cols-[1.4fr_1fr_1fr_1fr_1fr]">
           <div>
-            <img
-              src="/logo.png"
-              alt="Ascend Service"
-              className="h-12 w-auto"
-            />
+            <img src="/logo.png" alt="Ascend Service" className="h-12 w-auto" />
 
             <p className="mt-5 max-w-sm text-sm font-medium leading-7 text-slate-500">
               Ascend Service is a trusted SMM panel built to help you grow your
