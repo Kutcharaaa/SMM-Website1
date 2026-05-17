@@ -5,7 +5,6 @@ import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  ArrowRight,
   BarChart3,
   Eye,
   EyeOff,
@@ -81,7 +80,9 @@ export default function LoginPage() {
     setErrorMessage("");
     setSuccessMessage("");
 
-    if (!email.trim()) {
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanEmail) {
       setErrorMessage("Please enter your email address.");
       return;
     }
@@ -93,19 +94,49 @@ export default function LoginPage() {
 
     setLoading(true);
 
+    const { data: existingProfile, error: emailCheckError } = await supabase
+      .from("profiles")
+      .select("id, email")
+      .ilike("email", cleanEmail)
+      .maybeSingle();
+
+    if (emailCheckError) {
+      setErrorMessage("Unable to verify your email. Please try again.");
+      setLoading(false);
+      return;
+    }
+
+    if (!existingProfile) {
+      setErrorMessage(
+        "Email does not exist. Please check your email or create an account.",
+      );
+      setLoading(false);
+      return;
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
+      email: cleanEmail,
       password,
     });
 
     if (error) {
-      setErrorMessage(error.message);
+      const message = error.message.toLowerCase();
+
+      if (message.includes("invalid login credentials")) {
+        setErrorMessage("Wrong password. Please try again.");
+      } else if (message.includes("email not confirmed")) {
+        setErrorMessage("Please confirm your email before logging in.");
+      } else {
+        setErrorMessage(error.message);
+      }
+
       setLoading(false);
       return;
     }
 
     if (rememberMe) {
       localStorage.setItem("ascend_remember_me", "true");
+      sessionStorage.setItem("ascend_session_login", "true");
     } else {
       localStorage.setItem("ascend_remember_me", "false");
       sessionStorage.setItem("ascend_session_login", "true");
@@ -157,8 +188,7 @@ export default function LoginPage() {
             </div>
 
             <h1 className="mt-6 text-4xl font-black leading-tight tracking-tight text-slate-950 md:text-6xl">
-              Login to Your{" "}
-              <span className="text-blue-600">Account</span>
+              Login to Your <span className="text-blue-600">Account</span>
             </h1>
 
             <p className="mx-auto mt-4 max-w-xl text-base font-medium leading-7 text-slate-600 md:text-lg">
@@ -460,14 +490,7 @@ function GoogleIcon({ size = 24 }: { size?: number }) {
 
 function FacebookIcon({ size = 24 }: { size?: number }) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 256 256"
-      fill="#1877F2"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
+    <svg width={size} height={size} viewBox="0 0 256 256" fill="#1877F2">
       <path d="M232 128a104 104 0 1 0-120.25 102.7v-72.65H85.35V128h26.4v-22.9c0-26.05 15.52-40.45 39.25-40.45 11.36 0 23.25 2.03 23.25 2.03v25.55h-13.1c-12.9 0-16.9 8-16.9 16.2V128h28.75l-4.6 30.05h-24.15v72.65A104.03 104.03 0 0 0 232 128Z" />
     </svg>
   );
@@ -475,14 +498,7 @@ function FacebookIcon({ size = 24 }: { size?: number }) {
 
 function TelegramIcon({ size = 24 }: { size?: number }) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 256 256"
-      fill="#229ED9"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
+    <svg width={size} height={size} viewBox="0 0 256 256" fill="#229ED9">
       <path d="M226.6 35.7 18.9 115.8c-14.2 5.7-14.1 13.7-2.6 17.2l53.3 16.6 20.4 62.6c2.6 7.1 1.3 9.9 8.8 9.9 5.8 0 8.4-2.6 11.6-5.8l27.9-27.1 58 42.8c10.7 5.9 18.4 2.8 21.1-9.9l38.2-179.9c3.9-15.7-6-22.8-19-16.5ZM79.9 145.8l121.4-76.5c6.1-3.7 11.7-1.7 7.1 2.4L104.4 165.6l-4 42.9-20.5-62.7Z" />
     </svg>
   );
@@ -490,14 +506,7 @@ function TelegramIcon({ size = 24 }: { size?: number }) {
 
 function GitHubIcon({ size = 24 }: { size?: number }) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 256 256"
-      fill="currentColor"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
+    <svg width={size} height={size} viewBox="0 0 256 256" fill="currentColor">
       <path d="M128 20C68.4 20 20 68.4 20 128c0 47.7 30.9 88.2 73.8 102.5 5.4 1 7.4-2.3 7.4-5.2v-20c-30 6.5-36.3-12.8-36.3-12.8-4.9-12.5-12-15.8-12-15.8-9.8-6.7.7-6.6.7-6.6 10.8.8 16.5 11.1 16.5 11.1 9.6 16.5 25.2 11.7 31.4 9 1-7 3.8-11.7 6.9-14.4-24-2.7-49.2-12-49.2-53.4 0-11.8 4.2-21.4 11.1-29-1.1-2.7-4.8-13.8 1.1-28.7 0 0 9.1-2.9 29.7 11.1 8.6-2.4 17.8-3.6 27-3.6s18.4 1.2 27 3.6c20.6-14 29.7-11.1 29.7-11.1 5.9 14.9 2.2 26 1.1 28.7 6.9 7.6 11.1 17.2 11.1 29 0 41.5-25.3 50.6-49.4 53.3 3.9 3.4 7.4 10 7.4 20.2v29.4c0 2.9 1.9 6.2 7.5 5.1C205.1 216.1 236 175.6 236 128c0-59.6-48.4-108-108-108Z" />
     </svg>
   );
@@ -505,14 +514,7 @@ function GitHubIcon({ size = 24 }: { size?: number }) {
 
 function InstagramIcon({ size = 24 }: { size?: number }) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 256 256"
-      fill="#E4405F"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
+    <svg width={size} height={size} viewBox="0 0 256 256" fill="#E4405F">
       <path d="M128 82.7A45.3 45.3 0 1 0 173.3 128 45.35 45.35 0 0 0 128 82.7Zm0 74.7a29.4 29.4 0 1 1 29.4-29.4 29.43 29.43 0 0 1-29.4 29.4ZM176.6 80.9a10.6 10.6 0 1 1 10.6 10.6 10.6 10.6 0 0 1-10.6-10.6ZM224 128c0-30.5-.1-34.3-.7-46.2-.6-11.9-2.4-20-5.2-27a55.1 55.1 0 0 0-31-31c-7-2.8-15.1-4.6-27-5.2C148.3 18.1 144.5 18 128 18s-20.3.1-32.1.6c-11.9.6-20 2.4-27 5.2a55.1 55.1 0 0 0-31 31c-2.8 7-4.6 15.1-5.2 27C32.1 93.7 32 97.5 32 128s.1 34.3.7 46.2c.6 11.9 2.4 20 5.2 27a55.1 55.1 0 0 0 31 31c7 2.8 15.1 4.6 27 5.2 11.8.5 15.6.6 32.1.6s20.3-.1 32.1-.6c11.9-.6 20-2.4 27-5.2a55.1 55.1 0 0 0 31-31c2.8-7 4.6-15.1 5.2-27 .6-11.9.7-15.7.7-46.2Z" />
     </svg>
   );
@@ -520,14 +522,7 @@ function InstagramIcon({ size = 24 }: { size?: number }) {
 
 function YouTubeIcon({ size = 24 }: { size?: number }) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 256 256"
-      fill="#FF0000"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
+    <svg width={size} height={size} viewBox="0 0 256 256" fill="#FF0000">
       <path d="M234.3 73.1a29.2 29.2 0 0 0-20.5-20.6C195.7 47.6 128 47.6 128 47.6s-67.7 0-85.8 4.9a29.2 29.2 0 0 0-20.5 20.6C16.8 91.3 16.8 128 16.8 128s0 36.7 4.9 54.9a29.2 29.2 0 0 0 20.5 20.6c18.1 4.9 85.8 4.9 85.8 4.9s67.7 0 85.8-4.9a29.2 29.2 0 0 0 20.5-20.6c4.9-18.2 4.9-54.9 4.9-54.9s0-36.7-4.9-54.9ZM105.8 162.6V93.4L164 128l-58.2 34.6Z" />
     </svg>
   );
