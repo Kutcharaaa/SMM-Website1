@@ -1,6 +1,7 @@
 "use client";
 
 import { supabase } from "@/lib/supabase";
+import { useDisplayCurrency } from "@/lib/useDisplayCurrency";
 import { Trophy, Crown, Gem, ShieldCheck, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -54,6 +55,8 @@ export default function TopResellers() {
   const [topResellers, setTopResellers] = useState<Reseller[]>([]);
   const [allRankings, setAllRankings] = useState<Reseller[]>([]);
   const [open, setOpen] = useState(false);
+
+  const { formatAmount } = useDisplayCurrency();
 
   async function loadTopResellers() {
     const { data, error } = await supabase
@@ -125,7 +128,7 @@ export default function TopResellers() {
 
         <div className="text-right">
           <h5 className="text-sm font-black text-slate-950">
-            ₱{Number(reseller.total_spent || 0).toLocaleString()}
+            {formatAmount(reseller.total_spent || 0)}
           </h5>
 
           <p className="mt-1 text-xs font-semibold text-slate-400">

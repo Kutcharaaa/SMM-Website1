@@ -1,6 +1,7 @@
 "use client";
 
 import { supabase } from "@/lib/supabase";
+import { useDisplayCurrency } from "@/lib/useDisplayCurrency";
 import {
   Wallet,
   BarChart3,
@@ -14,6 +15,8 @@ export default function DashboardStats() {
   const [totalSpent, setTotalSpent] = useState(0);
   const [totalOrders, setTotalOrders] = useState(0);
   const [openTickets, setOpenTickets] = useState(0);
+
+  const { formatAmount } = useDisplayCurrency();
 
   async function loadStats() {
     const { data: authData } = await supabase.auth.getUser();
@@ -60,13 +63,13 @@ export default function DashboardStats() {
   const stats = [
     {
       title: "Total Spent",
-      value: `₱${totalSpent.toFixed(2)}`,
+      value: formatAmount(totalSpent),
       subtitle: "Lifetime",
       icon: TrendingUp,
     },
     {
       title: "Available Balance",
-      value: `₱${balance.toFixed(2)}`,
+      value: formatAmount(balance),
       subtitle: "Wallet",
       icon: Wallet,
     },

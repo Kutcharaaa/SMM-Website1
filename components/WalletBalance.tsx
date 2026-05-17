@@ -1,6 +1,7 @@
 "use client";
 
 import { supabase } from "@/lib/supabase";
+import { useDisplayCurrency } from "@/lib/useDisplayCurrency";
 import { useEffect, useState } from "react";
 
 type WalletBalanceProps = {
@@ -10,6 +11,8 @@ type WalletBalanceProps = {
 export default function WalletBalance({ compact = false }: WalletBalanceProps) {
   const [balance, setBalance] = useState(0);
   const [plan, setPlan] = useState("starter");
+
+  const { formatAmount } = useDisplayCurrency();
 
   async function getBalance() {
     const { data: authData } = await supabase.auth.getUser();
@@ -23,7 +26,7 @@ export default function WalletBalance({ compact = false }: WalletBalanceProps) {
       .single();
 
     if (profile) {
-      setBalance(profile.balance || 0);
+      setBalance(Number(profile.balance || 0));
       setPlan(profile.plan || "starter");
     }
   }
@@ -42,7 +45,7 @@ export default function WalletBalance({ compact = false }: WalletBalanceProps) {
     return (
       <div>
         <h3 className="text-3xl font-black text-white">
-          ₱{Number(balance).toFixed(2)}
+          {formatAmount(balance)}
         </h3>
 
         <p className="mt-1 text-xs capitalize text-blue-100/70">
@@ -56,17 +59,17 @@ export default function WalletBalance({ compact = false }: WalletBalanceProps) {
     <div className="rounded-3xl border border-blue-500/30 bg-blue-500/10 p-5">
       <p className="text-sm text-zinc-400">Current Balance</p>
 
-      <h2 className="text-3xl font-black mt-2">
-        ₱{Number(balance).toFixed(2)}
+      <h2 className="mt-2 text-3xl font-black">
+        {formatAmount(balance)}
       </h2>
 
-      <p className="text-xs text-blue-400 mt-2 mb-4 capitalize">
+      <p className="mb-4 mt-2 text-xs capitalize text-blue-400">
         {plan} Plan
       </p>
 
       <a
         href="/dashboard/add-funds"
-        className="block text-center bg-blue-600 hover:bg-blue-700 rounded-xl py-3 text-sm font-semibold transition"
+        className="block rounded-xl bg-blue-600 py-3 text-center text-sm font-semibold transition hover:bg-blue-700"
       >
         Add Funds
       </a>

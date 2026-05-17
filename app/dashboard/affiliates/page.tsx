@@ -4,6 +4,7 @@ import DashboardGuard from "@/components/DashboardGuard";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import DashboardTopbar from "@/components/DashboardTopbar";
 import { supabase } from "@/lib/supabase";
+import { useDisplayCurrency } from "@/lib/useDisplayCurrency";
 import {
   ArrowRight,
   CheckCircle2,
@@ -128,6 +129,8 @@ export default function AffiliatesPage() {
   const [showCommissionsModal, setShowCommissionsModal] = useState(false);
   const [transferAmount, setTransferAmount] = useState("");
   const [transferMessage, setTransferMessage] = useState("");
+
+  const { formatAmount } = useDisplayCurrency();
 
   async function loadAffiliateData() {
     setLoading(true);
@@ -389,7 +392,7 @@ export default function AffiliatesPage() {
     }
 
     if (amountToTransfer < MIN_TRANSFER_AMOUNT) {
-      setTransferMessage(`Minimum transfer amount is ₱${MIN_TRANSFER_AMOUNT}.00.`);
+      setTransferMessage(`Minimum transfer amount is ${formatAmount(MIN_TRANSFER_AMOUNT)}.`);
       return;
     }
 
@@ -412,7 +415,7 @@ export default function AffiliatesPage() {
     }
 
     setTransferMessage(
-      `Successfully transferred ₱${formatMoney(amountToTransfer)} to your wallet balance.`,
+      `Successfully transferred ${formatAmount(amountToTransfer)} to your wallet balance.`,
     );
 
     setTransferAmount("");
@@ -478,7 +481,7 @@ export default function AffiliatesPage() {
                   </p>
 
                   <p className="mt-2 text-lg font-black leading-7">
-                    Referral must reach ₱1,000 approved deposits
+                    Referral must reach {formatAmount(QUALIFICATION_AMOUNT)} approved deposits
                   </p>
 
                   <div className="mt-5">
@@ -537,12 +540,12 @@ export default function AffiliatesPage() {
                 icon={ShieldCheck}
                 title="Qualified Referrals"
                 value={loading ? "..." : qualifiedReferrals.toLocaleString()}
-                subtitle="Reached ₱1,000 total deposits"
+                subtitle={`${formatAmount(QUALIFICATION_AMOUNT)} total deposits`}
                 color="bg-green-100 text-green-600"
               />
 
               <CommissionMetricCard
-                value={loading ? "..." : `₱${formatMoney(availableCommission)}`}
+                value={loading ? "..." : formatAmount(availableCommission)}
                 onUse={openCommissionModal}
               />
 
@@ -605,7 +608,7 @@ export default function AffiliatesPage() {
                             </p>
 
                             <p className="mt-2 text-sm font-bold text-slate-600">
-                              ₱{formatCompact(level.requiredDeposits)}
+                              {formatAmount(level.requiredDeposits)}
                             </p>
 
                             {isCurrent && (
@@ -626,8 +629,8 @@ export default function AffiliatesPage() {
                   </p>
 
                   <p className="text-sm font-black text-slate-700">
-                    ₱{formatMoney(totalQualifiedDeposits)} / ₱
-                    {formatMoney(nextLevel?.requiredDeposits || currentLevel.requiredDeposits)}
+                    {formatAmount(totalQualifiedDeposits)} /{" "}
+                    {formatAmount(nextLevel?.requiredDeposits || currentLevel.requiredDeposits)}
                   </p>
 
                   <div className="h-3 flex-1 overflow-hidden rounded-full bg-slate-200">
@@ -655,7 +658,7 @@ export default function AffiliatesPage() {
                   <SummaryRow label="Qualified Referrals" value={`${qualifiedReferrals}`} />
                   <SummaryRow
                     label="Total Qualified Deposits"
-                    value={`₱${formatMoney(totalQualifiedDeposits)}`}
+                    value={formatAmount(totalQualifiedDeposits)}
                   />
                   <SummaryRow
                     label="Current Rate"
@@ -673,7 +676,7 @@ export default function AffiliatesPage() {
 
                 <p className="mt-5 rounded-xl bg-white/10 px-4 py-3 text-sm font-semibold text-blue-50">
                   {nextLevel
-                    ? `Need ₱${formatMoney(remainingToNext)} more in qualified deposits to reach next level.`
+                    ? `Need ${formatAmount(remainingToNext)} more in qualified deposits to reach next level.`
                     : "You reached the highest affiliate level."}
                 </p>
               </section>
@@ -712,7 +715,7 @@ export default function AffiliatesPage() {
                 <div className="mt-5 rounded-xl bg-blue-50 p-4">
                   <p className="flex gap-2 text-sm font-semibold leading-6 text-blue-700">
                     <CheckCircle2 size={18} className="mt-0.5 shrink-0" />
-                    Your referrals must reach ₱1,000 approved deposits before commissions begin.
+                    Your referrals must reach {formatAmount(QUALIFICATION_AMOUNT)} approved deposits before commissions begin.
                   </p>
                 </div>
               </section>
@@ -768,7 +771,7 @@ export default function AffiliatesPage() {
                                 {formatDate(item.created_at)}
                               </td>
                               <td className="p-3 font-black text-slate-700">
-                                ₱{formatMoney(deposits)}
+                                {formatAmount(deposits)}
                               </td>
                               <td className="p-3">
                                 <StatusBadge qualified={isQualified} />
@@ -845,10 +848,10 @@ export default function AffiliatesPage() {
                                 {item.referred_username || "Referral"}
                               </td>
                               <td className="p-3 font-black text-slate-700">
-                                ₱{formatMoney(toNumber(item.deposit_amount))}
+                                {formatAmount(toNumber(item.deposit_amount))}
                               </td>
                               <td className="p-3 font-black text-slate-700">
-                                ₱{formatMoney(availableLeft)}
+                                {formatAmount(availableLeft)}
                               </td>
                               <td className="p-3">
                                 <CommissionStatusBadge status={item.status || "pending"} />
@@ -887,8 +890,8 @@ export default function AffiliatesPage() {
                 <HowItWorksStep
                   number="2"
                   icon={Wallet}
-                  title="Referral reaches ₱1,000"
-                  text="Your referral must reach ₱1,000 total approved deposits."
+                  title={`Referral reaches ${formatAmount(QUALIFICATION_AMOUNT)}`}
+                  text={`Your referral must reach ${formatAmount(QUALIFICATION_AMOUNT)} total approved deposits.`}
                 />
 
                 <HowItWorksStep
@@ -902,399 +905,37 @@ export default function AffiliatesPage() {
           </div>
 
           {showReferralsModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
-              <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
-                <div className="flex items-start justify-between border-b border-slate-100 p-6">
-                  <div>
-                    <h3 className="text-2xl font-black text-slate-950">
-                      All Referrals
-                    </h3>
-
-                    <p className="mt-1 text-sm font-semibold text-slate-500">
-                      View users who registered using your referral link.
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowReferralsModal(false)}
-                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-
-                <div className="overflow-y-auto p-6">
-                  {loadingAllReferrals ? (
-                    <div className="rounded-2xl bg-slate-50 p-10 text-center text-sm font-semibold text-slate-500">
-                      Loading referrals...
-                    </div>
-                  ) : (
-                    <div className="overflow-hidden rounded-xl border border-slate-100">
-                      <div className="overflow-x-auto">
-                        <table className="w-full min-w-[760px] text-sm">
-                          <thead className="bg-slate-50 text-slate-500">
-                            <tr>
-                              <th className="p-4 text-left font-black">User</th>
-                              <th className="p-4 text-left font-black">Joined</th>
-                              <th className="p-4 text-left font-black">Total Deposits</th>
-                              <th className="p-4 text-left font-black">Qualification</th>
-                              <th className="p-4 text-left font-black">Status</th>
-                            </tr>
-                          </thead>
-
-                          <tbody>
-                            {allReferrals.length <= 0 ? (
-                              <tr>
-                                <td
-                                  colSpan={5}
-                                  className="p-12 text-center text-sm font-semibold text-slate-500"
-                                >
-                                  No referrals yet.
-                                </td>
-                              </tr>
-                            ) : (
-                              allReferrals.map((item) => {
-                                const deposits = toNumber(item.total_deposits);
-                                const isQualified =
-                                  item.is_qualified || deposits >= QUALIFICATION_AMOUNT;
-                                const remaining = Math.max(
-                                  0,
-                                  QUALIFICATION_AMOUNT - deposits,
-                                );
-
-                                return (
-                                  <tr key={item.id} className="border-t border-slate-100">
-                                    <td className="p-4 font-black text-slate-700">
-                                      {item.referred_username || "User"}
-                                    </td>
-
-                                    <td className="p-4 font-semibold text-slate-500">
-                                      {formatDate(item.created_at)}
-                                    </td>
-
-                                    <td className="p-4 font-black text-slate-700">
-                                      ₱{formatMoney(deposits)}
-                                    </td>
-
-                                    <td className="p-4 font-semibold text-slate-500">
-                                      {isQualified
-                                        ? "Reached ₱1,000"
-                                        : `₱${formatMoney(remaining)} remaining`}
-                                    </td>
-
-                                    <td className="p-4">
-                                      <StatusBadge qualified={isQualified} />
-                                    </td>
-                                  </tr>
-                                );
-                              })
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+            <ReferralsModal
+              loading={loadingAllReferrals}
+              referrals={allReferrals}
+              onClose={() => setShowReferralsModal(false)}
+              formatAmount={formatAmount}
+            />
           )}
 
           {showCommissionsModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
-              <div className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
-                <div className="flex items-start justify-between border-b border-slate-100 p-6">
-                  <div>
-                    <h3 className="text-2xl font-black text-slate-950">
-                      All Commission History
-                    </h3>
-
-                    <p className="mt-1 text-sm font-semibold text-slate-500">
-                      View all affiliate commissions, including pending, available, and used commissions.
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowCommissionsModal(false)}
-                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-
-                <div className="overflow-y-auto p-6">
-                  {loadingAllCommissions ? (
-                    <div className="rounded-2xl bg-slate-50 p-10 text-center text-sm font-semibold text-slate-500">
-                      Loading commission history...
-                    </div>
-                  ) : (
-                    <div className="overflow-hidden rounded-xl border border-slate-100">
-                      <div className="overflow-x-auto">
-                        <table className="w-full min-w-[900px] text-sm">
-                          <thead className="bg-slate-50 text-slate-500">
-                            <tr>
-                              <th className="p-4 text-left font-black">Date</th>
-                              <th className="p-4 text-left font-black">Referral</th>
-                              <th className="p-4 text-left font-black">Deposit</th>
-                              <th className="p-4 text-left font-black">Commission</th>
-                              <th className="p-4 text-left font-black">Used</th>
-                              <th className="p-4 text-left font-black">Available Left</th>
-                              <th className="p-4 text-left font-black">Status</th>
-                            </tr>
-                          </thead>
-
-                          <tbody>
-                            {allCommissions.length <= 0 ? (
-                              <tr>
-                                <td
-                                  colSpan={7}
-                                  className="p-12 text-center text-sm font-semibold text-slate-500"
-                                >
-                                  No commissions yet.
-                                </td>
-                              </tr>
-                            ) : (
-                              allCommissions.map((item) => {
-                                const commissionAmount = toNumber(item.commission_amount);
-                                const usedAmount = toNumber(item.used_amount);
-                                const availableLeft = Math.max(
-                                  0,
-                                  commissionAmount - usedAmount,
-                                );
-
-                                return (
-                                  <tr key={item.id} className="border-t border-slate-100">
-                                    <td className="p-4 font-semibold text-slate-500">
-                                      {formatDate(item.created_at)}
-                                    </td>
-
-                                    <td className="p-4 font-black text-slate-700">
-                                      {item.referred_username || "Referral"}
-                                    </td>
-
-                                    <td className="p-4 font-black text-slate-700">
-                                      ₱{formatMoney(toNumber(item.deposit_amount))}
-                                    </td>
-
-                                    <td className="p-4 font-black text-slate-700">
-                                      ₱{formatMoney(commissionAmount)}
-                                    </td>
-
-                                    <td className="p-4 font-black text-slate-700">
-                                      ₱{formatMoney(usedAmount)}
-                                    </td>
-
-                                    <td className="p-4 font-black text-slate-700">
-                                      ₱{formatMoney(availableLeft)}
-                                    </td>
-
-                                    <td className="p-4">
-                                      <CommissionStatusBadge status={item.status || "pending"} />
-                                    </td>
-                                  </tr>
-                                );
-                              })
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+            <CommissionsModal
+              loading={loadingAllCommissions}
+              commissions={allCommissions}
+              onClose={() => setShowCommissionsModal(false)}
+              formatAmount={formatAmount}
+            />
           )}
 
           {showCommissionModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
-              <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-                <div className="flex items-start justify-between border-b border-slate-100 p-5">
-                  <div>
-                    <h3 className="text-xl font-black text-slate-950">
-                      Use Commission
-                    </h3>
-
-                    <p className="mt-1 text-sm font-semibold text-slate-500">
-                      Transfer your available commission to wallet balance.
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowCommissionModal(false)}
-                    className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-
-                <div className="grid gap-5 overflow-y-auto p-5 lg:grid-cols-[0.95fr_1.05fr]">
-                  <section className="rounded-xl border border-slate-200 bg-white p-5">
-                    <h4 className="text-base font-black text-slate-950">
-                      Transfer Commission to Balance
-                    </h4>
-
-                    <div className="mt-5">
-                      <p className="text-xs font-black uppercase tracking-wide text-slate-500">
-                        Available Commission
-                      </p>
-
-                      <p className="mt-2 text-3xl font-black text-purple-600">
-                        ₱{formatMoney(availableCommission)}
-                      </p>
-
-                      <p className="mt-1 text-sm font-semibold text-slate-500">
-                        Ready to transfer
-                      </p>
-                    </div>
-
-                    <label className="mt-5 block text-sm font-black text-slate-700">
-                      Amount to transfer
-                    </label>
-
-                    <div className="mt-2 flex overflow-hidden rounded-xl border border-slate-200 bg-white">
-                      <div className="flex h-12 items-center border-r border-slate-200 px-4 text-sm font-black text-slate-500">
-                        ₱
-                      </div>
-
-                      <input
-                        value={transferAmount}
-                        onChange={(event) => setTransferAmount(event.target.value)}
-                        type="number"
-                        min={MIN_TRANSFER_AMOUNT}
-                        max={availableCommission}
-                        placeholder="Enter amount"
-                        className="h-12 flex-1 px-4 text-sm font-semibold outline-none"
-                      />
-
-                      <div className="flex h-12 items-center border-l border-slate-200 px-4 text-sm font-black text-slate-500">
-                        .00
-                      </div>
-                    </div>
-
-                    <div className="mt-3 grid grid-cols-4 gap-2">
-                      {[50, 100, 500].map((amount) => (
-                        <button
-                          key={amount}
-                          type="button"
-                          onClick={() => setTransferAmount(String(amount))}
-                          className="h-9 rounded-lg border border-blue-200 bg-blue-50 text-xs font-black text-blue-600 transition hover:bg-blue-600 hover:text-white"
-                        >
-                          ₱{amount}
-                        </button>
-                      ))}
-
-                      <button
-                        type="button"
-                        onClick={() => setTransferAmount(String(availableCommission))}
-                        className="h-9 rounded-lg border border-blue-200 bg-blue-50 text-xs font-black text-blue-600 transition hover:bg-blue-600 hover:text-white"
-                      >
-                        Max
-                      </button>
-                    </div>
-
-                    <div className="mt-5 rounded-xl border border-green-100 bg-green-50 p-4">
-                      <p className="text-sm font-semibold text-slate-600">
-                        You will receive
-                      </p>
-
-                      <p className="mt-1 text-3xl font-black text-green-600">
-                        ₱{formatMoney(canTransfer ? amountToTransfer : 0)}
-                      </p>
-
-                      <p className="mt-1 text-sm font-semibold text-green-700">
-                        Will be added to your wallet balance
-                      </p>
-                    </div>
-
-                    {transferMessage && (
-                      <p className="mt-3 rounded-xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-600">
-                        {transferMessage}
-                      </p>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={transferCommission}
-                      disabled={transferring}
-                      className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {transferring ? "Transferring..." : "Transfer to Balance"}
-                      <ArrowRight size={17} />
-                    </button>
-
-                    <p className="mt-3 text-center text-xs font-semibold text-slate-400">
-                      Minimum transfer amount is ₱{MIN_TRANSFER_AMOUNT}.00
-                    </p>
-                  </section>
-
-                  <section className="rounded-xl border border-slate-200 bg-white p-5">
-                    <h4 className="text-base font-black text-slate-950">
-                      Transfer History
-                    </h4>
-
-                    <div className="mt-5 overflow-hidden rounded-xl border border-slate-100">
-                      <table className="w-full text-sm">
-                        <thead className="bg-slate-50 text-slate-500">
-                          <tr>
-                            <th className="p-4 text-left font-black">Date</th>
-                            <th className="p-4 text-left font-black">Amount</th>
-                            <th className="p-4 text-left font-black">Status</th>
-                          </tr>
-                        </thead>
-
-                        <tbody>
-                          {transferHistory.length <= 0 ? (
-                            <tr>
-                              <td
-                                colSpan={3}
-                                className="p-10 text-center text-sm font-semibold text-slate-500"
-                              >
-                                No transfer history yet.
-                              </td>
-                            </tr>
-                          ) : (
-                            transferHistory.map((item) => (
-                              <tr key={item.id} className="border-t border-slate-100">
-                                <td className="p-4 font-semibold text-slate-500">
-                                  {formatFullDate(item.created_at)}
-                                </td>
-
-                                <td className="p-4 font-black text-slate-700">
-                                  ₱{formatMoney(toNumber(item.amount))}
-                                </td>
-
-                                <td className="p-4">
-                                  <span className="rounded-lg bg-green-100 px-3 py-1 text-xs font-black text-green-700">
-                                    {formatStatus(item.status)}
-                                  </span>
-                                </td>
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    <button
-                      type="button"
-                      className="mt-5 flex w-full items-center justify-center gap-2 text-sm font-black text-blue-600"
-                    >
-                      View All History
-                      <ArrowRight size={16} />
-                    </button>
-                  </section>
-                </div>
-
-                <div className="border-t border-slate-100 p-5">
-                  <div className="flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700">
-                    <Info size={17} />
-                    Commission becomes available after 3 days cooldown period.
-                  </div>
-                </div>
-              </div>
-            </div>
+            <CommissionTransferModal
+              availableCommission={availableCommission}
+              amountToTransfer={amountToTransfer}
+              canTransfer={canTransfer}
+              transferAmount={transferAmount}
+              transferHistory={transferHistory}
+              transferMessage={transferMessage}
+              transferring={transferring}
+              setTransferAmount={setTransferAmount}
+              setShowCommissionModal={setShowCommissionModal}
+              transferCommission={transferCommission}
+              formatAmount={formatAmount}
+            />
           )}
         </section>
       </main>
@@ -1452,6 +1093,437 @@ function HowItWorksStep({
           {text}
         </p>
       </div>
+    </div>
+  );
+}
+
+function ReferralsModal({
+  loading,
+  referrals,
+  onClose,
+  formatAmount,
+}: {
+  loading: boolean;
+  referrals: ReferralRecord[];
+  onClose: () => void;
+  formatAmount: (value: number | string | null | undefined) => string;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+      <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <ModalHeader
+          title="All Referrals"
+          subtitle="View users who registered using your referral link."
+          onClose={onClose}
+        />
+
+        <div className="overflow-y-auto p-6">
+          {loading ? (
+            <div className="rounded-2xl bg-slate-50 p-10 text-center text-sm font-semibold text-slate-500">
+              Loading referrals...
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-xl border border-slate-100">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[760px] text-sm">
+                  <thead className="bg-slate-50 text-slate-500">
+                    <tr>
+                      <th className="p-4 text-left font-black">User</th>
+                      <th className="p-4 text-left font-black">Joined</th>
+                      <th className="p-4 text-left font-black">Total Deposits</th>
+                      <th className="p-4 text-left font-black">Qualification</th>
+                      <th className="p-4 text-left font-black">Status</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {referrals.length <= 0 ? (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="p-12 text-center text-sm font-semibold text-slate-500"
+                        >
+                          No referrals yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      referrals.map((item) => {
+                        const deposits = toNumber(item.total_deposits);
+                        const isQualified =
+                          item.is_qualified || deposits >= QUALIFICATION_AMOUNT;
+                        const remaining = Math.max(
+                          0,
+                          QUALIFICATION_AMOUNT - deposits,
+                        );
+
+                        return (
+                          <tr key={item.id} className="border-t border-slate-100">
+                            <td className="p-4 font-black text-slate-700">
+                              {item.referred_username || "User"}
+                            </td>
+
+                            <td className="p-4 font-semibold text-slate-500">
+                              {formatDate(item.created_at)}
+                            </td>
+
+                            <td className="p-4 font-black text-slate-700">
+                              {formatAmount(deposits)}
+                            </td>
+
+                            <td className="p-4 font-semibold text-slate-500">
+                              {isQualified
+                                ? `Reached ${formatAmount(QUALIFICATION_AMOUNT)}`
+                                : `${formatAmount(remaining)} remaining`}
+                            </td>
+
+                            <td className="p-4">
+                              <StatusBadge qualified={isQualified} />
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CommissionsModal({
+  loading,
+  commissions,
+  onClose,
+  formatAmount,
+}: {
+  loading: boolean;
+  commissions: CommissionRecord[];
+  onClose: () => void;
+  formatAmount: (value: number | string | null | undefined) => string;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+      <div className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <ModalHeader
+          title="All Commission History"
+          subtitle="View all affiliate commissions, including pending, available, and used commissions."
+          onClose={onClose}
+        />
+
+        <div className="overflow-y-auto p-6">
+          {loading ? (
+            <div className="rounded-2xl bg-slate-50 p-10 text-center text-sm font-semibold text-slate-500">
+              Loading commission history...
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-xl border border-slate-100">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[900px] text-sm">
+                  <thead className="bg-slate-50 text-slate-500">
+                    <tr>
+                      <th className="p-4 text-left font-black">Date</th>
+                      <th className="p-4 text-left font-black">Referral</th>
+                      <th className="p-4 text-left font-black">Deposit</th>
+                      <th className="p-4 text-left font-black">Commission</th>
+                      <th className="p-4 text-left font-black">Used</th>
+                      <th className="p-4 text-left font-black">Available Left</th>
+                      <th className="p-4 text-left font-black">Status</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {commissions.length <= 0 ? (
+                      <tr>
+                        <td
+                          colSpan={7}
+                          className="p-12 text-center text-sm font-semibold text-slate-500"
+                        >
+                          No commissions yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      commissions.map((item) => {
+                        const commissionAmount = toNumber(item.commission_amount);
+                        const usedAmount = toNumber(item.used_amount);
+                        const availableLeft = Math.max(
+                          0,
+                          commissionAmount - usedAmount,
+                        );
+
+                        return (
+                          <tr key={item.id} className="border-t border-slate-100">
+                            <td className="p-4 font-semibold text-slate-500">
+                              {formatDate(item.created_at)}
+                            </td>
+                            <td className="p-4 font-black text-slate-700">
+                              {item.referred_username || "Referral"}
+                            </td>
+                            <td className="p-4 font-black text-slate-700">
+                              {formatAmount(toNumber(item.deposit_amount))}
+                            </td>
+                            <td className="p-4 font-black text-slate-700">
+                              {formatAmount(commissionAmount)}
+                            </td>
+                            <td className="p-4 font-black text-slate-700">
+                              {formatAmount(usedAmount)}
+                            </td>
+                            <td className="p-4 font-black text-blue-600">
+                              {formatAmount(availableLeft)}
+                            </td>
+                            <td className="p-4">
+                              <CommissionStatusBadge status={item.status || "pending"} />
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CommissionTransferModal({
+  availableCommission,
+  amountToTransfer,
+  canTransfer,
+  transferAmount,
+  transferHistory,
+  transferMessage,
+  transferring,
+  setTransferAmount,
+  setShowCommissionModal,
+  transferCommission,
+  formatAmount,
+}: {
+  availableCommission: number;
+  amountToTransfer: number;
+  canTransfer: boolean;
+  transferAmount: string;
+  transferHistory: TransferRecord[];
+  transferMessage: string;
+  transferring: boolean;
+  setTransferAmount: (value: string) => void;
+  setShowCommissionModal: (value: boolean) => void;
+  transferCommission: () => void;
+  formatAmount: (value: number | string | null | undefined) => string;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
+      <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-start justify-between border-b border-slate-100 p-5">
+          <div>
+            <h3 className="text-xl font-black text-slate-950">
+              Use Commission
+            </h3>
+
+            <p className="mt-1 text-sm font-semibold text-slate-500">
+              Transfer your available commission to wallet balance.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowCommissionModal(false)}
+            className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="grid gap-5 overflow-y-auto p-5 lg:grid-cols-[0.95fr_1.05fr]">
+          <section className="rounded-xl border border-slate-200 bg-white p-5">
+            <h4 className="text-base font-black text-slate-950">
+              Transfer Commission to Balance
+            </h4>
+
+            <div className="mt-5">
+              <p className="text-xs font-black uppercase tracking-wide text-slate-500">
+                Available Commission
+              </p>
+
+              <p className="mt-2 text-3xl font-black text-purple-600">
+                {formatAmount(availableCommission)}
+              </p>
+
+              <p className="mt-1 text-sm font-semibold text-slate-500">
+                Ready to transfer
+              </p>
+            </div>
+
+            <label className="mt-5 block text-sm font-black text-slate-700">
+              Amount to transfer
+            </label>
+
+            <div className="mt-2 flex overflow-hidden rounded-xl border border-slate-200 bg-white">
+              <div className="flex h-12 items-center border-r border-slate-200 px-4 text-sm font-black text-slate-500">
+                ₱
+              </div>
+
+              <input
+                value={transferAmount}
+                onChange={(event) => setTransferAmount(event.target.value)}
+                type="number"
+                min={MIN_TRANSFER_AMOUNT}
+                max={availableCommission}
+                placeholder="Enter amount"
+                className="h-12 flex-1 px-4 text-sm font-semibold outline-none"
+              />
+
+              <div className="flex h-12 items-center border-l border-slate-200 px-4 text-sm font-black text-slate-500">
+                .00
+              </div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-4 gap-2">
+              {[50, 100, 500].map((amount) => (
+                <button
+                  key={amount}
+                  type="button"
+                  onClick={() => setTransferAmount(String(amount))}
+                  className="h-9 rounded-lg border border-blue-200 bg-blue-50 text-xs font-black text-blue-600 transition hover:bg-blue-600 hover:text-white"
+                >
+                  {formatAmount(amount)}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => setTransferAmount(String(availableCommission))}
+                className="h-9 rounded-lg border border-blue-200 bg-blue-50 text-xs font-black text-blue-600 transition hover:bg-blue-600 hover:text-white"
+              >
+                Max
+              </button>
+            </div>
+
+            <div className="mt-5 rounded-xl border border-green-100 bg-green-50 p-4">
+              <p className="text-sm font-semibold text-slate-600">
+                You will receive
+              </p>
+
+              <p className="mt-1 text-3xl font-black text-green-600">
+                {formatAmount(canTransfer ? amountToTransfer : 0)}
+              </p>
+
+              <p className="mt-1 text-sm font-semibold text-green-700">
+                Will be added to your wallet balance
+              </p>
+            </div>
+
+            {transferMessage && (
+              <p className="mt-3 rounded-xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-600">
+                {transferMessage}
+              </p>
+            )}
+
+            <button
+              type="button"
+              onClick={transferCommission}
+              disabled={transferring}
+              className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {transferring ? "Transferring..." : "Transfer to Balance"}
+              <ArrowRight size={17} />
+            </button>
+
+            <p className="mt-3 text-center text-xs font-semibold text-slate-400">
+              Minimum transfer amount is {formatAmount(MIN_TRANSFER_AMOUNT)}
+            </p>
+          </section>
+
+          <section className="rounded-xl border border-slate-200 bg-white p-5">
+            <h4 className="text-base font-black text-slate-950">
+              Transfer History
+            </h4>
+
+            <div className="mt-5 overflow-hidden rounded-xl border border-slate-100">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-slate-500">
+                  <tr>
+                    <th className="p-4 text-left font-black">Date</th>
+                    <th className="p-4 text-left font-black">Amount</th>
+                    <th className="p-4 text-left font-black">Status</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {transferHistory.length <= 0 ? (
+                    <tr>
+                      <td
+                        colSpan={3}
+                        className="p-10 text-center text-sm font-semibold text-slate-500"
+                      >
+                        No transfer history yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    transferHistory.map((item) => (
+                      <tr key={item.id} className="border-t border-slate-100">
+                        <td className="p-4 font-semibold text-slate-500">
+                          {formatFullDate(item.created_at)}
+                        </td>
+
+                        <td className="p-4 font-black text-slate-700">
+                          {formatAmount(toNumber(item.amount))}
+                        </td>
+
+                        <td className="p-4">
+                          <span className="rounded-lg bg-green-100 px-3 py-1 text-xs font-black text-green-700">
+                            {formatStatus(item.status)}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <div className="border-t border-slate-100 p-5">
+          <div className="flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700">
+            <Info size={17} />
+            Commission becomes available after 3 days cooldown period.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ModalHeader({
+  title,
+  subtitle,
+  onClose,
+}: {
+  title: string;
+  subtitle: string;
+  onClose: () => void;
+}) {
+  return (
+    <div className="flex items-start justify-between border-b border-slate-100 p-6">
+      <div>
+        <h3 className="text-2xl font-black text-slate-950">{title}</h3>
+        <p className="mt-1 text-sm font-semibold text-slate-500">{subtitle}</p>
+      </div>
+
+      <button
+        type="button"
+        onClick={onClose}
+        className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
+      >
+        <X size={20} />
+      </button>
     </div>
   );
 }

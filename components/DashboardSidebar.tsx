@@ -42,11 +42,6 @@ const menu = [
     icon: Wallet,
   },
   {
-    name: "Transactions",
-    href: "/dashboard/transactions",
-    icon: Receipt,
-  },
-  {
     name: "Tickets",
     href: "/dashboard/tickets",
     icon: Ticket,
