@@ -3,7 +3,7 @@
 import PublicNavbar from "@/components/PublicNavbar";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   AtSign,
   BarChart3,
@@ -42,8 +42,18 @@ const benefits = [
   },
 ];
 
+type ReferrerData = {
+  id: string;
+  username?: string | null;
+  firstname?: string | null;
+  lastname?: string | null;
+};
+
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const referralCode = searchParams.get("ref")?.trim() || "";
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -57,6 +67,10 @@ export default function RegisterPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [loading, setLoading] = useState(false);
+
+  const [referrerPreview, setReferrerPreview] = useState<ReferrerData | null>(
+    null,
+  );
 
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -78,6 +92,21 @@ export default function RegisterPage() {
     checkCurrentSession();
   }, [router]);
 
+  useEffect(() => {
+    async function previewReferrer() {
+      if (!referralCode) return;
+
+      try {
+        const referrer = await resolveReferrer(referralCode);
+        setReferrerPreview(referrer);
+      } catch {
+        setReferrerPreview(null);
+      }
+    }
+
+    previewReferrer();
+  }, [referralCode]);
+
   async function checkEmailExists(cleanEmail: string) {
     try {
       const response = await fetch("/api/auth/check-email", {
@@ -91,10 +120,39 @@ export default function RegisterPage() {
       if (!response.ok) return false;
 
       const result = await response.json();
+
       return Boolean(result.exists);
     } catch {
       return false;
     }
+  }
+
+  async function resolveReferrer(
+    refCode: string,
+  ): Promise<ReferrerData | null> {
+    if (!refCode) return null;
+
+    const response = await fetch("/api/auth/resolve-referrer", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ ref: refCode }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || "Unable to verify referral link.");
+    }
+
+    if (!result.found || !result.referrer?.id) {
+      throw new Error(
+        "Invalid referral link. Please ask your referrer for a new link.",
+      );
+    }
+
+    return result.referrer as ReferrerData;
   }
 
   async function handleRegister(e: React.FormEvent<HTMLFormElement>) {
@@ -164,87 +222,113 @@ export default function RegisterPage() {
 
     setLoading(true);
 
-    const emailExists = await checkEmailExists(cleanEmail);
+    try {
+      const emailExists = await checkEmailExists(cleanEmail);
 
-    if (emailExists) {
-      setErrorMessage("Email already exists. Please login instead.");
-      setLoading(false);
-      return;
-    }
-
-    const { data, error } = await supabase.auth.signUp({
-      email: cleanEmail,
-      password,
-      options: {
-        data: {
-          username: cleanUsername,
-          firstname: cleanFirstName,
-          lastname: cleanLastName,
-        },
-      },
-    });
-
-    if (error) {
-      const message = error.message.toLowerCase();
-
-      if (
-        message.includes("already registered") ||
-        message.includes("already exists")
-      ) {
+      if (emailExists) {
         setErrorMessage("Email already exists. Please login instead.");
-      } else {
-        setErrorMessage(error.message);
-      }
-
-      setLoading(false);
-      return;
-    }
-
-    if (data.user) {
-      const { error: profileError } = await supabase.from("profiles").upsert({
-        id: data.user.id,
-        email: cleanEmail,
-        username: cleanUsername,
-        firstname: cleanFirstName,
-        lastname: cleanLastName,
-        role: "user",
-        plan: "starter",
-        balance: 0,
-      });
-
-      if (profileError) {
-        setErrorMessage(profileError.message);
         setLoading(false);
         return;
       }
-    }
 
-    localStorage.setItem("ascend_remember_me", "true");
-    sessionStorage.setItem("ascend_session_login", "true");
+      let referrer: ReferrerData | null = null;
 
-    if (data.session) {
-      setSuccessMessage("Account created successfully. Redirecting to dashboard...");
+      if (referralCode) {
+        referrer = await resolveReferrer(referralCode);
+      }
+
+      const { data, error } = await supabase.auth.signUp({
+        email: cleanEmail,
+        password,
+        options: {
+          data: {
+            username: cleanUsername,
+            firstname: cleanFirstName,
+            lastname: cleanLastName,
+            referred_by: referrer?.id || null,
+          },
+        },
+      });
+
+      if (error) {
+        const message = error.message.toLowerCase();
+
+        if (
+          message.includes("already registered") ||
+          message.includes("already exists")
+        ) {
+          setErrorMessage("Email already exists. Please login instead.");
+        } else {
+          setErrorMessage(error.message);
+        }
+
+        setLoading(false);
+        return;
+      }
+
+      if (data.user) {
+        const referredBy =
+          referrer && referrer.id !== data.user.id ? referrer.id : null;
+
+        const { error: profileError } = await supabase.from("profiles").upsert({
+          id: data.user.id,
+          email: cleanEmail,
+          username: cleanUsername,
+          firstname: cleanFirstName,
+          lastname: cleanLastName,
+          role: "user",
+          plan: "starter",
+          balance: 0,
+          referred_by: referredBy,
+          referred_at: referredBy ? new Date().toISOString() : null,
+        });
+
+        if (profileError) {
+          setErrorMessage(profileError.message);
+          setLoading(false);
+          return;
+        }
+      }
+
+      localStorage.setItem("ascend_remember_me", "true");
+      sessionStorage.setItem("ascend_session_login", "true");
+
+      if (data.session) {
+        setSuccessMessage(
+          "Account created successfully. Redirecting to dashboard...",
+        );
+
+        setTimeout(() => {
+          router.replace("/dashboard");
+          router.refresh();
+        }, 700);
+
+        return;
+      }
+
+      setSuccessMessage(
+        "Account created successfully. Please check your email to confirm your account.",
+      );
 
       setTimeout(() => {
-        router.replace("/dashboard");
-        router.refresh();
-      }, 700);
+        router.replace("/login");
+      }, 1500);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong. Please try again.",
+      );
 
-      return;
+      setLoading(false);
     }
-
-    setSuccessMessage(
-      "Account created successfully. Please check your email to confirm your account.",
-    );
-
-    setTimeout(() => {
-      router.replace("/login");
-    }, 1500);
   }
 
   async function handleOAuth(provider: "google" | "facebook" | "github") {
     setErrorMessage("");
-    setSuccessMessage("");
+    setSuccessMessage(
+      "Social signup is not fully enabled yet. Please use email registration for now.",
+    );
 
     const origin = window.location.origin;
 
@@ -256,11 +340,13 @@ export default function RegisterPage() {
     });
 
     if (error) {
+      setSuccessMessage("");
       setErrorMessage(error.message);
     }
   }
 
   function handleTelegramSignup() {
+    setSuccessMessage("");
     setErrorMessage(
       "Telegram signup is not enabled yet. Please use email registration for now.",
     );
@@ -328,6 +414,25 @@ export default function RegisterPage() {
                   Fill in the details to get started
                 </p>
               </div>
+
+              {referralCode && referrerPreview && (
+                <div className="mt-6 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-600">
+                  Referral applied from{" "}
+                  {referrerPreview.username ||
+                    `${referrerPreview.firstname || ""} ${
+                      referrerPreview.lastname || ""
+                    }`.trim() ||
+                    "Ascend user"}
+                  .
+                </div>
+              )}
+
+              {referralCode && !referrerPreview && (
+                <div className="mt-6 rounded-2xl border border-yellow-100 bg-yellow-50 px-4 py-3 text-sm font-bold text-yellow-700">
+                  Referral link detected. It will be verified when you create
+                  your account.
+                </div>
+              )}
 
               {errorMessage && (
                 <div className="mt-6 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-600">
