@@ -2,6 +2,7 @@
 
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ToastProvider";
+import { useDisplayCurrency } from "@/lib/useDisplayCurrency";
 import { Star, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -28,6 +29,7 @@ function getPointValue(level: string) {
 
 export default function ResellerPointsCard() {
   const { showToast } = useToast();
+  const { formatAmount } = useDisplayCurrency();
 
   const [userId, setUserId] = useState("");
   const [points, setPoints] = useState(0);
@@ -198,7 +200,7 @@ export default function ResellerPointsCard() {
           </p>
 
           <h4 className="mt-3 text-3xl font-black text-blue-600">
-            ₱{estimatedPhp.toFixed(2)}
+            {formatAmount(estimatedPhp)}
           </h4>
 
           <p className="mt-2 text-xs font-semibold text-slate-400">
@@ -270,7 +272,7 @@ export default function ResellerPointsCard() {
                 </p>
 
                 <h4 className="mt-2 text-3xl font-black text-slate-950">
-                  ₱{convertPhp.toFixed(2)}
+                  {formatAmount(convertPhp)}
                 </h4>
 
                 <p className="mt-2 text-xs font-semibold text-slate-400">
@@ -324,7 +326,7 @@ export default function ResellerPointsCard() {
                       <th className="p-5 text-left font-bold">Date</th>
                       <th className="p-5 text-left font-bold">Points</th>
                       <th className="p-5 text-left font-bold">USD</th>
-                      <th className="p-5 text-left font-bold">PHP</th>
+                      <th className="p-5 text-left font-bold">Amount</th>
                       <th className="p-5 text-left font-bold">Level</th>
                     </tr>
                   </thead>
@@ -348,7 +350,7 @@ export default function ResellerPointsCard() {
                         </td>
 
                         <td className="p-5 font-black text-blue-600">
-                          ₱{Number(item.php_value).toFixed(2)}
+                          {formatAmount(item.php_value)}
                         </td>
 
                         <td className="p-5 text-slate-500">

@@ -640,7 +640,7 @@ export default function SettingsPage() {
                   value={preferredLanguage}
                   onChange={setPreferredLanguage}
                   options={LANGUAGE_OPTIONS}
-                  helper="Saved for future dashboard translations."
+                  helper="UNAVAILABLE"
                 />
 
                 <SelectField
@@ -648,7 +648,7 @@ export default function SettingsPage() {
                   value={preferredTheme}
                   onChange={setPreferredTheme}
                   options={THEME_OPTIONS}
-                  helper="Saved now. Global theme support can be connected later."
+                  helper="UNAVAILABLE"
                 />
               </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { supabase } from "@/lib/supabase";
+import { useDisplayCurrency } from "@/lib/useDisplayCurrency";
 import { useEffect, useState } from "react";
 
 type Order = {
@@ -14,6 +15,7 @@ type Order = {
 
 export default function RecentOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const { formatAmount } = useDisplayCurrency();
 
   async function loadOrders() {
     const { data: authData } = await supabase.auth.getUser();
@@ -96,10 +98,10 @@ export default function RecentOrders() {
                           status === "completed"
                             ? "bg-green-50 text-green-600"
                             : status === "pending"
-                            ? "bg-yellow-50 text-yellow-600"
-                            : status === "cancelled" || status === "canceled"
-                            ? "bg-red-50 text-red-600"
-                            : "bg-blue-50 text-blue-600"
+                              ? "bg-yellow-50 text-yellow-600"
+                              : status === "cancelled" || status === "canceled"
+                                ? "bg-red-50 text-red-600"
+                                : "bg-blue-50 text-blue-600"
                         }`}
                       >
                         {status}
@@ -107,7 +109,7 @@ export default function RecentOrders() {
                     </td>
 
                     <td className="p-5 font-black text-slate-900">
-                      ₱{Number(order.price || 0).toFixed(2)}
+                      {formatAmount(order.price)}
                     </td>
                   </tr>
                 );

@@ -4,6 +4,7 @@ import DashboardGuard from "@/components/DashboardGuard";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import DashboardTopbar from "@/components/DashboardTopbar";
 import { supabase } from "@/lib/supabase";
+import { useDisplayCurrency } from "@/lib/useDisplayCurrency";
 import {
   ArrowRightLeft,
   CheckCircle2,
@@ -120,6 +121,8 @@ export default function ResellerPage() {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [pointsInput, setPointsInput] = useState("100");
   const [message, setMessage] = useState("");
+
+  const { formatAmount } = useDisplayCurrency();
 
   async function loadData() {
     setLoading(true);
@@ -289,13 +292,10 @@ export default function ResellerPage() {
       .from("reseller_point_conversions")
       .insert({
         user_id: user.id,
-
         points_used: pointsToConvert,
         points: pointsToConvert,
-
         amount_credited: phpCredit,
         wallet_credit: phpCredit,
-
         usd_value: usdCredit,
         level_name: currentLevel.name,
         status: "completed",
@@ -327,7 +327,7 @@ export default function ResellerPage() {
     setPointsInput("100");
     setConverting(false);
     await loadData();
-    setMessage(`Converted ${pointsToConvert} points to ₱${formatMoney(phpCredit)}.`);
+    setMessage(`Converted ${pointsToConvert} points to ${formatAmount(phpCredit)}.`);
   }
 
   return (
@@ -377,11 +377,11 @@ export default function ResellerPage() {
 
                   <div className="mt-3 flex flex-wrap items-end gap-2">
                     <p className="text-3xl font-black lg:text-4xl">
-                      ₱{formatMoney(totalSpend)}
+                      {formatAmount(totalSpend)}
                     </p>
 
                     <p className="mb-1 text-xl font-semibold text-blue-100">
-                      / ₱{formatMoney(requiredSpend)}
+                      / {formatAmount(requiredSpend)}
                     </p>
                   </div>
 
@@ -401,7 +401,7 @@ export default function ResellerPage() {
                   <p className="mt-4 text-base font-semibold text-blue-50">
                     {nextLevel ? (
                       <>
-                        ₱{formatMoney(remainingSpend)} more to reach{" "}
+                        {formatAmount(remainingSpend)} more to reach{" "}
                         <span className="font-black text-white">{nextLevel.name}</span>
                       </>
                     ) : (
@@ -436,7 +436,7 @@ export default function ResellerPage() {
                 icon={Star}
                 title="Available Points"
                 value={`${formatCompact(availablePoints)} pts`}
-                subtitle="Earn 1 point every ₱200 spend"
+                subtitle={`Earn 1 point every ${formatAmount(200)} spend`}
                 color="bg-blue-100 text-blue-600"
               />
 
@@ -503,7 +503,7 @@ export default function ResellerPage() {
                             </p>
 
                             <p className="mt-3 text-sm font-bold text-slate-700">
-                              ₱{formatCompact(level.requiredSpend)}
+                              {formatAmount(level.requiredSpend)}
                             </p>
 
                             <p className="mt-2 text-sm font-bold text-slate-700">
@@ -543,7 +543,7 @@ export default function ResellerPage() {
                   <SummaryRow
                     icon={Wallet}
                     label="Total Spent"
-                    value={`₱${formatMoney(totalSpend)}`}
+                    value={formatAmount(totalSpend)}
                   />
                   <SummaryRow
                     icon={TrendingUp}
@@ -553,16 +553,12 @@ export default function ResellerPage() {
                   <SummaryRow
                     icon={Target}
                     label="Required Spend"
-                    value={`₱${formatMoney(requiredSpend)}`}
+                    value={formatAmount(requiredSpend)}
                   />
                   <SummaryRow
                     icon={Flag}
                     label="Remaining to Next Level"
-                    value={
-                      nextLevel
-                        ? `₱${formatMoney(remainingSpend)}`
-                        : "Completed"
-                    }
+                    value={nextLevel ? formatAmount(remainingSpend) : "Completed"}
                   />
                 </div>
               </section>
@@ -632,10 +628,10 @@ export default function ResellerPage() {
 
                   <div className="text-right">
                     <p className="text-xl font-black text-slate-950">
-                      ${usdCredit.toFixed(2)}
+                      {formatAmount(phpCredit)}
                     </p>
                     <p className="text-xs font-bold text-slate-400">
-                      ₱{formatMoney(phpCredit)}
+                      ${usdCredit.toFixed(2)}
                     </p>
                   </div>
                 </div>
@@ -678,6 +674,7 @@ export default function ResellerPage() {
                 <ConversionTable
                   records={history}
                   emptyText="No conversions yet."
+                  formatAmount={formatAmount}
                   compact
                 />
               </section>
@@ -697,7 +694,7 @@ export default function ResellerPage() {
                   <HowToEarnItem
                     icon={ShoppingCart}
                     title="Spend to Earn"
-                    text="Earn 1 point for every ₱200 spent on orders and services."
+                    text={`Earn 1 point for every ${formatAmount(200)} spent on orders and services.`}
                     color="bg-blue-600 text-white"
                   />
 
@@ -750,6 +747,7 @@ export default function ResellerPage() {
                     <ConversionTable
                       records={allHistory}
                       emptyText="No conversion history found."
+                      formatAmount={formatAmount}
                     />
                   )}
                 </div>
@@ -765,10 +763,12 @@ export default function ResellerPage() {
 function ConversionTable({
   records,
   emptyText,
+  formatAmount,
   compact = false,
 }: {
   records: ConversionRecord[];
   emptyText: string;
+  formatAmount: (value: number | string | null | undefined) => string;
   compact?: boolean;
 }) {
   return (
@@ -808,10 +808,7 @@ function ConversionTable({
                   </td>
 
                   <td className="p-4 font-black text-slate-700">
-                    ₱
-                    {formatMoney(
-                      toNumber(item.amount_credited ?? item.wallet_credit),
-                    )}
+                    {formatAmount(toNumber(item.amount_credited ?? item.wallet_credit))}
                   </td>
 
                   <td className="p-4">
@@ -997,13 +994,6 @@ function calculateUsdCredit(points: number, pointValueUsd: number) {
 function toNumber(value: unknown) {
   const number = Number(value || 0);
   return Number.isFinite(number) ? number : 0;
-}
-
-function formatMoney(value: number) {
-  return value.toLocaleString("en-PH", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
 }
 
 function formatCompact(value: number) {

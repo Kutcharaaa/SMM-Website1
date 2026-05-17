@@ -1,27 +1,33 @@
+"use client";
+
+import { useDisplayCurrency } from "@/lib/useDisplayCurrency";
+
 export default function RecentPayments() {
+  const { formatAmount } = useDisplayCurrency();
+
   const payments = [
     {
       id: "#PAY-1001",
       method: "GCash",
-      amount: "₱500.00",
+      amount: 500,
       status: "Completed",
     },
     {
       id: "#PAY-1002",
       method: "PayPal",
-      amount: "₱1,250.00",
+      amount: 1250,
       status: "Pending",
     },
     {
       id: "#PAY-1003",
       method: "Maya",
-      amount: "₱300.00",
+      amount: 300,
       status: "Completed",
     },
   ];
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="flex items-center justify-between border-b border-slate-100 p-6">
         <div>
           <h3 className="text-xl font-black text-slate-950">
@@ -63,7 +69,7 @@ export default function RecentPayments() {
                 </td>
 
                 <td className="p-5 font-black text-slate-900">
-                  {payment.amount}
+                  {formatAmount(payment.amount)}
                 </td>
 
                 <td className="p-5">
