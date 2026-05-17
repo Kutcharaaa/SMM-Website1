@@ -72,7 +72,7 @@ type TransferRecord = {
 type AffiliateLevel = {
   level: number;
   name: string;
-  requiredReferrals: number;
+  requiredDeposits: number;
   commissionRate: number;
   icon: any;
 };
@@ -81,35 +81,35 @@ const AFFILIATE_LEVELS: AffiliateLevel[] = [
   {
     level: 1,
     name: "Starter Affiliate",
-    requiredReferrals: 0,
+    requiredDeposits: 0,
     commissionRate: 1.25,
     icon: Star,
   },
   {
     level: 2,
     name: "Active Affiliate",
-    requiredReferrals: 3,
+    requiredDeposits: 12000,
     commissionRate: 1.5,
     icon: ShieldCheck,
   },
   {
     level: 3,
     name: "Pro Affiliate",
-    requiredReferrals: 10,
+    requiredDeposits: 35000,
     commissionRate: 2,
     icon: Crown,
   },
   {
     level: 4,
     name: "Elite Affiliate",
-    requiredReferrals: 25,
+    requiredDeposits: 80000,
     commissionRate: 2.5,
     icon: Diamond,
   },
   {
     level: 5,
     name: "Ascend Partner",
-    requiredReferrals: 50,
+    requiredDeposits: 200000,
     commissionRate: 3,
     icon: Trophy,
   },
@@ -132,9 +132,9 @@ function formatDate(value: string) {
   });
 }
 
-function getCurrentAffiliateLevel(totalReferrals: number) {
+function getCurrentAffiliateLevel(totalReferralDeposits: number) {
   return AFFILIATE_LEVELS.reduce((current, level) => {
-    if (totalReferrals >= level.requiredReferrals) {
+    if (totalReferralDeposits >= level.requiredDeposits) {
       return level;
     }
 
@@ -343,11 +343,11 @@ export default function AffiliatesPage() {
     0,
   );
 
-  const currentLevel = getCurrentAffiliateLevel(totalReferrals);
+  const currentLevel = getCurrentAffiliateLevel(totalReferralDeposits);
   const nextLevel = getNextAffiliateLevel(currentLevel.level);
 
-  const remainingToNext = nextLevel
-    ? Math.max(0, nextLevel.requiredReferrals - totalReferrals)
+  const remainingDepositsToNext = nextLevel
+    ? Math.max(0, nextLevel.requiredDeposits - totalReferralDeposits)
     : 0;
 
   const progressPercent = nextLevel
@@ -355,8 +355,8 @@ export default function AffiliatesPage() {
         100,
         Math.max(
           0,
-          ((totalReferrals - currentLevel.requiredReferrals) /
-            (nextLevel.requiredReferrals - currentLevel.requiredReferrals)) *
+          ((totalReferralDeposits - currentLevel.requiredDeposits) /
+            (nextLevel.requiredDeposits - currentLevel.requiredDeposits)) *
             100,
         ),
       )
@@ -586,7 +586,7 @@ export default function AffiliatesPage() {
                   </h2>
 
                   <p className="mt-2 text-sm font-semibold text-blue-100">
-                    Current affiliate level rate
+                    Based on total referred funds
                   </p>
                 </div>
 
@@ -598,16 +598,18 @@ export default function AffiliatesPage() {
 
                     <p className="text-sm font-black">
                       {nextLevel
-                        ? `${totalReferrals} / ${nextLevel.requiredReferrals}`
+                        ? `${formatAmount(totalReferralDeposits)} / ${formatAmount(
+                            nextLevel.requiredDeposits,
+                          )}`
                         : "Max Level"}
                     </p>
                   </div>
 
                   <h3 className="mt-3 text-lg font-black">
                     {nextLevel
-                      ? `${remainingToNext} more referral${
-                          remainingToNext === 1 ? "" : "s"
-                        } to unlock ${nextLevel.name}`
+                      ? `${formatAmount(
+                          remainingDepositsToNext,
+                        )} more referred funds to unlock ${nextLevel.name}`
                       : "You reached the highest affiliate level."}
                   </h3>
 
@@ -620,7 +622,7 @@ export default function AffiliatesPage() {
 
                   <p className="mt-3 flex items-center gap-2 text-sm font-semibold text-blue-50">
                     <CheckCircle2 size={17} />
-                    Commission applies to all approved referred deposits.
+                    Level increases from total approved deposits by referrals.
                   </p>
                 </div>
 
@@ -650,9 +652,9 @@ export default function AffiliatesPage() {
               />
 
               <StatCard
-                title="Referral Deposits"
+                title="Referral Funds"
                 value={formatAmount(totalReferralDeposits)}
-                subtitle="Approved add funds from referrals"
+                subtitle="Total approved add funds"
                 icon={ShieldCheck}
                 color="green"
               />
@@ -705,7 +707,8 @@ export default function AffiliatesPage() {
                     </h2>
 
                     <p className="mt-1 text-sm font-semibold text-slate-500">
-                      The more users you refer, the higher your commission rate.
+                      The more approved funds your referrals add, the higher your
+                      commission rate.
                     </p>
                   </div>
                 </div>
@@ -717,7 +720,8 @@ export default function AffiliatesPage() {
                     <div className="relative grid gap-4 md:grid-cols-5">
                       {AFFILIATE_LEVELS.map((level) => {
                         const Icon = level.icon;
-                        const active = totalReferrals >= level.requiredReferrals;
+                        const active =
+                          totalReferralDeposits >= level.requiredDeposits;
                         const current = level.level === currentLevel.level;
 
                         return (
@@ -752,9 +756,7 @@ export default function AffiliatesPage() {
                             </p>
 
                             <p className="mt-2 text-sm font-semibold text-slate-500">
-                              {level.requiredReferrals === 0
-                                ? "0 referrals"
-                                : `${level.requiredReferrals}+ referrals`}
+                              {formatAmount(level.requiredDeposits)}
                             </p>
 
                             {current && (
@@ -774,14 +776,13 @@ export default function AffiliatesPage() {
 
                       <div>
                         <h3 className="font-black text-blue-900">
-                          New Affiliate Rule
+                          Level Rule
                         </h3>
 
                         <p className="mt-1 text-sm font-semibold leading-6 text-blue-700">
-                          Referrals no longer need to reach ₱1,000 before you
-                          earn commission. Every approved add fund from referred
-                          users can generate commission based on your current
-                          affiliate rate.
+                          Affiliate levels are now based on the total approved
+                          add funds from all users registered using your referral
+                          link. Every approved add fund can generate commission.
                         </p>
                       </div>
                     </div>
@@ -796,7 +797,7 @@ export default function AffiliatesPage() {
                   <SummaryRow label="Current Level" value={currentLevel.name} />
                   <SummaryRow label="Total Referrals" value={String(totalReferrals)} />
                   <SummaryRow
-                    label="Referral Deposits"
+                    label="Referral Funds"
                     value={formatAmount(totalReferralDeposits)}
                   />
                   <SummaryRow
@@ -822,9 +823,9 @@ export default function AffiliatesPage() {
                     <p className="text-sm font-semibold text-blue-100">
                       Need{" "}
                       <span className="font-black text-white">
-                        {remainingToNext}
+                        {formatAmount(remainingDepositsToNext)}
                       </span>{" "}
-                      more referral{remainingToNext === 1 ? "" : "s"} to reach{" "}
+                      more referred funds to reach{" "}
                       <span className="font-black text-white">
                         {nextLevel.name}
                       </span>
@@ -908,7 +909,7 @@ export default function AffiliatesPage() {
                     <thead className="bg-slate-50 text-slate-500">
                       <tr>
                         <th className="p-5 text-left font-black">User</th>
-                        <th className="p-5 text-left font-black">Deposits</th>
+                        <th className="p-5 text-left font-black">Funds Added</th>
                         <th className="p-5 text-left font-black">Commission</th>
                         <th className="p-5 text-left font-black">Status</th>
                       </tr>
@@ -977,7 +978,7 @@ export default function AffiliatesPage() {
                     </h2>
 
                     <p className="mt-1 text-sm font-semibold text-slate-500">
-                      Commissions earned from referred deposits.
+                      Commissions earned from referred add funds.
                     </p>
                   </div>
 
@@ -994,7 +995,7 @@ export default function AffiliatesPage() {
                     <thead className="bg-slate-50 text-slate-500">
                       <tr>
                         <th className="p-5 text-left font-black">Referral</th>
-                        <th className="p-5 text-left font-black">Deposit</th>
+                        <th className="p-5 text-left font-black">Funds Added</th>
                         <th className="p-5 text-left font-black">Rate</th>
                         <th className="p-5 text-left font-black">Commission</th>
                         <th className="p-5 text-left font-black">Status</th>
@@ -1209,7 +1210,7 @@ export default function AffiliatesPage() {
                   <thead className="sticky top-0 bg-slate-50 text-slate-500">
                     <tr>
                       <th className="p-4 text-left font-black">User</th>
-                      <th className="p-4 text-left font-black">Deposits</th>
+                      <th className="p-4 text-left font-black">Funds Added</th>
                       <th className="p-4 text-left font-black">Commission</th>
                       <th className="p-4 text-left font-black">Date</th>
                     </tr>
@@ -1261,7 +1262,7 @@ export default function AffiliatesPage() {
                   <thead className="sticky top-0 bg-slate-50 text-slate-500">
                     <tr>
                       <th className="p-4 text-left font-black">Referral</th>
-                      <th className="p-4 text-left font-black">Deposit</th>
+                      <th className="p-4 text-left font-black">Funds Added</th>
                       <th className="p-4 text-left font-black">Rate</th>
                       <th className="p-4 text-left font-black">Commission</th>
                       <th className="p-4 text-left font-black">Status</th>
