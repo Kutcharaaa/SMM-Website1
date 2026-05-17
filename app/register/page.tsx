@@ -17,7 +17,7 @@ import {
   User,
   UserPlus,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 const benefits = [
   {
@@ -49,7 +49,7 @@ type ReferrerData = {
   lastname?: string | null;
 };
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -852,5 +852,29 @@ function YouTubeIcon({ size = 24 }: { size?: number }) {
     <svg width={size} height={size} viewBox="0 0 256 256" fill="#FF0000">
       <path d="M234.3 73.1a29.2 29.2 0 0 0-20.5-20.6C195.7 47.6 128 47.6 128 47.6s-67.7 0-85.8 4.9a29.2 29.2 0 0 0-20.5 20.6C16.8 91.3 16.8 128 16.8 128s0 36.7 4.9 54.9a29.2 29.2 0 0 0 20.5 20.6c18.1 4.9 85.8 4.9 85.8 4.9s67.7 0 85.8-4.9a29.2 29.2 0 0 0 20.5-20.6c4.9-18.2 4.9-54.9 4.9-54.9s0-36.7-4.9-54.9ZM105.8 162.6V93.4L164 128l-58.2 34.6Z" />
     </svg>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-[#f6f9ff] text-slate-950">
+          <PublicNavbar />
+
+          <div className="flex min-h-[calc(100vh-96px)] items-center justify-center px-5">
+            <div className="rounded-3xl border border-slate-200 bg-white px-8 py-6 text-center shadow-sm">
+              <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
+
+              <p className="mt-4 text-sm font-bold text-slate-500">
+                Loading register page...
+              </p>
+            </div>
+          </div>
+        </main>
+      }
+    >
+      <RegisterPageContent />
+    </Suspense>
   );
 }
