@@ -124,7 +124,7 @@ export default function PublicNavbar() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/95 backdrop-blur-xl">
-      <div className="mx-auto flex h-24 w-full max-w-[1580px] items-center justify-between gap-6 px-6 xl:px-10 2xl:px-14">
+      <div className="mx-auto flex h-24 w-full max-w-[1780px] items-center justify-between gap-6 px-6 xl:px-10 2xl:px-14">
         <Link href="/" className="flex shrink-0 items-center gap-3">
           <img
             src="/logo.png"
