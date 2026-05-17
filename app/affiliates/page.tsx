@@ -8,16 +8,16 @@ import {
   BarChart3,
   CheckCircle2,
   Crown,
-  Gem,
   Gift,
   Headphones,
-  Lock,
+  Link2,
+  Megaphone,
   Rocket,
   ShieldCheck,
   Sparkles,
   Star,
-  Tag,
   Trophy,
+  UserPlus,
   Users,
   Wallet,
   X,
@@ -25,84 +25,74 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-const benefits = [
+const steps = [
   {
-    title: "Earn Points",
-    text: "Earn points on every order you place as a reseller.",
-    icon: Star,
+    number: "01",
+    title: "Share Your Link",
+    text: "Share your permanent affiliate link with your audience.",
+    icon: Link2,
     color: "bg-blue-50 text-blue-600",
   },
   {
-    title: "Unlock Discounts",
-    text: "Higher reseller level means better order discounts.",
-    icon: Tag,
+    number: "02",
+    title: "Referral Registers",
+    text: "People click your link and register on Ascend Service.",
+    icon: UserPlus,
     color: "bg-green-50 text-green-600",
   },
   {
-    title: "Convert to Balance",
-    text: "Convert reseller points into wallet balance anytime.",
+    number: "03",
+    title: "Referral Adds Funds",
+    text: "Your referral adds funds to their account.",
     icon: Wallet,
     color: "bg-purple-50 text-purple-600",
   },
   {
-    title: "Child Panel Access",
-    text: "Unlock child panel access and manage your clients easily.",
-    icon: Users,
+    number: "04",
+    title: "You Earn Commission",
+    text: "You earn commission from approved add funds.",
+    icon: Gift,
     color: "bg-orange-50 text-orange-600",
   },
 ];
 
-const resellerLevels = [
+const affiliateLevels = [
   {
-    name: "New Reseller",
-    spend: "₱0.00",
-    discount: "0% Discount",
-    convert: "100 Points = $1.00",
-    icon: Users,
+    name: "Starter Affiliate",
+    funds: "₱0",
+    rate: "1.25%",
+    icon: UserPlus,
     border: "border-blue-200",
     accent: "bg-blue-50 text-blue-600",
   },
   {
-    name: "Active Reseller",
-    spend: "₱20,000.00",
-    discount: "1% Discount",
-    convert: "100 Points = $1.00",
+    name: "Active Affiliate",
+    funds: "₱12,000",
+    rate: "1.5%",
     icon: ShieldCheck,
     border: "border-green-200",
     accent: "bg-green-50 text-green-600",
   },
   {
-    name: "Pro Reseller",
-    spend: "₱60,000.00",
-    discount: "2% Discount",
-    convert: "100 Points = $1.25",
+    name: "Pro Affiliate",
+    funds: "₱35,000",
+    rate: "2%",
     icon: Crown,
     border: "border-purple-200",
     accent: "bg-purple-50 text-purple-600",
   },
   {
-    name: "Master Reseller",
-    spend: "₱150,000.00",
-    discount: "3% Discount",
-    convert: "100 Points = $1.50",
-    icon: Gift,
-    border: "border-orange-200",
-    accent: "bg-orange-50 text-orange-600",
-  },
-  {
-    name: "Elite Partner",
-    spend: "₱250,000.00",
-    discount: "4% Discount",
-    convert: "100 Points = $1.75",
-    icon: Gem,
+    name: "Elite Affiliate",
+    funds: "₱80,000",
+    rate: "2.5%",
+    icon: Star,
     border: "border-orange-200",
     accent: "bg-orange-50 text-orange-600",
   },
   {
     name: "Ascend Partner",
-    spend: "₱500,000.00",
-    discount: "5% Discount",
-    convert: "100 Points = $2.00",
+    funds: "₱200,000",
+    rate: "3%",
     icon: Trophy,
     border: "border-blue-200",
     accent: "bg-blue-50 text-blue-600",
@@ -111,61 +101,61 @@ const resellerLevels = [
 
 const comparisonRows = [
   {
-    feature: "Purchase Discount",
-    normal: "0%",
-    reseller: "Up to 5%",
+    feature: "Discount on Orders",
+    normal: false,
+    affiliate: false,
   },
   {
-    feature: "Earn Points",
+    feature: "Referral Commission",
     normal: false,
-    reseller: true,
+    affiliate: true,
   },
   {
-    feature: "Convert Points to Balance",
+    feature: "Lifetime Earnings",
     normal: false,
-    reseller: true,
+    affiliate: true,
   },
   {
-    feature: "Child Panel Access",
+    feature: "Referral Tracking",
     normal: false,
-    reseller: true,
-  },
-  {
-    feature: "Higher Profit",
-    normal: false,
-    reseller: true,
+    affiliate: true,
   },
   {
     feature: "Business Growth",
     normal: "Limited",
-    reseller: "Unlimited",
+    affiliate: "Unlimited",
+  },
+  {
+    feature: "Dedicated Support",
+    normal: "Standard",
+    affiliate: "Priority",
   },
 ];
 
 const stats = [
   {
-    label: "Active Resellers",
-    value: "10K+",
+    label: "Active Affiliates",
+    value: "8,620+",
     icon: Users,
   },
   {
-    label: "Orders Completed",
-    value: "1M+",
+    label: "Total Commission Paid",
+    value: "₱2.45M+",
+    icon: Wallet,
+  },
+  {
+    label: "Total Referrals",
+    value: "45,680+",
     icon: BarChart3,
   },
   {
-    label: "Uptime",
-    value: "99.9%",
-    icon: ShieldCheck,
-  },
-  {
-    label: "Support",
+    label: "Support Available",
     value: "24/7",
     icon: Headphones,
   },
 ];
 
-export default function ResellerPage() {
+export default function AffiliatesPage() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
 
@@ -193,9 +183,9 @@ export default function ResellerPage() {
     };
   }, []);
 
-  const primaryHref = loggedIn ? "/dashboard/reseller" : "/register";
-  const primaryLabel = loggedIn ? "View Reseller Dashboard" : "Get Started Now";
-  const dashboardHref = loggedIn ? "/dashboard/reseller" : "/login";
+  const primaryHref = loggedIn ? "/dashboard/affiliates" : "/register";
+  const primaryLabel = loggedIn ? "View Affiliate Dashboard" : "Get Started Now";
+  const dashboardHref = loggedIn ? "/dashboard/affiliates" : "/login";
   const dashboardLabel = loggedIn ? "View Dashboard" : "Login First";
 
   return (
@@ -213,19 +203,19 @@ export default function ResellerPage() {
         <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-12 px-5 py-16 lg:grid-cols-[0.95fr_1.05fr] lg:px-8 lg:py-20">
           <div>
             <div className="inline-flex items-center gap-2 rounded-2xl border border-blue-100 bg-white px-4 py-2 text-sm font-black uppercase tracking-wide text-blue-600 shadow-sm">
-              <Crown size={17} />
-              Reseller Program
+              <Users size={17} />
+              Affiliate Program
             </div>
 
             <h1 className="mt-8 max-w-3xl text-5xl font-black leading-[1.08] tracking-tight text-slate-950 md:text-6xl">
-              Start Your Own{" "}
-              <span className="text-blue-600">SMM Reseller</span> Business
+              Earn Commission by Sharing{" "}
+              <span className="text-blue-600">Ascend Service</span>
             </h1>
 
             <p className="mt-6 max-w-2xl text-lg font-medium leading-8 text-slate-600">
-              Join Ascend Service Reseller Program and unlock exclusive
-              discounts, earn points, increase your profit, and grow your
-              business with our powerful reseller system.
+              Join our affiliate program and earn lifetime commission every time
+              your referrals add funds. The more your referrals grow, the more
+              you earn.
             </p>
 
             <div className="mt-8 flex flex-col gap-4 sm:flex-row">
@@ -242,7 +232,7 @@ export default function ResellerPage() {
                 href={dashboardHref}
                 className="inline-flex items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-8 py-4 text-base font-black text-slate-900 shadow-sm transition hover:border-blue-300 hover:text-blue-600"
               >
-                <Lock size={20} />
+                <BarChart3 size={20} />
                 {checkingSession ? "Loading..." : dashboardLabel}
               </Link>
             </div>
@@ -250,42 +240,38 @@ export default function ResellerPage() {
             <div className="mt-10 grid max-w-2xl gap-5 sm:grid-cols-3">
               <MiniBenefit
                 icon={Zap}
-                title="Instant Access"
-                text="Start immediately"
+                title="Instant Approval"
+                text="Start earning right away"
               />
 
               <MiniBenefit
-                icon={ShieldCheck}
-                title="Secure & Reliable"
-                text="100% Safe"
+                icon={Wallet}
+                title="Lifetime Commission"
+                text="Earn from referrals"
               />
 
               <MiniBenefit
                 icon={Headphones}
                 title="24/7 Support"
-                text="Always Here"
+                text="We're always here"
               />
             </div>
           </div>
 
           <div className="relative mx-auto w-full max-w-[620px]">
-            <div className="absolute -left-10 top-16 hidden h-16 w-16 items-center justify-center rounded-full bg-blue-600 text-white shadow-2xl shadow-blue-600/30 lg:flex">
-              <Users size={30} />
-            </div>
-
             <div className="absolute -right-6 top-7 hidden rounded-3xl bg-blue-600 p-5 text-white shadow-2xl shadow-blue-600/30 lg:block">
-              <BarChart3 size={38} />
+              <Users size={38} />
             </div>
 
             <div className="absolute -right-2 bottom-16 hidden rounded-3xl bg-blue-600 p-5 text-white shadow-2xl shadow-blue-600/30 lg:block">
-              <Crown size={38} />
+              <Megaphone size={38} />
             </div>
 
             <div className="rounded-[2rem] border border-slate-200 bg-white/95 p-6 shadow-2xl shadow-blue-950/10 backdrop-blur-xl">
               <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-black text-slate-950">
-                    Reseller Dashboard
+                    Affiliate Dashboard
                   </h2>
 
                   <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-600">
@@ -294,82 +280,82 @@ export default function ResellerPage() {
                 </div>
 
                 <div className="mt-6 grid gap-4 sm:grid-cols-4">
-                  <PreviewStat title="Wallet Balance" value="₱5.00" />
-                  <PreviewStat title="Total Points" value="12,580" />
-                  <PreviewStat title="Total Orders" value="1,256" />
-                  <PreviewStat title="Total Spent" value="₱25,680" />
+                  <PreviewStat title="Total Referrals" value="156" />
+                  <PreviewStat title="Referral Funds" value="₱45,680" />
+                  <PreviewStat title="Total Commission" value="₱1,256" />
+                  <PreviewStat title="Available" value="₱320" />
                 </div>
 
                 <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white">
                   <div className="flex items-center justify-between border-b border-slate-100 p-4">
                     <h3 className="font-black text-slate-950">
-                      Recent Orders
+                      Recent Referrals
                     </h3>
 
                     <span className="text-xs font-black text-blue-600">
-                      View All Orders
+                      View All
                     </span>
                   </div>
 
                   <div className="divide-y divide-slate-100">
                     {[
                       {
-                        id: "#ASD12345",
-                        service: "Instagram Followers",
-                        qty: "1,000",
-                        amount: "₱250.00",
+                        user: "@john_doe",
+                        date: "May 20, 2026",
+                        funds: "₱2,000.00",
+                        commission: "₱25.00",
                         status: "Completed",
                         color: "bg-green-50 text-green-600",
                       },
                       {
-                        id: "#ASD12344",
-                        service: "TikTok Likes",
-                        qty: "500",
-                        amount: "₱45.00",
-                        status: "Processing",
-                        color: "bg-blue-50 text-blue-600",
-                      },
-                      {
-                        id: "#ASD12343",
-                        service: "YouTube Views",
-                        qty: "10,000",
-                        amount: "₱120.00",
+                        user: "@sarah_123",
+                        date: "May 19, 2026",
+                        funds: "₱1,500.00",
+                        commission: "₱18.75",
                         status: "Completed",
                         color: "bg-green-50 text-green-600",
                       },
                       {
-                        id: "#ASD12342",
-                        service: "Telegram Members",
-                        qty: "1,000",
-                        amount: "₱350.00",
+                        user: "@mark_xyz",
+                        date: "May 18, 2026",
+                        funds: "₱3,000.00",
+                        commission: "₱37.50",
+                        status: "Completed",
+                        color: "bg-green-50 text-green-600",
+                      },
+                      {
+                        user: "@james_007",
+                        date: "May 17, 2026",
+                        funds: "₱1,000.00",
+                        commission: "₱12.50",
                         status: "Pending",
                         color: "bg-orange-50 text-orange-600",
                       },
-                    ].map((order) => (
+                    ].map((row) => (
                       <div
-                        key={order.id}
-                        className="grid grid-cols-[90px_1fr_80px_90px_100px] items-center gap-3 p-4 text-xs"
+                        key={row.user}
+                        className="grid grid-cols-[1fr_100px_90px_90px_100px] items-center gap-3 p-4 text-xs"
                       >
-                        <span className="font-black text-slate-500">
-                          {order.id}
-                        </span>
-
-                        <span className="font-black text-slate-950">
-                          {order.service}
+                        <span className="font-black text-slate-600">
+                          {row.user}
                         </span>
 
                         <span className="font-bold text-slate-500">
-                          {order.qty}
+                          {row.date}
                         </span>
 
                         <span className="font-black text-slate-950">
-                          {order.amount}
+                          {row.funds}
+                        </span>
+
+                        <span className="font-black text-slate-950">
+                          {row.commission}
                         </span>
 
                         <span
-                          className={`rounded-full px-3 py-1 text-center font-black ${order.color}`}
+                          className={`rounded-full px-3 py-1 text-center font-black ${row.color}`}
                         >
-                          {order.status}
+                          {row.status}
                         </span>
                       </div>
                     ))}
@@ -381,46 +367,54 @@ export default function ResellerPage() {
         </div>
       </section>
 
-      {/* Benefits */}
+      {/* How It Works */}
       <section className="bg-white px-5 py-16 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="text-center">
             <p className="text-xs font-black uppercase tracking-[0.22em] text-blue-600">
-              Reseller Benefits
+              How It Works
             </p>
 
             <h2 className="mt-3 text-4xl font-black text-slate-950">
-              Why Become a Reseller?
+              Simple Steps, Unlimited Earnings
             </h2>
 
             <p className="mx-auto mt-3 max-w-2xl text-base font-medium leading-7 text-slate-500">
-              Get more with our reseller program and maximize your earning
-              potential.
+              It is easy to start earning with our affiliate program.
             </p>
           </div>
 
-          <div className="mt-10 grid gap-5 md:grid-cols-4">
-            {benefits.map((benefit) => {
-              const Icon = benefit.icon;
+          <div className="mt-10 grid gap-5 lg:grid-cols-4">
+            {steps.map((step, index) => {
+              const Icon = step.icon;
 
               return (
-                <div
-                  key={benefit.title}
-                  className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm transition hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-950/5"
-                >
-                  <div
-                    className={`mx-auto flex h-20 w-20 items-center justify-center rounded-full ${benefit.color}`}
-                  >
-                    <Icon size={34} />
+                <div key={step.title} className="relative">
+                  {index !== steps.length - 1 && (
+                    <div className="absolute -right-4 top-1/2 z-10 hidden -translate-y-1/2 text-slate-300 lg:block">
+                      <ArrowRight size={26} />
+                    </div>
+                  )}
+
+                  <div className="h-full rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm transition hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-950/5">
+                    <div
+                      className={`mx-auto flex h-20 w-20 items-center justify-center rounded-full ${step.color}`}
+                    >
+                      <Icon size={34} />
+                    </div>
+
+                    <p className="mt-6 text-xs font-black text-blue-600">
+                      {step.number}
+                    </p>
+
+                    <h3 className="mt-2 text-xl font-black text-slate-950">
+                      {step.title}
+                    </h3>
+
+                    <p className="mx-auto mt-3 max-w-[220px] text-sm font-semibold leading-6 text-slate-500">
+                      {step.text}
+                    </p>
                   </div>
-
-                  <h3 className="mt-7 text-xl font-black text-slate-950">
-                    {benefit.title}
-                  </h3>
-
-                  <p className="mx-auto mt-3 max-w-[220px] text-sm font-semibold leading-6 text-slate-500">
-                    {benefit.text}
-                  </p>
                 </div>
               );
             })}
@@ -433,33 +427,32 @@ export default function ResellerPage() {
         <div className="mx-auto max-w-7xl">
           <div className="text-center">
             <p className="text-xs font-black uppercase tracking-[0.22em] text-blue-600">
-              Reseller Levels
+              Affiliate Levels
             </p>
 
             <h2 className="mt-3 text-4xl font-black text-slate-950">
-              Reseller Levels & Benefits
+              Affiliate Level Path
             </h2>
 
             <p className="mx-auto mt-3 max-w-2xl text-base font-medium leading-7 text-slate-500">
-              The more you grow, the more you earn. Level up and unlock bigger
-              rewards.
+              Grow your referred funds and unlock higher commission rates.
             </p>
           </div>
 
-          <div className="mx-auto mt-10 grid max-w-7xl gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-            {resellerLevels.map((level, index) => {
+          <div className="mx-auto mt-10 grid max-w-7xl gap-5 sm:grid-cols-2 lg:grid-cols-5">
+            {affiliateLevels.map((level, index) => {
               const Icon = level.icon;
 
               return (
                 <div key={level.name} className="relative">
-                  {index !== resellerLevels.length - 1 && (
-                    <div className="absolute -right-4 top-1/2 z-10 hidden -translate-y-1/2 text-slate-300 xl:block">
+                  {index !== affiliateLevels.length - 1 && (
+                    <div className="absolute -right-4 top-1/2 z-10 hidden -translate-y-1/2 text-slate-300 lg:block">
                       <ArrowRight size={24} />
                     </div>
                   )}
 
                   <div
-                    className={`h-full rounded-3xl border ${level.border} bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-950/5`}
+                    className={`h-full rounded-3xl border ${level.border} bg-white p-6 text-center shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-950/5`}
                   >
                     <div
                       className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full ${level.accent}`}
@@ -467,164 +460,168 @@ export default function ResellerPage() {
                       <Icon size={30} />
                     </div>
 
-                    <h3 className="mt-5 text-center text-lg font-black text-slate-950">
+                    <h3 className="mt-5 text-lg font-black text-slate-950">
                       {level.name}
                     </h3>
 
-                    <p className="mt-3 text-center text-sm font-black text-slate-400">
-                      {level.spend}
+                    <p className="mt-3 text-sm font-black text-slate-400">
+                      {level.funds}
                     </p>
 
-                    <div className="mt-6 space-y-4 text-sm">
-                      <div>
-                        <p className="font-black text-slate-400">Discount</p>
-                        <p className="font-black text-slate-950">
-                          {level.discount}
-                        </p>
-                      </div>
+                    <p className="mt-5 text-xs font-bold text-slate-400">
+                      Commission Rate
+                    </p>
 
-                      <div>
-                        <p className="font-black text-slate-400">
-                          Convert Rate
-                        </p>
-                        <p className="font-black text-slate-950">
-                          {level.convert}
-                        </p>
-                      </div>
-                    </div>
+                    <h4 className="mt-1 text-2xl font-black text-blue-600">
+                      {level.rate}
+                    </h4>
+
+                    <span className="mt-5 inline-flex rounded-xl bg-slate-100 px-3 py-1 text-xs font-black text-slate-500">
+                      Lifetime Commission
+                    </span>
                   </div>
                 </div>
               );
             })}
           </div>
+
+          <p className="mt-6 text-center text-sm font-semibold text-slate-500">
+            Levels are based on the total approved funds added by all your
+            referrals.
+          </p>
         </div>
       </section>
 
-      {/* Normal vs Reseller */}
+      {/* Normal vs Affiliate */}
       <section className="bg-white px-5 py-16 lg:px-8">
         <div className="mx-auto max-w-7xl">
-          <div className="text-center">
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-blue-600">
-              Normal User vs Reseller
-            </p>
-
-            <h2 className="mt-3 text-4xl font-black text-slate-950">
-              Choose the Smarter Way to Grow
-            </h2>
-
-            <p className="mx-auto mt-3 max-w-2xl text-base font-medium leading-7 text-slate-500">
-              See the difference and start earning more as a reseller.
-            </p>
-          </div>
-
-          <div className="mx-auto mt-10 max-w-6xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-blue-950/5">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50">
-                    <th className="p-5 text-left font-black text-slate-950">
-                      Features
-                    </th>
-
-                    <th className="p-5 text-center font-black text-slate-950">
-                      Normal User
-                    </th>
-
-                    <th className="bg-blue-50 p-5 text-center font-black text-blue-600">
-                      Reseller
-                    </th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {comparisonRows.map((row) => (
-                    <tr
-                      key={row.feature}
-                      className="border-b border-slate-100 last:border-b-0"
-                    >
-                      <td className="p-5 font-black text-slate-700">
-                        {row.feature}
-                      </td>
-
-                      <td className="p-5 text-center font-bold text-slate-500">
-                        {typeof row.normal === "boolean" ? (
-                          row.normal ? (
-                            <CheckCircle2 className="mx-auto text-green-600" />
-                          ) : (
-                            <X className="mx-auto text-red-500" />
-                          )
-                        ) : (
-                          row.normal
-                        )}
-                      </td>
-
-                      <td className="bg-blue-50/50 p-5 text-center font-black text-blue-600">
-                        {typeof row.reseller === "boolean" ? (
-                          row.reseller ? (
-                            <CheckCircle2 className="mx-auto text-green-600" />
-                          ) : (
-                            <X className="mx-auto text-red-500" />
-                          )
-                        ) : (
-                          row.reseller
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div className="mt-12 overflow-hidden rounded-[2rem] bg-gradient-to-r from-blue-600 to-blue-700 p-8 text-white shadow-2xl shadow-blue-600/20 lg:p-10">
-            <div className="grid items-center gap-8 lg:grid-cols-[1fr_360px]">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-100">
-                  Ready to start?
+          <div className="grid gap-8 lg:grid-cols-[1fr_1fr]">
+            <div>
+              <div className="text-center">
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-blue-600">
+                  Normal User vs Affiliate
                 </p>
 
-                <h2 className="mt-3 max-w-2xl text-4xl font-black tracking-tight md:text-5xl">
-                  Start Your Reseller Journey Today
+                <h2 className="mt-3 text-4xl font-black text-slate-950">
+                  Choose the Smarter Earning Path
                 </h2>
 
-                <p className="mt-4 max-w-2xl text-base font-semibold leading-7 text-blue-50">
-                  Join thousands of successful resellers and build your
-                  profitable SMM business with Ascend Service today.
+                <p className="mx-auto mt-3 max-w-2xl text-base font-medium leading-7 text-slate-500">
+                  See why becoming an affiliate is a better way to earn from
+                  referrals.
                 </p>
+              </div>
 
-                <div className="mt-7 flex flex-col gap-4 sm:flex-row">
-                  <Link
-                    href={primaryHref}
-                    className="inline-flex items-center justify-center gap-3 rounded-2xl bg-white px-7 py-4 text-sm font-black text-blue-600 transition hover:bg-blue-50"
-                  >
-                    <Rocket size={18} />
-                    {checkingSession ? "Loading..." : primaryLabel}
-                  </Link>
+              <div className="mt-8 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-blue-950/5">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[620px] text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200 bg-slate-50">
+                        <th className="p-5 text-left font-black text-slate-950">
+                          Features
+                        </th>
+
+                        <th className="p-5 text-center font-black text-slate-950">
+                          Normal User
+                        </th>
+
+                        <th className="bg-blue-50 p-5 text-center font-black text-blue-600">
+                          Affiliate
+                        </th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {comparisonRows.map((row) => (
+                        <tr
+                          key={row.feature}
+                          className="border-b border-slate-100 last:border-b-0"
+                        >
+                          <td className="p-5 font-black text-slate-700">
+                            {row.feature}
+                          </td>
+
+                          <td className="p-5 text-center font-bold text-slate-500">
+                            {typeof row.normal === "boolean" ? (
+                              row.normal ? (
+                                <CheckCircle2 className="mx-auto text-green-600" />
+                              ) : (
+                                <X className="mx-auto text-red-500" />
+                              )
+                            ) : (
+                              row.normal
+                            )}
+                          </td>
+
+                          <td className="bg-blue-50/50 p-5 text-center font-black text-blue-600">
+                            {typeof row.affiliate === "boolean" ? (
+                              row.affiliate ? (
+                                <CheckCircle2 className="mx-auto text-green-600" />
+                              ) : (
+                                <X className="mx-auto text-red-500" />
+                              )
+                            ) : (
+                              row.affiliate
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-end">
+              <div className="w-full overflow-hidden rounded-[2rem] bg-gradient-to-r from-blue-600 to-blue-700 p-8 text-white shadow-2xl shadow-blue-600/20 lg:p-10">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-100">
+                    Start earning
+                  </p>
+
+                  <h2 className="mt-3 max-w-xl text-4xl font-black tracking-tight md:text-5xl">
+                    Start Earning Today!
+                  </h2>
+
+                  <p className="mt-4 max-w-xl text-base font-semibold leading-7 text-blue-50">
+                    Join thousands of successful affiliates and start earning
+                    lifetime commission from your referrals.
+                  </p>
+
+                  <div className="mt-7 flex flex-col gap-4 sm:flex-row">
+                    <Link
+                      href={primaryHref}
+                      className="inline-flex items-center justify-center gap-3 rounded-2xl bg-white px-7 py-4 text-sm font-black text-blue-600 transition hover:bg-blue-50"
+                    >
+                      <Rocket size={18} />
+                      {checkingSession ? "Loading..." : primaryLabel}
+                    </Link>
+                  </div>
 
                   <Link
                     href="/terms"
-                    className="inline-flex items-center justify-center gap-3 rounded-2xl border border-white/20 bg-white/10 px-7 py-4 text-sm font-black text-white transition hover:bg-white/15"
+                    className="mt-5 inline-flex items-center gap-2 text-sm font-black text-blue-100 transition hover:text-white"
                   >
-                    View Reseller Terms
-                    <ArrowRight size={18} />
+                    View Affiliate Terms
+                    <ArrowRight size={16} />
                   </Link>
                 </div>
-              </div>
 
-              <div className="relative hidden h-[220px] lg:block">
-                <div className="absolute bottom-0 right-10 h-36 w-52 rounded-[2rem] bg-white/15 shadow-2xl" />
-                <div className="absolute bottom-6 right-20 h-24 w-36 rounded-[1.5rem] bg-white/20" />
-                <div className="absolute bottom-20 right-36 flex h-20 w-20 items-center justify-center rounded-full bg-white/20">
-                  <Star size={38} />
+                <div className="relative mt-8 hidden h-[180px] lg:block">
+                  <div className="absolute bottom-0 right-14 h-32 w-44 rounded-[2rem] bg-white/15 shadow-2xl" />
+                  <div className="absolute bottom-7 right-24 h-20 w-32 rounded-[1.5rem] bg-white/20" />
+                  <div className="absolute bottom-16 right-36 flex h-20 w-20 items-center justify-center rounded-full bg-white/20">
+                    <Megaphone size={42} />
+                  </div>
+                  <Sparkles
+                    className="absolute right-2 top-4 text-white/70"
+                    size={42}
+                  />
+                  <Wallet
+                    className="absolute right-56 top-16 text-white/70"
+                    size={48}
+                  />
                 </div>
-                <Sparkles
-                  className="absolute right-2 top-4 text-white/70"
-                  size={42}
-                />
-                <BarChart3
-                  className="absolute right-52 top-12 text-white/70"
-                  size={56}
-                />
               </div>
             </div>
           </div>
@@ -668,23 +665,23 @@ export default function ResellerPage() {
             />
 
             <p className="mt-5 max-w-sm text-sm font-medium leading-7 text-slate-400">
-              Ascend Service helps creators, brands, agencies, and resellers
-              grow faster with quality SMM services.
+              Ascend Service helps creators, brands, agencies, affiliates, and
+              resellers grow faster with quality SMM services.
             </p>
           </div>
 
           {[
             {
               title: "Company",
-              links: ["About Us", "Services", "Affiliates", "API"],
+              links: ["About Us", "Services", "Reseller Program", "API"],
             },
             {
-              title: "Reseller",
+              title: "Affiliate",
               links: [
-                "Reseller Program",
-                "Level Benefits",
-                "Child Panel",
-                "Points Conversion",
+                "Affiliate Program",
+                "Commission Rates",
+                "Affiliate Levels",
+                "Referral Tracking",
               ],
             },
             {
@@ -727,7 +724,7 @@ export default function ResellerPage() {
 
         <div className="mx-auto mt-10 flex max-w-7xl flex-col gap-4 border-t border-slate-800 pt-7 text-sm font-semibold text-slate-400 md:flex-row md:items-center md:justify-between">
           <p>© 2026 Ascend Service. All rights reserved.</p>
-          <p>Built for resellers, creators, and agencies.</p>
+          <p>Built for growth. Designed for success.</p>
         </div>
       </footer>
     </main>
