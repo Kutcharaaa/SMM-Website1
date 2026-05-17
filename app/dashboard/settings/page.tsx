@@ -117,7 +117,7 @@ export default function SettingsPage() {
     setMessage("");
     setErrorMessage("");
 
-    const cleanUsername = username.trim().toLowerCase().replace(/\s+/g, "");
+    const cleanUsername = username.trim().replace(/\s+/g, "");
 
     if (!cleanUsername) {
       setErrorMessage("Username is required.");
