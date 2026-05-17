@@ -72,41 +72,46 @@ export default function LoginPage() {
     checkCurrentSession();
   }, [router]);
 
-  async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
+  e.preventDefault();
 
-    if (loading) return;
+  if (loading) return;
 
-    setErrorMessage("");
-    setSuccessMessage("");
+  setErrorMessage("");
+  setSuccessMessage("");
 
-    const cleanEmail = email.trim().toLowerCase();
+  const cleanEmail = email.trim().toLowerCase();
 
-    if (!cleanEmail) {
-      setErrorMessage("Please enter your email address.");
-      return;
-    }
+  if (!cleanEmail) {
+    setErrorMessage("Please enter your email address.");
+    return;
+  }
 
-    if (!password.trim()) {
-      setErrorMessage("Please enter your password.");
-      return;
-    }
+  if (!password.trim()) {
+    setErrorMessage("Please enter your password.");
+    return;
+  }
 
-    setLoading(true);
+  setLoading(true);
 
-    const { data: existingProfile, error: emailCheckError } = await supabase
-      .from("profiles")
-      .select("id, email")
-      .ilike("email", cleanEmail)
-      .maybeSingle();
+  try {
+    const emailCheckResponse = await fetch("/api/auth/check-email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email: cleanEmail }),
+    });
 
-    if (emailCheckError) {
+    const emailCheck = await emailCheckResponse.json();
+
+    if (!emailCheckResponse.ok) {
       setErrorMessage("Unable to verify your email. Please try again.");
       setLoading(false);
       return;
     }
 
-    if (!existingProfile) {
+    if (!emailCheck.exists) {
       setErrorMessage(
         "Email does not exist. Please check your email or create an account.",
       );
@@ -148,7 +153,11 @@ export default function LoginPage() {
       router.replace("/dashboard");
       router.refresh();
     }, 500);
+  } catch {
+    setErrorMessage("Something went wrong. Please try again.");
+    setLoading(false);
   }
+}
 
   if (checkingSession) {
     return (
