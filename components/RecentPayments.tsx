@@ -1,30 +1,85 @@
 "use client";
 
+import { supabase } from "@/lib/supabase";
 import { useDisplayCurrency } from "@/lib/useDisplayCurrency";
+import { useEffect, useState } from "react";
+
+type Payment = {
+  id: string;
+  method: string | null;
+  amount: number | null;
+  status: string | null;
+  created_at: string;
+};
 
 export default function RecentPayments() {
   const { formatAmount } = useDisplayCurrency();
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const payments = [
-    {
-      id: "#PAY-1001",
-      method: "GCash",
-      amount: 500,
-      status: "Completed",
-    },
-    {
-      id: "#PAY-1002",
-      method: "PayPal",
-      amount: 1250,
-      status: "Pending",
-    },
-    {
-      id: "#PAY-1003",
-      method: "Maya",
-      amount: 300,
-      status: "Completed",
-    },
-  ];
+  async function loadPayments() {
+    setLoading(true);
+
+    const { data: authData } = await supabase.auth.getUser();
+
+    if (!authData.user) {
+      setPayments([]);
+      setLoading(false);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("deposits")
+      .select("id, method, amount, status, created_at")
+      .eq("user_id", authData.user.id)
+      .order("created_at", { ascending: false })
+      .limit(5);
+
+    if (error) {
+      console.error("Recent payments error:", error.message);
+      setPayments([]);
+      setLoading(false);
+      return;
+    }
+
+    setPayments((data || []) as Payment[]);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    loadPayments();
+
+    const interval = setInterval(loadPayments, 10000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  function getStatusClass(statusValue: string | null) {
+    const status = String(statusValue || "pending").toLowerCase();
+
+    if (status === "approved" || status === "completed" || status === "paid") {
+      return "bg-green-50 text-green-600";
+    }
+
+    if (status === "pending") {
+      return "bg-yellow-50 text-yellow-600";
+    }
+
+    if (status === "rejected" || status === "cancelled" || status === "canceled") {
+      return "bg-red-50 text-red-600";
+    }
+
+    return "bg-blue-50 text-blue-600";
+  }
+
+  function formatStatus(statusValue: string | null) {
+    const status = String(statusValue || "pending").toLowerCase();
+
+    if (status === "approved") return "Completed";
+    if (status === "paid") return "Completed";
+
+    return status.charAt(0).toUpperCase() + status.slice(1);
+  }
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -36,7 +91,7 @@ export default function RecentPayments() {
         </div>
 
         <a
-          href="/dashboard/payments"
+          href="/dashboard/transactions"
           className="px-4 py-2 text-sm font-bold text-blue-600 transition hover:text-gray-800"
         >
           View All Payments
@@ -55,36 +110,48 @@ export default function RecentPayments() {
           </thead>
 
           <tbody>
-            {payments.map((payment) => (
-              <tr
-                key={payment.id}
-                className="border-t border-slate-100 transition hover:bg-slate-50"
-              >
-                <td className="p-5 font-semibold text-slate-500">
-                  {payment.id}
-                </td>
-
-                <td className="p-5 font-bold text-slate-900">
-                  {payment.method}
-                </td>
-
-                <td className="p-5 font-black text-slate-900">
-                  {formatAmount(payment.amount)}
-                </td>
-
-                <td className="p-5">
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-bold ${
-                      payment.status === "Completed"
-                        ? "bg-green-50 text-green-600"
-                        : "bg-yellow-50 text-yellow-600"
-                    }`}
-                  >
-                    {payment.status}
-                  </span>
+            {loading ? (
+              <tr>
+                <td colSpan={4} className="p-8 text-center text-slate-500">
+                  Loading payments...
                 </td>
               </tr>
-            ))}
+            ) : payments.length <= 0 ? (
+              <tr>
+                <td colSpan={4} className="p-8 text-center text-slate-500">
+                  No recent payments yet.
+                </td>
+              </tr>
+            ) : (
+              payments.map((payment) => (
+                <tr
+                  key={payment.id}
+                  className="border-t border-slate-100 transition hover:bg-slate-50"
+                >
+                  <td className="p-5 font-semibold text-slate-500">
+                    #{payment.id.slice(0, 8)}
+                  </td>
+
+                  <td className="p-5 font-bold text-slate-900">
+                    {payment.method || "Manual Payment"}
+                  </td>
+
+                  <td className="p-5 font-black text-slate-900">
+                    {formatAmount(payment.amount || 0)}
+                  </td>
+
+                  <td className="p-5">
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusClass(
+                        payment.status,
+                      )}`}
+                    >
+                      {formatStatus(payment.status)}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
