@@ -4,9 +4,10 @@ import AdminGuard from "@/components/AdminGuard";
 import AdminSidebar from "@/components/AdminSidebar";
 import AdminTopbar from "@/components/AdminTopbar";
 import { supabase } from "@/lib/supabase";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 type Period = "day" | "week" | "month" | "year";
+type ModalType = "orders" | "expenses" | "cashAccounts" | "pointConversions" | "commissions" | null;
 
 type Order = {
   id: string;
@@ -52,23 +53,6 @@ type MockCommission = {
   date: string;
 };
 
-type IconName =
-  | "revenue"
-  | "chart"
-  | "profit"
-  | "percent"
-  | "expense"
-  | "orders"
-  | "active"
-  | "completed"
-  | "bank"
-  | "convert"
-  | "users"
-  | "clock"
-  | "refresh"
-  | "export"
-  | "close";
-
 const periodOptions: { label: string; value: Period }[] = [
   { label: "This Day", value: "day" },
   { label: "This Week", value: "week" },
@@ -77,57 +61,15 @@ const periodOptions: { label: string; value: Period }[] = [
 ];
 
 const mockPointConversions: MockPointConversion[] = [
-  {
-    id: "RPC-001",
-    user: "Juan Dela Cruz",
-    points: 2000,
-    amount: 200,
-    status: "completed",
-    date: "May 18, 2026",
-  },
-  {
-    id: "RPC-002",
-    user: "Maria Santos",
-    points: 1500,
-    amount: 150,
-    status: "completed",
-    date: "May 17, 2026",
-  },
-  {
-    id: "RPC-003",
-    user: "Mark Reyes",
-    points: 3000,
-    amount: 300,
-    status: "pending",
-    date: "May 16, 2026",
-  },
+  { id: "RPC-001", user: "Juan Dela Cruz", points: 2000, amount: 200, status: "completed", date: "May 18, 2026" },
+  { id: "RPC-002", user: "Maria Santos", points: 1500, amount: 150, status: "completed", date: "May 17, 2026" },
+  { id: "RPC-003", user: "Mark Reyes", points: 3000, amount: 300, status: "pending", date: "May 16, 2026" },
 ];
 
 const mockCommissions: MockCommission[] = [
-  {
-    id: "COM-001",
-    user: "Juan Dela Cruz",
-    source: "Referral Link",
-    amount: 120,
-    status: "paid",
-    date: "May 18, 2026",
-  },
-  {
-    id: "COM-002",
-    user: "Maria Santos",
-    source: "Referral Link",
-    amount: 80.4,
-    status: "pending",
-    date: "May 17, 2026",
-  },
-  {
-    id: "COM-003",
-    user: "Mark Reyes",
-    source: "Direct Referral",
-    amount: 60,
-    status: "pending",
-    date: "May 16, 2026",
-  },
+  { id: "COM-001", user: "Juan Dela Cruz", source: "Referral Link", amount: 120, status: "paid", date: "May 18, 2026" },
+  { id: "COM-002", user: "Maria Santos", source: "Referral Link", amount: 80.4, status: "pending", date: "May 17, 2026" },
+  { id: "COM-003", user: "Mark Reyes", source: "Direct Referral", amount: 60, status: "pending", date: "May 16, 2026" },
 ];
 
 function toNumber(value: number | string | null | undefined) {
@@ -142,10 +84,7 @@ function money(value: number) {
 }
 
 function shortMoney(value: number) {
-  if (Math.abs(value) >= 1000) {
-    return `₱${(value / 1000).toFixed(1)}K`;
-  }
-
+  if (Math.abs(value) >= 1000) return `₱${(value / 1000).toFixed(1)}K`;
   return `₱${value.toFixed(0)}`;
 }
 
@@ -154,15 +93,15 @@ function normalizeStatus(status: string | null | undefined) {
 }
 
 function startOfDay(date: Date) {
-  const next = new Date(date);
-  next.setHours(0, 0, 0, 0);
-  return next;
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
 }
 
 function endOfDay(date: Date) {
-  const next = new Date(date);
-  next.setHours(23, 59, 59, 999);
-  return next;
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+  return d;
 }
 
 function getPeriodRange(period: Period) {
@@ -170,60 +109,35 @@ function getPeriodRange(period: Period) {
   const start = new Date(now);
 
   if (period === "day") {
-    return {
-      start: startOfDay(now),
-      end: endOfDay(now),
-      label: "Today",
-    };
+    return { start: startOfDay(now), end: endOfDay(now), label: "Today" };
   }
 
   if (period === "week") {
     const day = now.getDay();
     const diffToMonday = day === 0 ? 6 : day - 1;
     start.setDate(now.getDate() - diffToMonday);
-
-    return {
-      start: startOfDay(start),
-      end: endOfDay(now),
-      label: "This Week",
-    };
+    return { start: startOfDay(start), end: endOfDay(now), label: "This Week" };
   }
 
   if (period === "month") {
     start.setDate(1);
-
-    return {
-      start: startOfDay(start),
-      end: endOfDay(now),
-      label: "This Month",
-    };
+    return { start: startOfDay(start), end: endOfDay(now), label: "This Month" };
   }
 
   start.setMonth(0, 1);
-
-  return {
-    start: startOfDay(start),
-    end: endOfDay(now),
-    label: "This Year",
-  };
+  return { start: startOfDay(start), end: endOfDay(now), label: "This Year" };
 }
 
 function isInsidePeriod(dateValue: string | null | undefined, period: Period) {
   if (!dateValue) return false;
-
   const date = new Date(dateValue);
   const range = getPeriodRange(period);
-
   return date >= range.start && date <= range.end;
 }
 
 function getOrderProfit(order: Order) {
   const savedProfit = toNumber(order.profit);
-
-  if (savedProfit !== 0) {
-    return savedProfit;
-  }
-
+  if (savedProfit !== 0) return savedProfit;
   return toNumber(order.price) - toNumber(order.provider_cost);
 }
 
@@ -240,328 +154,122 @@ function getTrendBuckets(period: Period) {
       end.setHours(hour + 3, 59, 59, 999);
 
       buckets.push({
-        label:
-          hour === 0
-            ? "12AM"
-            : hour < 12
-            ? `${hour}AM`
-            : hour === 12
-            ? "12PM"
-            : `${hour - 12}PM`,
+        label: hour === 0 ? "12AM" : hour < 12 ? `${hour}AM` : hour === 12 ? "12PM" : `${hour - 12}PM`,
         start,
         end,
       });
     }
-
     return buckets;
   }
 
   if (period === "week") {
     const range = getPeriodRange("week");
-
     for (let i = 0; i < 7; i++) {
       const day = new Date(range.start);
       day.setDate(range.start.getDate() + i);
-
       buckets.push({
         label: day.toLocaleDateString("en-US", { weekday: "short" }),
         start: startOfDay(day),
         end: endOfDay(day),
       });
     }
-
     return buckets;
   }
 
   if (period === "month") {
     const range = getPeriodRange("month");
     const totalDays = range.end.getDate();
-
     for (let day = 1; day <= totalDays; day++) {
       const current = new Date(range.start);
       current.setDate(day);
-
-      buckets.push({
-        label: String(day),
-        start: startOfDay(current),
-        end: endOfDay(current),
-      });
+      buckets.push({ label: String(day), start: startOfDay(current), end: endOfDay(current) });
     }
-
     return buckets;
   }
 
   for (let month = 0; month < 12; month++) {
     const start = new Date(now.getFullYear(), month, 1);
     const end = new Date(now.getFullYear(), month + 1, 0, 23, 59, 59, 999);
-
-    buckets.push({
-      label: start.toLocaleDateString("en-US", { month: "short" }),
-      start,
-      end,
-    });
+    buckets.push({ label: start.toLocaleDateString("en-US", { month: "short" }), start, end });
   }
 
   return buckets;
 }
 
-function SvgIcon({ name, className = "" }: { name: IconName; className?: string }) {
-  const baseClass = `h-5 w-5 ${className}`;
-
-  if (name === "revenue") {
-    return (
-      <svg className={baseClass} viewBox="0 0 24 24" fill="none">
-        <path d="M12 2v20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        <path
-          d="M17 6.5C16.1 5.6 14.5 5 12.7 5C9.9 5 8 6.4 8 8.5C8 12.5 17 10.3 17 15.5C17 17.6 15.1 19 12.3 19C10.2 19 8.4 18.2 7.4 17"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-      </svg>
-    );
-  }
-
-  if (name === "chart") {
-    return (
-      <svg className={baseClass} viewBox="0 0 24 24" fill="none">
-        <path d="M4 19V5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        <path d="M4 19H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        <path
-          d="M7 15L11 11L14 13L19 7"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    );
-  }
-
-  if (name === "profit") {
-    return (
-      <svg className={baseClass} viewBox="0 0 24 24" fill="none">
-        <path
-          d="M12 21C16.97 21 21 16.97 21 12C21 7.03 16.97 3 12 3V12L18.36 18.36"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M12 3C7.03 3 3 7.03 3 12C3 16.97 7.03 21 12 21"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-      </svg>
-    );
-  }
-
-  if (name === "percent") {
-    return (
-      <svg className={baseClass} viewBox="0 0 24 24" fill="none">
-        <path d="M19 5L5 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        <circle cx="7" cy="7" r="2.5" stroke="currentColor" strokeWidth="2" />
-        <circle cx="17" cy="17" r="2.5" stroke="currentColor" strokeWidth="2" />
-      </svg>
-    );
-  }
-
-  if (name === "expense") {
-    return (
-      <svg className={baseClass} viewBox="0 0 24 24" fill="none">
-        <rect x="3" y="6" width="18" height="13" rx="3" stroke="currentColor" strokeWidth="2" />
-        <path d="M3 10H21" stroke="currentColor" strokeWidth="2" />
-        <path d="M7 15H11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      </svg>
-    );
-  }
-
-  if (name === "orders") {
-    return (
-      <svg className={baseClass} viewBox="0 0 24 24" fill="none">
-        <path d="M8 6H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        <path d="M8 12H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        <path d="M8 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        <path d="M3 6H3.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-        <path d="M3 12H3.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-        <path d="M3 18H3.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-      </svg>
-    );
-  }
-
-  if (name === "active") {
-    return (
-      <svg className={baseClass} viewBox="0 0 24 24" fill="none">
-        <path
-          d="M12 8V12L15 14"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
-      </svg>
-    );
-  }
-
-  if (name === "completed") {
-    return (
-      <svg className={baseClass} viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
-        <path
-          d="M8 12.5L10.5 15L16.5 9"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    );
-  }
-
-  if (name === "bank") {
-    return (
-      <svg className={baseClass} viewBox="0 0 24 24" fill="none">
-        <path d="M3 10H21L12 4L3 10Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-        <path d="M5 10V18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        <path d="M9 10V18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        <path d="M15 10V18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        <path d="M19 10V18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        <path d="M3 20H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      </svg>
-    );
-  }
-
-  if (name === "convert") {
-    return (
-      <svg className={baseClass} viewBox="0 0 24 24" fill="none">
-        <path
-          d="M17 3L21 7L17 11"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path d="M3 7H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        <path
-          d="M7 21L3 17L7 13"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path d="M3 17H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      </svg>
-    );
-  }
-
-  if (name === "users") {
-    return (
-      <svg className={baseClass} viewBox="0 0 24 24" fill="none">
-        <path
-          d="M16 19C16 16.8 14.2 15 12 15H7C4.8 15 3 16.8 3 19"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-        <circle cx="9.5" cy="8" r="3" stroke="currentColor" strokeWidth="2" />
-        <path
-          d="M21 19C21 17.1 19.7 15.5 18 15.1"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-        <path
-          d="M16.5 5.2C17.9 5.8 18.6 7.4 18 8.8C17.7 9.6 17 10.2 16.2 10.5"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-      </svg>
-    );
-  }
-
-  if (name === "clock") {
-    return (
-      <svg className={baseClass} viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
-        <path d="M12 7V12L15 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      </svg>
-    );
-  }
-
-  if (name === "refresh") {
-    return (
-      <svg className={baseClass} viewBox="0 0 24 24" fill="none">
-        <path
-          d="M20 11C19.5 7.1 16.1 4 12 4C9.7 4 7.6 5 6.1 6.6L4 8.7"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path d="M4 4V8.7H8.7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        <path
-          d="M4 13C4.5 16.9 7.9 20 12 20C14.3 20 16.4 19 17.9 17.4L20 15.3"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path d="M20 20V15.3H15.3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      </svg>
-    );
-  }
-
-  if (name === "export") {
-    return (
-      <svg className={baseClass} viewBox="0 0 24 24" fill="none">
-        <path d="M12 3V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        <path
-          d="M8 11L12 15L16 11"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <path d="M5 21H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      </svg>
-    );
-  }
-
+function SvgIcon({ children }: { children: ReactNode }) {
   return (
-    <svg className={baseClass} viewBox="0 0 24 24" fill="none">
-      <path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      {children}
     </svg>
   );
+}
+
+function IconMoney() {
+  return <SvgIcon><path d="M12 2v20" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6" /></SvgIcon>;
+}
+
+function IconChart() {
+  return <SvgIcon><path d="M4 19V5" /><path d="M4 19h16" /><path d="m7 14 4-4 3 3 5-7" /></SvgIcon>;
+}
+
+function IconPie() {
+  return <SvgIcon><path d="M21 12a9 9 0 1 1-9-9v9h9Z" /><path d="M12 3a9 9 0 0 1 9 9" /></SvgIcon>;
+}
+
+function IconPercent() {
+  return <SvgIcon><path d="m19 5-14 14" /><circle cx="7" cy="7" r="2" /><circle cx="17" cy="17" r="2" /></SvgIcon>;
+}
+
+function IconCard() {
+  return <SvgIcon><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18" /><path d="M7 15h3" /></SvgIcon>;
+}
+
+function IconReceipt() {
+  return <SvgIcon><path d="M6 3h12v18l-2-1-2 1-2-1-2 1-2-1-2 1V3Z" /><path d="M9 7h6" /><path d="M9 11h6" /><path d="M9 15h4" /></SvgIcon>;
+}
+
+function IconClock() {
+  return <SvgIcon><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></SvgIcon>;
+}
+
+function IconCheck() {
+  return <SvgIcon><circle cx="12" cy="12" r="9" /><path d="m8 12 3 3 5-6" /></SvgIcon>;
+}
+
+function IconBank() {
+  return <SvgIcon><path d="M4 10h16" /><path d="M6 10v8" /><path d="M10 10v8" /><path d="M14 10v8" /><path d="M18 10v8" /><path d="M3 18h18" /><path d="m12 3 8 5H4l8-5Z" /></SvgIcon>;
+}
+
+function IconRefresh() {
+  return <SvgIcon><path d="M20 11a8.1 8.1 0 0 0-15.5-2" /><path d="M4 5v4h4" /><path d="M4 13a8.1 8.1 0 0 0 15.5 2" /><path d="M20 19v-4h-4" /></SvgIcon>;
+}
+
+function IconUsers() {
+  return <SvgIcon><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></SvgIcon>;
+}
+
+function IconTimer() {
+  return <SvgIcon><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2 2" /><path d="M9 2h6" /></SvgIcon>;
+}
+
+function IconClose() {
+  return <SvgIcon><path d="M18 6 6 18" /><path d="m6 6 12 12" /></SvgIcon>;
 }
 
 function StatusBadge({ status }: { status: string | null | undefined }) {
   const value = normalizeStatus(status);
 
   const className =
-    value === "completed" ||
-    value === "approved" ||
-    value === "paid" ||
-    value === "active"
+    value === "completed" || value === "approved" || value === "paid" || value === "active"
       ? "bg-emerald-50 text-emerald-700 ring-emerald-100"
-      : value === "pending" ||
-        value === "processing" ||
-        value === "partial"
+      : value === "pending" || value === "processing" || value === "partial"
       ? "bg-orange-50 text-orange-700 ring-orange-100"
-      : value === "cancelled" ||
-        value === "failed" ||
-        value === "rejected" ||
-        value === "inactive"
+      : value === "cancelled" || value === "failed" || value === "rejected" || value === "inactive"
       ? "bg-red-50 text-red-700 ring-red-100"
       : "bg-slate-50 text-slate-700 ring-slate-100";
 
   return (
-    <span
-      className={`inline-flex rounded-full px-3 py-1 text-xs font-black capitalize ring-1 ${className}`}
-    >
+    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-black capitalize ring-1 ${className}`}>
       {value}
     </span>
   );
@@ -580,7 +288,7 @@ function MetricCard({
   value: string;
   subtitle: string;
   trend?: string;
-  icon: IconName;
+  icon: ReactNode;
   tone?: "green" | "blue" | "purple" | "orange" | "red" | "teal";
   mock?: boolean;
 }) {
@@ -598,42 +306,24 @@ function MetricCard({
   return (
     <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
       <div className="mb-5 flex items-start justify-between">
-        <div
-          className={`flex h-12 w-12 items-center justify-center rounded-2xl ${toneClass}`}
-        >
-          <SvgIcon name={icon} />
-        </div>
+        <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${toneClass}`}>{icon}</div>
 
-        <div className="flex items-center gap-2">
-          {mock ? (
-            <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-orange-700 ring-1 ring-orange-100">
-              Mock
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-black text-emerald-700">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              Live
-            </span>
-          )}
-        </div>
+        {mock ? (
+          <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-orange-700 ring-1 ring-orange-100">Mock</span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-black text-emerald-700">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            Live
+          </span>
+        )}
       </div>
 
-      <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">
-        {title}
-      </p>
-
-      <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
-        {value}
-      </h3>
-
+      <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">{title}</p>
+      <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">{value}</h3>
       <p className="mt-2 text-sm font-semibold text-slate-500">{subtitle}</p>
 
       {trend && (
-        <p
-          className={`mt-4 text-xs font-black ${
-            trendIsDown ? "text-red-600" : "text-emerald-600"
-          }`}
-        >
+        <p className={`mt-4 text-xs font-black ${trendIsDown ? "text-red-600" : "text-emerald-600"}`}>
           {trend} <span className="text-slate-500">vs last 30 days</span>
         </p>
       )}
@@ -644,25 +334,14 @@ function MetricCard({
 function AccountingLineChart({
   data,
 }: {
-  data: {
-    label: string;
-    revenue: number;
-    grossProfit: number;
-    netProfit: number;
-    expenses: number;
-  }[];
+  data: { label: string; revenue: number; grossProfit: number; netProfit: number; expenses: number }[];
 }) {
   const width = 980;
   const height = 300;
   const paddingX = 44;
   const paddingY = 30;
 
-  const maxValue = Math.max(
-    1,
-    ...data.map((item) =>
-      Math.max(item.revenue, item.grossProfit, item.netProfit, item.expenses)
-    )
-  );
+  const maxValue = Math.max(1, ...data.map((item) => Math.max(item.revenue, item.grossProfit, item.netProfit, item.expenses)));
 
   function getX(index: number) {
     if (data.length <= 1) return paddingX;
@@ -674,12 +353,7 @@ function AccountingLineChart({
   }
 
   function pathFor(key: "revenue" | "grossProfit" | "netProfit" | "expenses") {
-    return data
-      .map((item, index) => {
-        const command = index === 0 ? "M" : "L";
-        return `${command} ${getX(index)} ${getY(item[key])}`;
-      })
-      .join(" ");
+    return data.map((item, index) => `${index === 0 ? "M" : "L"} ${getX(index)} ${getY(item[key])}`).join(" ");
   }
 
   const labelStep = Math.max(1, Math.ceil(data.length / 8));
@@ -688,36 +362,16 @@ function AccountingLineChart({
     <div className="rounded-[26px] border border-slate-200 bg-white p-6 shadow-sm xl:col-span-2">
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h3 className="text-xl font-black text-slate-950">
-            Revenue, Profit & Expense Trend
-          </h3>
-
+          <h3 className="text-xl font-black text-slate-950">Revenue, Profit & Expense Trend</h3>
           <div className="mt-3 flex flex-wrap gap-4 text-xs font-black text-slate-500">
-            <span className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-              Revenue
-            </span>
-
-            <span className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
-              Gross Profit
-            </span>
-
-            <span className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-purple-500" />
-              Net Profit
-            </span>
-
-            <span className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
-              Expenses
-            </span>
+            <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />Revenue</span>
+            <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-blue-500" />Gross Profit</span>
+            <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-purple-500" />Net Profit</span>
+            <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-red-500" />Expenses</span>
           </div>
         </div>
 
-        <p className="rounded-full bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-700 ring-1 ring-emerald-100">
-          Accounting View
-        </p>
+        <p className="rounded-full bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-700 ring-1 ring-emerald-100">Accounting View</p>
       </div>
 
       <div className="w-full overflow-x-auto">
@@ -728,63 +382,16 @@ function AccountingLineChart({
 
             return (
               <g key={line}>
-                <line
-                  x1={paddingX}
-                  y1={y}
-                  x2={width - paddingX}
-                  y2={y}
-                  stroke="#e2e8f0"
-                  strokeDasharray="5 5"
-                />
-
-                <text
-                  x={8}
-                  y={y + 4}
-                  fontSize="12"
-                  fontWeight="700"
-                  fill="#64748b"
-                >
-                  {shortMoney(value)}
-                </text>
+                <line x1={paddingX} y1={y} x2={width - paddingX} y2={y} stroke="#e2e8f0" strokeDasharray="5 5" />
+                <text x={8} y={y + 4} fontSize="12" fontWeight="700" fill="#64748b">{shortMoney(value)}</text>
               </g>
             );
           })}
 
-          <path
-            d={pathFor("revenue")}
-            fill="none"
-            stroke="#16a34a"
-            strokeWidth="4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-
-          <path
-            d={pathFor("grossProfit")}
-            fill="none"
-            stroke="#2563eb"
-            strokeWidth="4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-
-          <path
-            d={pathFor("netProfit")}
-            fill="none"
-            stroke="#9333ea"
-            strokeWidth="4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-
-          <path
-            d={pathFor("expenses")}
-            fill="none"
-            stroke="#ef4444"
-            strokeWidth="4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
+          <path d={pathFor("revenue")} fill="none" stroke="#16a34a" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+          <path d={pathFor("grossProfit")} fill="none" stroke="#2563eb" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+          <path d={pathFor("netProfit")} fill="none" stroke="#9333ea" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+          <path d={pathFor("expenses")} fill="none" stroke="#ef4444" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
 
           {data.map((item, index) => (
             <g key={`${item.label}-${index}`}>
@@ -794,16 +401,7 @@ function AccountingLineChart({
               <circle cx={getX(index)} cy={getY(item.expenses)} r="4" fill="#ef4444" />
 
               {index % labelStep === 0 && (
-                <text
-                  x={getX(index)}
-                  y={height - 5}
-                  textAnchor="middle"
-                  fontSize="12"
-                  fontWeight="700"
-                  fill="#64748b"
-                >
-                  {item.label}
-                </text>
+                <text x={getX(index)} y={height - 5} textAnchor="middle" fontSize="12" fontWeight="700" fill="#64748b">{item.label}</text>
               )}
             </g>
           ))}
@@ -818,13 +416,11 @@ function ProfitBreakdown({
   grossProfit,
   expenses,
   netProfit,
-  revenue,
 }: {
   providerCost: number;
   grossProfit: number;
   expenses: number;
   netProfit: number;
-  revenue: number;
 }) {
   const safeNetProfit = Math.max(netProfit, 0);
   const total = Math.max(1, providerCost + grossProfit + expenses + safeNetProfit);
@@ -838,101 +434,48 @@ function ProfitBreakdown({
   const p2 = providerPercent + grossPercent;
   const p3 = providerPercent + grossPercent + expensesPercent;
 
-  const grossMargin = revenue > 0 ? (grossProfit / revenue) * 100 : 0;
-  const netMargin = revenue > 0 ? (netProfit / revenue) * 100 : 0;
-
   const donutStyle = {
     background: `conic-gradient(#ef4444 0% ${p1}%, #2563eb ${p1}% ${p2}%, #f59e0b ${p2}% ${p3}%, #16a34a ${p3}% 100%)`,
   };
 
   const items = [
-    {
-      label: "Provider Cost",
-      value: providerCost,
-      percent: providerPercent,
-      dot: "bg-red-500",
-    },
-    {
-      label: "Gross Profit",
-      value: grossProfit,
-      percent: grossPercent,
-      dot: "bg-blue-500",
-    },
-    {
-      label: "Expenses",
-      value: expenses,
-      percent: expensesPercent,
-      dot: "bg-orange-500",
-    },
-    {
-      label: "Net Profit",
-      value: netProfit,
-      percent: netPercent,
-      dot: "bg-emerald-500",
-    },
+    { label: "Provider Cost", value: providerCost, percent: providerPercent, dot: "bg-red-500" },
+    { label: "Gross Profit", value: grossProfit, percent: grossPercent, dot: "bg-blue-500" },
+    { label: "Expenses", value: expenses, percent: expensesPercent, dot: "bg-orange-500" },
+    { label: "Net Profit", value: netProfit, percent: netPercent, dot: "bg-emerald-500" },
   ];
 
   return (
-    <div className="flex h-full flex-col rounded-[26px] border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="rounded-[26px] border border-slate-200 bg-white p-6 shadow-sm">
       <div className="mb-5">
         <h3 className="text-xl font-black text-slate-950">Profit Breakdown</h3>
-        <p className="mt-1 text-sm font-semibold text-slate-500">
-          Accounting distribution based on selected period.
-        </p>
+        <p className="mt-1 text-sm font-semibold text-slate-500">Provider cost, profit, expenses, and net profit.</p>
       </div>
 
-      <div className="flex flex-1 flex-col justify-between gap-5">
-        <div className="flex flex-col items-center gap-5 sm:flex-row">
-          <div
-            className="relative flex h-40 w-40 shrink-0 items-center justify-center rounded-full"
-            style={donutStyle}
-          >
+      <div className="grid gap-5">
+        <div className="flex justify-center">
+          <div className="relative flex h-40 w-40 items-center justify-center rounded-full" style={donutStyle}>
             <div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-white shadow-inner">
-              <p className="text-lg font-black text-slate-950">{money(netProfit)}</p>
+              <p className="text-base font-black text-slate-950">{money(netProfit)}</p>
               <p className="text-[11px] font-black text-slate-500">Net Profit</p>
             </div>
           </div>
-
-          <div className="w-full space-y-3">
-            {items.map((item) => (
-              <div
-                key={item.label}
-                className="flex items-center justify-between gap-4 text-sm"
-              >
-                <div className="flex items-center gap-3">
-                  <span className={`h-3 w-3 rounded-full ${item.dot}`} />
-                  <span className="font-black text-slate-700">{item.label}</span>
-                </div>
-
-                <div className="text-right">
-                  <p className="font-black text-slate-950">{money(item.value)}</p>
-                  <p className="text-xs font-bold text-slate-500">
-                    {item.percent.toFixed(1)}%
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl bg-emerald-50 p-4 ring-1 ring-emerald-100">
-            <p className="text-xs font-black uppercase tracking-wide text-emerald-700">
-              Gross Margin
-            </p>
-            <h4 className="mt-1 text-xl font-black text-emerald-900">
-              {grossMargin.toFixed(2)}%
-            </h4>
-          </div>
+        <div className="space-y-3">
+          {items.map((item) => (
+            <div key={item.label} className="flex items-center justify-between gap-4 text-sm">
+              <div className="flex items-center gap-3">
+                <span className={`h-2.5 w-2.5 rounded-full ${item.dot}`} />
+                <span className="font-black text-slate-700">{item.label}</span>
+              </div>
 
-          <div className="rounded-2xl bg-blue-50 p-4 ring-1 ring-blue-100">
-            <p className="text-xs font-black uppercase tracking-wide text-blue-700">
-              Net Margin
-            </p>
-            <h4 className="mt-1 text-xl font-black text-blue-900">
-              {netMargin.toFixed(2)}%
-            </h4>
-          </div>
+              <div className="text-right">
+                <p className="font-black text-slate-950">{money(item.value)}</p>
+                <p className="text-[11px] font-bold text-slate-500">{item.percent.toFixed(1)}%</p>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -946,7 +489,7 @@ function TableShell({
   mock,
 }: {
   title: string;
-  children: React.ReactNode;
+  children: ReactNode;
   onViewAll?: () => void;
   mock?: boolean;
 }) {
@@ -955,19 +498,13 @@ function TableShell({
       <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
         <div className="flex items-center gap-3">
           <h3 className="text-lg font-black text-slate-950">{title}</h3>
-
           {mock && (
-            <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-orange-700 ring-1 ring-orange-100">
-              Mock
-            </span>
+            <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-orange-700 ring-1 ring-orange-100">Mock</span>
           )}
         </div>
 
         {onViewAll && (
-          <button
-            onClick={onViewAll}
-            className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-black text-slate-700 transition hover:bg-slate-50"
-          >
+          <button onClick={onViewAll} className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-black text-slate-700 transition hover:bg-slate-50">
             View All
           </button>
         )}
@@ -979,17 +516,17 @@ function TableShell({
 }
 
 function DataModal({
-  title,
-  subtitle,
   open,
   onClose,
+  title,
+  subtitle,
   children,
 }: {
-  title: string;
-  subtitle?: string;
   open: boolean;
   onClose: () => void;
-  children: React.ReactNode;
+  title: string;
+  subtitle: string;
+  children: ReactNode;
 }) {
   if (!open) return null;
 
@@ -998,17 +535,12 @@ function DataModal({
       <div className="max-h-[88vh] w-full max-w-6xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
         <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
           <div>
-            <h2 className="text-2xl font-black text-slate-950">{title}</h2>
-            {subtitle && (
-              <p className="mt-1 text-sm font-semibold text-slate-500">{subtitle}</p>
-            )}
+            <h3 className="text-2xl font-black text-slate-950">{title}</h3>
+            <p className="mt-1 text-sm font-semibold text-slate-500">{subtitle}</p>
           </div>
 
-          <button
-            onClick={onClose}
-            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 text-slate-600 transition hover:bg-slate-50"
-          >
-            <SvgIcon name="close" />
+          <button onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-600 transition hover:bg-slate-50" aria-label="Close modal">
+            <IconClose />
           </button>
         </div>
 
@@ -1025,14 +557,7 @@ export default function AdminAnalyticsPage() {
   const [period, setPeriod] = useState<Period>("month");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
-  const [activeModal, setActiveModal] = useState<
-    | null
-    | "orders"
-    | "expenses"
-    | "cash"
-    | "pointConversions"
-    | "commissions"
-  >(null);
+  const [activeModal, setActiveModal] = useState<ModalType>(null);
 
   async function loadData() {
     setLoading(true);
@@ -1088,61 +613,23 @@ export default function AdminAnalyticsPage() {
   }, [orders, period]);
 
   const filteredExpenses = useMemo(() => {
-    return expenses.filter((expense) =>
-      isInsidePeriod(expense.expense_date, period)
-    );
+    return expenses.filter((expense) => isInsidePeriod(expense.expense_date, period));
   }, [expenses, period]);
 
-  const totalBusinessMoney = cashAccounts.reduce(
-    (sum, account) => sum + toNumber(account.balance),
-    0
-  );
-
-  const totalRevenue = filteredOrders.reduce(
-    (sum, order) => sum + toNumber(order.price),
-    0
-  );
-
-  const totalProviderCost = filteredOrders.reduce(
-    (sum, order) => sum + toNumber(order.provider_cost),
-    0
-  );
-
-  const grossProfit = filteredOrders.reduce(
-    (sum, order) => sum + getOrderProfit(order),
-    0
-  );
-
-  const totalExpenses = filteredExpenses.reduce(
-    (sum, expense) => sum + toNumber(expense.amount),
-    0
-  );
-
+  const totalBusinessMoney = cashAccounts.reduce((sum, account) => sum + toNumber(account.balance), 0);
+  const totalRevenue = filteredOrders.reduce((sum, order) => sum + toNumber(order.price), 0);
+  const totalProviderCost = filteredOrders.reduce((sum, order) => sum + toNumber(order.provider_cost), 0);
+  const grossProfit = filteredOrders.reduce((sum, order) => sum + getOrderProfit(order), 0);
+  const totalExpenses = filteredExpenses.reduce((sum, expense) => sum + toNumber(expense.amount), 0);
   const netProfit = grossProfit - totalExpenses;
-
   const estimatedProfitFrom30PercentMargin = totalRevenue * 0.3;
 
-  const completedOrders = filteredOrders.filter(
-    (order) => normalizeStatus(order.status) === "completed"
-  ).length;
+  const completedOrders = filteredOrders.filter((order) => normalizeStatus(order.status) === "completed").length;
+  const activeOrders = filteredOrders.filter((order) => ["pending", "processing", "partial"].includes(normalizeStatus(order.status))).length;
 
-  const activeOrders = filteredOrders.filter((order) =>
-    ["pending", "processing", "partial"].includes(normalizeStatus(order.status))
-  ).length;
-
-  const totalPointConversions = mockPointConversions.reduce(
-    (sum, item) => sum + item.amount,
-    0
-  );
-
-  const totalCommissions = mockCommissions.reduce(
-    (sum, item) => sum + item.amount,
-    0
-  );
-
-  const pendingPayouts = mockCommissions
-    .filter((item) => item.status === "pending")
-    .reduce((sum, item) => sum + item.amount, 0);
+  const totalPointConversions = mockPointConversions.reduce((sum, item) => sum + item.amount, 0);
+  const totalCommissions = mockCommissions.reduce((sum, item) => sum + item.amount, 0);
+  const pendingPayouts = mockCommissions.filter((item) => item.status === "pending").reduce((sum, item) => sum + item.amount, 0);
 
   const chartData = useMemo(() => {
     const buckets = getTrendBuckets(period);
@@ -1158,20 +645,9 @@ export default function AdminAnalyticsPage() {
         return date >= bucket.start && date <= bucket.end;
       });
 
-      const revenue = bucketOrders.reduce(
-        (sum, order) => sum + toNumber(order.price),
-        0
-      );
-
-      const profit = bucketOrders.reduce(
-        (sum, order) => sum + getOrderProfit(order),
-        0
-      );
-
-      const expensesTotal = bucketExpenses.reduce(
-        (sum, expense) => sum + toNumber(expense.amount),
-        0
-      );
+      const revenue = bucketOrders.reduce((sum, order) => sum + toNumber(order.price), 0);
+      const profit = bucketOrders.reduce((sum, order) => sum + getOrderProfit(order), 0);
+      const expensesTotal = bucketExpenses.reduce((sum, expense) => sum + toNumber(expense.amount), 0);
 
       return {
         label: bucket.label,
@@ -1185,10 +661,10 @@ export default function AdminAnalyticsPage() {
 
   return (
     <AdminGuard allowedRoles={["head_admin", "super_admin"]}>
-      <main className="min-h-screen bg-slate-50 text-slate-950">
+      <main className="min-h-screen bg-black text-white">
         <AdminSidebar />
 
-        <section className="min-h-screen lg:ml-72">
+        <section className="lg:ml-72 min-h-screen">
           <AdminTopbar />
 
           <div className="p-4 sm:p-6 lg:p-8">
@@ -1207,26 +683,21 @@ export default function AdminAnalyticsPage() {
                   )}
                 </div>
 
-                <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-                  Analytics / Reports
-                </h1>
+                <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">Analytics / Reports</h1>
 
-                <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
-                  Accounting overview for order revenue, profit, expenses, cash
-                  accounts, reseller point conversions, and user commissions.
+                <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-zinc-400">
+                  Accounting overview for order revenue, gross profit, net profit, expenses, cash accounts, reseller point conversions, and user commissions.
                 </p>
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
-                <div className="flex overflow-hidden rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
+                <div className="flex overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 p-1 shadow-sm">
                   {periodOptions.map((option) => (
                     <button
                       key={option.value}
                       onClick={() => setPeriod(option.value)}
                       className={`rounded-xl px-4 py-2 text-sm font-black transition ${
-                        period === option.value
-                          ? "bg-emerald-600 text-white shadow-sm"
-                          : "text-slate-600 hover:bg-slate-50"
+                        period === option.value ? "bg-emerald-600 text-white shadow-sm" : "text-zinc-400 hover:bg-zinc-900"
                       }`}
                     >
                       {option.label}
@@ -1234,178 +705,63 @@ export default function AdminAnalyticsPage() {
                   ))}
                 </div>
 
-                <button
-                  onClick={loadData}
-                  className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50"
-                >
-                  <SvgIcon name="refresh" className="h-4 w-4" />
+                <button onClick={loadData} className="rounded-2xl border border-zinc-800 bg-zinc-950 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-zinc-900">
                   Refresh
                 </button>
 
-                <button className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50">
-                  <SvgIcon name="export" className="h-4 w-4" />
+                <button className="rounded-2xl border border-zinc-800 bg-zinc-950 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-zinc-900">
                   Export
                 </button>
               </div>
             </div>
 
             {message && (
-              <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm font-bold text-red-700">
+              <div className="mb-6 rounded-2xl border border-red-900/50 bg-red-950/40 px-5 py-4 text-sm font-bold text-red-300">
                 {message}
               </div>
             )}
 
-            <div className="mb-6 rounded-[24px] border border-emerald-100 bg-gradient-to-r from-emerald-50 via-white to-blue-50 p-5">
+            <div className="mb-6 rounded-[24px] border border-emerald-900/40 bg-gradient-to-r from-emerald-950/60 via-zinc-950 to-blue-950/50 p-5">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">
-                    Selected Period
-                  </p>
-
-                  <h2 className="mt-1 text-xl font-black text-slate-950">
-                    {range.label}
-                  </h2>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-300">Selected Period</p>
+                  <h2 className="mt-1 text-xl font-black text-white">{range.label}</h2>
                 </div>
 
-                <p className="text-sm font-semibold text-slate-500">
-                  Live parts are connected to your current database. Mock parts
-                  are ready for later connection.
+                <p className="text-sm font-semibold text-zinc-400">
+                  Live parts use your current tables. Mock parts are marked and ready for later connection.
                 </p>
               </div>
             </div>
 
             <div className="mb-6 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-              <MetricCard
-                title="Order Revenue"
-                value={money(totalRevenue)}
-                subtitle="Total paid order amount"
-                trend="↑ 18.6%"
-                icon="revenue"
-                tone="green"
-              />
-
-              <MetricCard
-                title="Gross Profit"
-                value={money(grossProfit)}
-                subtitle="Revenue minus provider cost"
-                trend="↑ 15.2%"
-                icon="chart"
-                tone="blue"
-              />
-
-              <MetricCard
-                title="Net Profit"
-                value={money(netProfit)}
-                subtitle="Gross profit minus expenses"
-                trend={netProfit >= 0 ? "↑ 12.8%" : "↓ 5.4%"}
-                icon="profit"
-                tone="purple"
-              />
-
-              <MetricCard
-                title="Estimated Profit 30%"
-                value={money(estimatedProfitFrom30PercentMargin)}
-                subtitle="Estimated based on 30% margin"
-                trend="↑ 18.6%"
-                icon="percent"
-                tone="orange"
-              />
+              <MetricCard title="Order Revenue" value={money(totalRevenue)} subtitle="Total paid order amount" trend="↑ 18.6%" icon={<IconMoney />} tone="green" />
+              <MetricCard title="Gross Profit" value={money(grossProfit)} subtitle="Revenue minus provider cost" trend="↑ 15.2%" icon={<IconChart />} tone="blue" />
+              <MetricCard title="Net Profit" value={money(netProfit)} subtitle="Gross profit minus expenses" trend={netProfit >= 0 ? "↑ 12.8%" : "↓ 5.4%"} icon={<IconPie />} tone="purple" />
+              <MetricCard title="Estimated Profit 30%" value={money(estimatedProfitFrom30PercentMargin)} subtitle="Estimated based on 30% margin" trend="↑ 18.6%" icon={<IconPercent />} tone="orange" />
             </div>
 
             <div className="mb-6 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-              <MetricCard
-                title="Total Expenses"
-                value={money(totalExpenses)}
-                subtitle="All business expenses"
-                trend="↓ 5.4%"
-                icon="expense"
-                tone="red"
-              />
-
-              <MetricCard
-                title="Total Orders"
-                value={String(filteredOrders.length)}
-                subtitle="All orders in selected period"
-                trend="↑ 11.3%"
-                icon="orders"
-                tone="blue"
-              />
-
-              <MetricCard
-                title="Active Orders"
-                value={String(activeOrders)}
-                subtitle="Pending / Processing / Partial"
-                trend="↓ 3.2%"
-                icon="active"
-                tone="orange"
-              />
-
-              <MetricCard
-                title="Completed Orders"
-                value={String(completedOrders)}
-                subtitle="Completed orders"
-                trend="↑ 14.6%"
-                icon="completed"
-                tone="green"
-              />
+              <MetricCard title="Total Expenses" value={money(totalExpenses)} subtitle="All business expenses" trend="↓ 5.4%" icon={<IconCard />} tone="red" />
+              <MetricCard title="Total Orders" value={String(filteredOrders.length)} subtitle="All orders in selected period" trend="↑ 11.3%" icon={<IconReceipt />} tone="blue" />
+              <MetricCard title="Active Orders" value={String(activeOrders)} subtitle="Pending / Processing / Partial" trend="↓ 3.2%" icon={<IconClock />} tone="orange" />
+              <MetricCard title="Completed Orders" value={String(completedOrders)} subtitle="Completed orders" trend="↑ 14.6%" icon={<IconCheck />} tone="green" />
             </div>
 
             <div className="mb-6 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-              <MetricCard
-                title="Cash Accounts"
-                value={money(totalBusinessMoney)}
-                subtitle="Total balance in all accounts"
-                icon="bank"
-                tone="teal"
-              />
-
-              <MetricCard
-                title="Reseller Point Conversions"
-                value={money(totalPointConversions)}
-                subtitle="Total amount converted"
-                trend="↑ 9.5%"
-                icon="convert"
-                tone="purple"
-                mock
-              />
-
-              <MetricCard
-                title="Total User Commissions"
-                value={money(totalCommissions)}
-                subtitle="Total commissions of all users"
-                trend="↑ 8.3%"
-                icon="users"
-                tone="orange"
-                mock
-              />
-
-              <MetricCard
-                title="Pending Payouts"
-                value={money(pendingPayouts)}
-                subtitle="Unpaid commissions"
-                icon="clock"
-                tone="red"
-                mock
-              />
+              <MetricCard title="Cash Accounts" value={money(totalBusinessMoney)} subtitle="Total balance in all accounts" icon={<IconBank />} tone="teal" />
+              <MetricCard title="Reseller Point Conversions" value={money(totalPointConversions)} subtitle="Total amount converted" trend="↑ 9.5%" icon={<IconRefresh />} tone="purple" mock />
+              <MetricCard title="Total User Commissions" value={money(totalCommissions)} subtitle="Total commissions of all users" trend="↑ 8.3%" icon={<IconUsers />} tone="orange" mock />
+              <MetricCard title="Pending Payouts" value={money(pendingPayouts)} subtitle="Unpaid commissions" icon={<IconTimer />} tone="red" mock />
             </div>
 
             <div className="mb-6 grid gap-6 xl:grid-cols-3">
               <AccountingLineChart data={chartData} />
-
-              <ProfitBreakdown
-                providerCost={totalProviderCost}
-                grossProfit={grossProfit}
-                expenses={totalExpenses}
-                netProfit={netProfit}
-                revenue={totalRevenue}
-              />
+              <ProfitBreakdown providerCost={totalProviderCost} grossProfit={grossProfit} expenses={totalExpenses} netProfit={netProfit} />
             </div>
 
             <div className="mb-6 grid gap-6 xl:grid-cols-3">
-              <TableShell
-                title="Recent Orders"
-                onViewAll={() => setActiveModal("orders")}
-              >
+              <TableShell title="Recent Orders" onViewAll={() => setActiveModal("orders")}>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[760px] text-sm">
                     <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -1413,74 +769,27 @@ export default function AdminAnalyticsPage() {
                         <th className="px-5 py-4 text-left">Order ID</th>
                         <th className="px-5 py-4 text-left">Service</th>
                         <th className="px-5 py-4 text-left">Revenue</th>
-                        <th className="px-5 py-4 text-left">Provider Cost</th>
                         <th className="px-5 py-4 text-left">Profit</th>
                         <th className="px-5 py-4 text-left">Status</th>
-                        <th className="px-5 py-4 text-left">Date</th>
                       </tr>
                     </thead>
-
                     <tbody>
-                      {filteredOrders.slice(0, 6).map((order) => {
-                        const profit = getOrderProfit(order);
-
-                        return (
-                          <tr
-                            key={order.id}
-                            className="border-t border-slate-100 transition hover:bg-slate-50/70"
-                          >
-                            <td className="px-5 py-4 font-black text-slate-600">
-                              #{order.id.slice(0, 6)}
-                            </td>
-
-                            <td className="max-w-[240px] px-5 py-4">
-                              <p className="truncate font-bold text-slate-700">
-                                {order.service_name || "Unknown Service"}
-                              </p>
-                            </td>
-
-                            <td className="px-5 py-4 font-black text-emerald-600">
-                              {money(toNumber(order.price))}
-                            </td>
-
-                            <td className="px-5 py-4 font-black text-red-500">
-                              {money(toNumber(order.provider_cost))}
-                            </td>
-
-                            <td className="px-5 py-4 font-black text-blue-600">
-                              {money(profit)}
-                            </td>
-
-                            <td className="px-5 py-4">
-                              <StatusBadge status={order.status} />
-                            </td>
-
-                            <td className="px-5 py-4 font-semibold text-slate-500">
-                              {new Date(order.created_at).toLocaleDateString()}
-                            </td>
-                          </tr>
-                        );
-                      })}
-
-                      {filteredOrders.length <= 0 && (
-                        <tr>
-                          <td
-                            colSpan={7}
-                            className="px-5 py-12 text-center font-semibold text-slate-500"
-                          >
-                            No orders available for this period.
-                          </td>
+                      {filteredOrders.slice(0, 4).map((order) => (
+                        <tr key={order.id} className="border-t border-slate-100 transition hover:bg-slate-50/70">
+                          <td className="px-5 py-4 font-black text-slate-600">#{order.id.slice(0, 6)}</td>
+                          <td className="max-w-[240px] px-5 py-4"><p className="truncate font-bold text-slate-700">{order.service_name || "Unknown Service"}</p></td>
+                          <td className="px-5 py-4 font-black text-emerald-600">{money(toNumber(order.price))}</td>
+                          <td className="px-5 py-4 font-black text-blue-600">{money(getOrderProfit(order))}</td>
+                          <td className="px-5 py-4"><StatusBadge status={order.status} /></td>
                         </tr>
-                      )}
+                      ))}
+                      {filteredOrders.length <= 0 && <tr><td colSpan={5} className="px-5 py-12 text-center font-semibold text-slate-500">No orders available for this period.</td></tr>}
                     </tbody>
                   </table>
                 </div>
               </TableShell>
 
-              <TableShell
-                title="Recent Expenses"
-                onViewAll={() => setActiveModal("expenses")}
-              >
+              <TableShell title="Recent Expenses" onViewAll={() => setActiveModal("expenses")}>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[520px] text-sm">
                     <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -1491,50 +800,22 @@ export default function AdminAnalyticsPage() {
                         <th className="px-5 py-4 text-left">Date</th>
                       </tr>
                     </thead>
-
                     <tbody>
-                      {filteredExpenses.slice(0, 6).map((expense) => (
-                        <tr
-                          key={expense.id}
-                          className="border-t border-slate-100 transition hover:bg-slate-50/70"
-                        >
-                          <td className="px-5 py-4 font-bold text-slate-700">
-                            {expense.title || "Expense"}
-                          </td>
-
-                          <td className="px-5 py-4 font-semibold capitalize text-slate-500">
-                            {expense.category || "General"}
-                          </td>
-
-                          <td className="px-5 py-4 font-black text-red-600">
-                            {money(toNumber(expense.amount))}
-                          </td>
-
-                          <td className="px-5 py-4 font-semibold text-slate-500">
-                            {new Date(expense.expense_date).toLocaleDateString()}
-                          </td>
+                      {filteredExpenses.slice(0, 4).map((expense) => (
+                        <tr key={expense.id} className="border-t border-slate-100 transition hover:bg-slate-50/70">
+                          <td className="px-5 py-4 font-bold text-slate-700">{expense.title || "Expense"}</td>
+                          <td className="px-5 py-4 font-semibold capitalize text-slate-500">{expense.category || "General"}</td>
+                          <td className="px-5 py-4 font-black text-red-600">{money(toNumber(expense.amount))}</td>
+                          <td className="px-5 py-4 font-semibold text-slate-500">{new Date(expense.expense_date).toLocaleDateString()}</td>
                         </tr>
                       ))}
-
-                      {filteredExpenses.length <= 0 && (
-                        <tr>
-                          <td
-                            colSpan={4}
-                            className="px-5 py-12 text-center font-semibold text-slate-500"
-                          >
-                            No expenses available for this period.
-                          </td>
-                        </tr>
-                      )}
+                      {filteredExpenses.length <= 0 && <tr><td colSpan={4} className="px-5 py-12 text-center font-semibold text-slate-500">No expenses available for this period.</td></tr>}
                     </tbody>
                   </table>
                 </div>
               </TableShell>
 
-              <TableShell
-                title="Cash Accounts"
-                onViewAll={() => setActiveModal("cash")}
-              >
+              <TableShell title="Cash Accounts" onViewAll={() => setActiveModal("cashAccounts")}>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[520px] text-sm">
                     <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -1545,41 +826,16 @@ export default function AdminAnalyticsPage() {
                         <th className="px-5 py-4 text-left">Status</th>
                       </tr>
                     </thead>
-
                     <tbody>
-                      {cashAccounts.slice(0, 6).map((account) => (
-                        <tr
-                          key={account.id}
-                          className="border-t border-slate-100 transition hover:bg-slate-50/70"
-                        >
-                          <td className="px-5 py-4 font-bold text-slate-700">
-                            {account.name || "Cash Account"}
-                          </td>
-
-                          <td className="px-5 py-4 font-semibold capitalize text-slate-500">
-                            {account.type || "Account"}
-                          </td>
-
-                          <td className="px-5 py-4 font-black text-emerald-600">
-                            {money(toNumber(account.balance))}
-                          </td>
-
-                          <td className="px-5 py-4">
-                            <StatusBadge status={account.status || "active"} />
-                          </td>
+                      {cashAccounts.slice(0, 4).map((account) => (
+                        <tr key={account.id} className="border-t border-slate-100 transition hover:bg-slate-50/70">
+                          <td className="px-5 py-4 font-bold text-slate-700">{account.name || "Cash Account"}</td>
+                          <td className="px-5 py-4 font-semibold capitalize text-slate-500">{account.type || "Account"}</td>
+                          <td className="px-5 py-4 font-black text-emerald-600">{money(toNumber(account.balance))}</td>
+                          <td className="px-5 py-4"><StatusBadge status={account.status || "active"} /></td>
                         </tr>
                       ))}
-
-                      {cashAccounts.length <= 0 && (
-                        <tr>
-                          <td
-                            colSpan={4}
-                            className="px-5 py-12 text-center font-semibold text-slate-500"
-                          >
-                            No cash accounts yet.
-                          </td>
-                        </tr>
-                      )}
+                      {cashAccounts.length <= 0 && <tr><td colSpan={4} className="px-5 py-12 text-center font-semibold text-slate-500">No cash accounts yet.</td></tr>}
                     </tbody>
                   </table>
                 </div>
@@ -1587,11 +843,7 @@ export default function AdminAnalyticsPage() {
             </div>
 
             <div className="grid gap-6 xl:grid-cols-2">
-              <TableShell
-                title="Reseller Point Conversions"
-                onViewAll={() => setActiveModal("pointConversions")}
-                mock
-              >
+              <TableShell title="Reseller Point Conversions" onViewAll={() => setActiveModal("pointConversions")} mock>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[680px] text-sm">
                     <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -1600,35 +852,15 @@ export default function AdminAnalyticsPage() {
                         <th className="px-5 py-4 text-left">Points Converted</th>
                         <th className="px-5 py-4 text-left">Amount Added</th>
                         <th className="px-5 py-4 text-left">Status</th>
-                        <th className="px-5 py-4 text-left">Date</th>
                       </tr>
                     </thead>
-
                     <tbody>
                       {mockPointConversions.map((item) => (
-                        <tr
-                          key={item.id}
-                          className="border-t border-slate-100 transition hover:bg-slate-50/70"
-                        >
-                          <td className="px-5 py-4 font-bold text-slate-700">
-                            {item.user}
-                          </td>
-
-                          <td className="px-5 py-4 font-black text-purple-600">
-                            {item.points.toLocaleString()}
-                          </td>
-
-                          <td className="px-5 py-4 font-black text-emerald-600">
-                            {money(item.amount)}
-                          </td>
-
-                          <td className="px-5 py-4">
-                            <StatusBadge status={item.status} />
-                          </td>
-
-                          <td className="px-5 py-4 font-semibold text-slate-500">
-                            {item.date}
-                          </td>
+                        <tr key={item.id} className="border-t border-slate-100 transition hover:bg-slate-50/70">
+                          <td className="px-5 py-4 font-bold text-slate-700">{item.user}</td>
+                          <td className="px-5 py-4 font-black text-purple-600">{item.points.toLocaleString()}</td>
+                          <td className="px-5 py-4 font-black text-emerald-600">{money(item.amount)}</td>
+                          <td className="px-5 py-4"><StatusBadge status={item.status} /></td>
                         </tr>
                       ))}
                     </tbody>
@@ -1636,11 +868,7 @@ export default function AdminAnalyticsPage() {
                 </div>
               </TableShell>
 
-              <TableShell
-                title="User Commissions"
-                onViewAll={() => setActiveModal("commissions")}
-                mock
-              >
+              <TableShell title="User Commissions" onViewAll={() => setActiveModal("commissions")} mock>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[680px] text-sm">
                     <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -1649,35 +877,15 @@ export default function AdminAnalyticsPage() {
                         <th className="px-5 py-4 text-left">Source / Referral</th>
                         <th className="px-5 py-4 text-left">Commission Amount</th>
                         <th className="px-5 py-4 text-left">Status</th>
-                        <th className="px-5 py-4 text-left">Date</th>
                       </tr>
                     </thead>
-
                     <tbody>
                       {mockCommissions.map((item) => (
-                        <tr
-                          key={item.id}
-                          className="border-t border-slate-100 transition hover:bg-slate-50/70"
-                        >
-                          <td className="px-5 py-4 font-bold text-slate-700">
-                            {item.user}
-                          </td>
-
-                          <td className="px-5 py-4 font-semibold text-slate-500">
-                            {item.source}
-                          </td>
-
-                          <td className="px-5 py-4 font-black text-orange-600">
-                            {money(item.amount)}
-                          </td>
-
-                          <td className="px-5 py-4">
-                            <StatusBadge status={item.status} />
-                          </td>
-
-                          <td className="px-5 py-4 font-semibold text-slate-500">
-                            {item.date}
-                          </td>
+                        <tr key={item.id} className="border-t border-slate-100 transition hover:bg-slate-50/70">
+                          <td className="px-5 py-4 font-bold text-slate-700">{item.user}</td>
+                          <td className="px-5 py-4 font-semibold text-slate-500">{item.source}</td>
+                          <td className="px-5 py-4 font-black text-orange-600">{money(item.amount)}</td>
+                          <td className="px-5 py-4"><StatusBadge status={item.status} /></td>
                         </tr>
                       ))}
                     </tbody>
@@ -1688,12 +896,7 @@ export default function AdminAnalyticsPage() {
           </div>
         </section>
 
-        <DataModal
-          open={activeModal === "orders"}
-          onClose={() => setActiveModal(null)}
-          title="All Recent Orders"
-          subtitle="Full order accounting report for the selected period."
-        >
+        <DataModal open={activeModal === "orders"} onClose={() => setActiveModal(null)} title="All Recent Orders" subtitle="Full order accounting report for the selected period.">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -1707,20 +910,127 @@ export default function AdminAnalyticsPage() {
                   <th className="px-5 py-4 text-left">Date</th>
                 </tr>
               </thead>
-
               <tbody>
                 {filteredOrders.map((order) => (
                   <tr key={order.id} className="border-t border-slate-100">
-                    <td className="px-5 py-4 font-black text-slate-600">
-                      #{order.id.slice(0, 8)}
-                    </td>
+                    <td className="px-5 py-4 font-black text-slate-600">#{order.id.slice(0, 8)}</td>
+                    <td className="max-w-[320px] px-5 py-4 font-bold text-slate-700">{order.service_name || "Unknown Service"}</td>
+                    <td className="px-5 py-4 font-black text-emerald-600">{money(toNumber(order.price))}</td>
+                    <td className="px-5 py-4 font-black text-red-500">{money(toNumber(order.provider_cost))}</td>
+                    <td className="px-5 py-4 font-black text-blue-600">{money(getOrderProfit(order))}</td>
+                    <td className="px-5 py-4"><StatusBadge status={order.status} /></td>
+                    <td className="px-5 py-4 font-semibold text-slate-500">{new Date(order.created_at).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </DataModal>
 
-                    <td className="px-5 py-4 font-bold text-slate-700">
-                      {order.service_name || "Unknown Service"}
-                    </td>
+        <DataModal open={activeModal === "expenses"} onClose={() => setActiveModal(null)} title="All Recent Expenses" subtitle="Full expense report for the selected period.">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-sm">
+              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-5 py-4 text-left">Title</th>
+                  <th className="px-5 py-4 text-left">Category</th>
+                  <th className="px-5 py-4 text-left">Amount</th>
+                  <th className="px-5 py-4 text-left">Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredExpenses.map((expense) => (
+                  <tr key={expense.id} className="border-t border-slate-100">
+                    <td className="px-5 py-4 font-bold text-slate-700">{expense.title || "Expense"}</td>
+                    <td className="px-5 py-4 font-semibold capitalize text-slate-500">{expense.category || "General"}</td>
+                    <td className="px-5 py-4 font-black text-red-600">{money(toNumber(expense.amount))}</td>
+                    <td className="px-5 py-4 font-semibold text-slate-500">{new Date(expense.expense_date).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </DataModal>
 
-                    <td className="px-5 py-4 font-black text-emerald-600">
-                      {money(toNumber(order.price))}
-                    </td>
+        <DataModal open={activeModal === "cashAccounts"} onClose={() => setActiveModal(null)} title="All Cash Accounts" subtitle="Complete cash account balance report.">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-sm">
+              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-5 py-4 text-left">Account Name</th>
+                  <th className="px-5 py-4 text-left">Type</th>
+                  <th className="px-5 py-4 text-left">Balance</th>
+                  <th className="px-5 py-4 text-left">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cashAccounts.map((account) => (
+                  <tr key={account.id} className="border-t border-slate-100">
+                    <td className="px-5 py-4 font-bold text-slate-700">{account.name || "Cash Account"}</td>
+                    <td className="px-5 py-4 font-semibold capitalize text-slate-500">{account.type || "Account"}</td>
+                    <td className="px-5 py-4 font-black text-emerald-600">{money(toNumber(account.balance))}</td>
+                    <td className="px-5 py-4"><StatusBadge status={account.status || "active"} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </DataModal>
 
-                    <td className="px-5 py-4 font-black text-red
+        <DataModal open={activeModal === "pointConversions"} onClose={() => setActiveModal(null)} title="Reseller Point Conversions" subtitle="Mock table for now. We will connect this later to your Supabase reseller conversion records.">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] text-sm">
+              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-5 py-4 text-left">User</th>
+                  <th className="px-5 py-4 text-left">Points Converted</th>
+                  <th className="px-5 py-4 text-left">Amount Added</th>
+                  <th className="px-5 py-4 text-left">Status</th>
+                  <th className="px-5 py-4 text-left">Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {mockPointConversions.map((item) => (
+                  <tr key={item.id} className="border-t border-slate-100">
+                    <td className="px-5 py-4 font-bold text-slate-700">{item.user}</td>
+                    <td className="px-5 py-4 font-black text-purple-600">{item.points.toLocaleString()}</td>
+                    <td className="px-5 py-4 font-black text-emerald-600">{money(item.amount)}</td>
+                    <td className="px-5 py-4"><StatusBadge status={item.status} /></td>
+                    <td className="px-5 py-4 font-semibold text-slate-500">{item.date}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </DataModal>
+
+        <DataModal open={activeModal === "commissions"} onClose={() => setActiveModal(null)} title="User Commissions" subtitle="Mock table for now. We will connect this later to your affiliate commission records.">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] text-sm">
+              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-5 py-4 text-left">User</th>
+                  <th className="px-5 py-4 text-left">Source / Referral</th>
+                  <th className="px-5 py-4 text-left">Commission Amount</th>
+                  <th className="px-5 py-4 text-left">Status</th>
+                  <th className="px-5 py-4 text-left">Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {mockCommissions.map((item) => (
+                  <tr key={item.id} className="border-t border-slate-100">
+                    <td className="px-5 py-4 font-bold text-slate-700">{item.user}</td>
+                    <td className="px-5 py-4 font-semibold text-slate-500">{item.source}</td>
+                    <td className="px-5 py-4 font-black text-orange-600">{money(item.amount)}</td>
+                    <td className="px-5 py-4"><StatusBadge status={item.status} /></td>
+                    <td className="px-5 py-4 font-semibold text-slate-500">{item.date}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </DataModal>
+      </main>
+    </AdminGuard>
+  );
+}
