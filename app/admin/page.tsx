@@ -756,7 +756,7 @@ export default function AdminPage() {
         color: "#f59e0b",
       },
       {
-        label: "Super Admin",
+        label: "Developer",
         value: users.filter((item) => cleanStatus(item.role) === "super_admin").length,
         color: "#8b5cf6",
       },
