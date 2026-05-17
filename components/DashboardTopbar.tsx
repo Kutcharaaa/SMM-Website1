@@ -88,22 +88,10 @@ export default function DashboardTopbar({
               Wallet Balance
             </p>
 
-            <p
-              className="mt-1 text-2xl font-black text-blue-600"
-              title={
-                code === "PHP"
-                  ? "Wallet balance stored in PHP"
-                  : `Stored value: ${formatPhpAmount(balance)} PHP`
-              }
-            >
-              {formatAmount(balance)}
-            </p>
-
-            {code !== "PHP" && (
-              <p className="mt-0.5 text-[10px] font-bold text-slate-400">
-                Displayed in {code}
-              </p>
-            )}
+            
+<p className="mt-1 text-2xl font-black text-blue-600">
+  {formatAmount(balance)}
+</p>
           </div>
 
           <NotificationsDropdown />

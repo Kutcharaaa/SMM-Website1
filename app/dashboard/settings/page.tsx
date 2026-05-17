@@ -630,7 +630,7 @@ export default function SettingsPage() {
                   })}
                   helper={
                     selectedCurrency
-                      ? `Rate: ${formatRate(getPanelRate(selectedCurrency))}.`
+                      ? `Rate: ${formatRate(getPanelRate(selectedCurrency))}`
                       : "Wallet stays PHP. This only changes display later."
                   }
                 />
