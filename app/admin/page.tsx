@@ -21,6 +21,19 @@ import {
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+type RangeType = "day" | "week" | "month" | "year";
+
+type OverviewMetric =
+  | "revenue"
+  | "grossProfit"
+  | "orders"
+  | "users"
+  | "addFundCount"
+  | "addFundAmount"
+  | "estimatedProfit";
+
+type StatisticType = "orders" | "tickets" | "payments" | "users";
+
 type StatsState = {
   users: number;
   pendingPayments: number;
@@ -38,7 +51,7 @@ type StatsState = {
   totalOrderRevenue: number;
 };
 
-type RecentOrder = {
+type OrderRow = {
   id: string;
   user_id: string | null;
   service_name: string | null;
@@ -48,7 +61,7 @@ type RecentOrder = {
   created_at: string;
 };
 
-type RecentDeposit = {
+type DepositRow = {
   id: string;
   user_id: string | null;
   amount: number | null;
@@ -57,17 +70,33 @@ type RecentDeposit = {
   created_at: string;
 };
 
-type RecentUser = {
+type UserRow = {
   id: string;
   username: string | null;
-  email: string | null;
   role: string | null;
   created_at: string | null;
 };
 
-type RevenuePoint = {
+type TicketRow = {
+  id: string;
+  status: string | null;
+  created_at: string | null;
+};
+
+type ExpenseRow = {
+  amount: number | null;
+  created_at?: string | null;
+};
+
+type ChartPoint = {
   label: string;
   value: number;
+};
+
+type DonutItem = {
+  label: string;
+  value: number;
+  color: string;
 };
 
 const emptyStats: StatsState = {
@@ -86,6 +115,30 @@ const emptyStats: StatsState = {
   totalDeposits: 0,
   totalOrderRevenue: 0,
 };
+
+const overviewTabs: { label: string; value: OverviewMetric }[] = [
+  { label: "Revenue", value: "revenue" },
+  { label: "Gross Profit", value: "grossProfit" },
+  { label: "Orders", value: "orders" },
+  { label: "Users", value: "users" },
+  { label: "Add Fund Count", value: "addFundCount" },
+  { label: "Add Fund Amount", value: "addFundAmount" },
+  { label: "Estimated Profit", value: "estimatedProfit" },
+];
+
+const rangeTabs: { label: string; value: RangeType }[] = [
+  { label: "This Day", value: "day" },
+  { label: "This Week", value: "week" },
+  { label: "This Month", value: "month" },
+  { label: "This Year", value: "year" },
+];
+
+const statisticsTabs: { label: string; value: StatisticType }[] = [
+  { label: "Orders", value: "orders" },
+  { label: "Tickets", value: "tickets" },
+  { label: "Payments", value: "payments" },
+  { label: "Users", value: "users" },
+];
 
 function formatMoney(value: number) {
   return `₱${Number(value || 0).toLocaleString("en-PH", {
@@ -117,8 +170,22 @@ function formatDate(value?: string | null) {
   });
 }
 
+function cleanStatus(status?: string | null) {
+  return (status || "").toLowerCase().trim();
+}
+
+function isApprovedDeposit(status?: string | null) {
+  const clean = cleanStatus(status);
+  return ["approved", "completed", "success", "paid"].includes(clean);
+}
+
+function isCancelled(status?: string | null) {
+  const clean = cleanStatus(status);
+  return ["cancelled", "canceled", "rejected", "failed"].includes(clean);
+}
+
 function getStatusStyle(status?: string | null) {
-  const clean = (status || "pending").toLowerCase();
+  const clean = cleanStatus(status);
 
   if (clean === "completed" || clean === "approved" || clean === "success") {
     return "bg-green-50 text-green-700";
@@ -132,14 +199,238 @@ function getStatusStyle(status?: string | null) {
     return "bg-blue-50 text-blue-700";
   }
 
-  if (clean === "cancelled" || clean === "canceled" || clean === "rejected") {
+  if (isCancelled(clean)) {
     return "bg-red-50 text-red-700";
   }
 
   return "bg-slate-100 text-slate-600";
 }
 
-function buildLinePath(points: RevenuePoint[], width: number, height: number) {
+function getStartOfWeek(date: Date) {
+  const day = date.getDay();
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+  return new Date(date.getFullYear(), date.getMonth(), diff);
+}
+
+function getRangeStart(range: RangeType) {
+  const now = new Date();
+
+  if (range === "day") {
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  }
+
+  if (range === "week") {
+    const start = getStartOfWeek(now);
+    return new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  }
+
+  if (range === "month") {
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  }
+
+  return new Date(now.getFullYear(), 0, 1);
+}
+
+function getRangeEnd(range: RangeType) {
+  const now = new Date();
+
+  if (range === "day") {
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  }
+
+  if (range === "week") {
+    const start = getStartOfWeek(now);
+    return new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7);
+  }
+
+  if (range === "month") {
+    return new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  }
+
+  return new Date(now.getFullYear() + 1, 0, 1);
+}
+
+function isInsideRange(value: string | null | undefined, range: RangeType) {
+  if (!value) return false;
+
+  const date = new Date(value);
+  const start = getRangeStart(range);
+  const end = getRangeEnd(range);
+
+  return date >= start && date < end;
+}
+
+function getBucketLabel(date: Date, range: RangeType) {
+  if (range === "day") {
+    return date.toLocaleTimeString("en-PH", {
+      hour: "numeric",
+      hour12: true,
+    });
+  }
+
+  if (range === "week") {
+    return date.toLocaleDateString("en-PH", {
+      weekday: "short",
+    });
+  }
+
+  if (range === "month") {
+    return date.toLocaleDateString("en-PH", {
+      month: "short",
+      day: "numeric",
+    });
+  }
+
+  return date.toLocaleDateString("en-PH", {
+    month: "short",
+  });
+}
+
+function createBuckets(range: RangeType) {
+  const now = new Date();
+  const buckets: { label: string; start: Date; end: Date }[] = [];
+
+  if (range === "day") {
+    const start = getRangeStart("day");
+
+    for (let hour = 0; hour < 24; hour += 4) {
+      const bucketStart = new Date(
+        start.getFullYear(),
+        start.getMonth(),
+        start.getDate(),
+        hour,
+      );
+
+      const bucketEnd = new Date(
+        start.getFullYear(),
+        start.getMonth(),
+        start.getDate(),
+        hour + 4,
+      );
+
+      buckets.push({
+        label: getBucketLabel(bucketStart, range),
+        start: bucketStart,
+        end: bucketEnd,
+      });
+    }
+  }
+
+  if (range === "week") {
+    const start = getStartOfWeek(now);
+
+    for (let index = 0; index < 7; index++) {
+      const bucketStart = new Date(
+        start.getFullYear(),
+        start.getMonth(),
+        start.getDate() + index,
+      );
+
+      const bucketEnd = new Date(
+        start.getFullYear(),
+        start.getMonth(),
+        start.getDate() + index + 1,
+      );
+
+      buckets.push({
+        label: getBucketLabel(bucketStart, range),
+        start: bucketStart,
+        end: bucketEnd,
+      });
+    }
+  }
+
+  if (range === "month") {
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const selectedDays = [1, 7, 13, 19, 25, daysInMonth].filter(
+      (day, index, array) => array.indexOf(day) === index && day <= daysInMonth,
+    );
+
+    selectedDays.forEach((day, index) => {
+      const nextDay = selectedDays[index + 1] || daysInMonth + 1;
+
+      const bucketStart = new Date(year, month, day);
+      const bucketEnd = new Date(year, month, nextDay);
+
+      buckets.push({
+        label: getBucketLabel(bucketStart, range),
+        start: bucketStart,
+        end: bucketEnd,
+      });
+    });
+  }
+
+  if (range === "year") {
+    const year = now.getFullYear();
+
+    for (let month = 0; month < 12; month++) {
+      const bucketStart = new Date(year, month, 1);
+      const bucketEnd = new Date(year, month + 1, 1);
+
+      buckets.push({
+        label: getBucketLabel(bucketStart, range),
+        start: bucketStart,
+        end: bucketEnd,
+      });
+    }
+  }
+
+  return buckets;
+}
+
+function sumOrdersInBucket(orders: OrderRow[], start: Date, end: Date) {
+  return orders
+    .filter((order) => {
+      const date = new Date(order.created_at);
+      return date >= start && date < end;
+    })
+    .reduce((sum, order) => sum + Number(order.price || 0), 0);
+}
+
+function countOrdersInBucket(orders: OrderRow[], start: Date, end: Date) {
+  return orders.filter((order) => {
+    const date = new Date(order.created_at);
+    return date >= start && date < end;
+  }).length;
+}
+
+function countUsersInBucket(users: UserRow[], start: Date, end: Date) {
+  return users.filter((user) => {
+    if (!user.created_at) return false;
+    const date = new Date(user.created_at);
+    return date >= start && date < end;
+  }).length;
+}
+
+function sumDepositsInBucket(deposits: DepositRow[], start: Date, end: Date) {
+  return deposits
+    .filter((deposit) => {
+      const date = new Date(deposit.created_at);
+      return date >= start && date < end && isApprovedDeposit(deposit.status);
+    })
+    .reduce((sum, deposit) => sum + Number(deposit.amount || 0), 0);
+}
+
+function countDepositsInBucket(deposits: DepositRow[], start: Date, end: Date) {
+  return deposits.filter((deposit) => {
+    const date = new Date(deposit.created_at);
+    return date >= start && date < end && isApprovedDeposit(deposit.status);
+  }).length;
+}
+
+function sumExpensesInBucket(expenses: ExpenseRow[], start: Date, end: Date) {
+  return expenses
+    .filter((expense) => {
+      if (!expense.created_at) return false;
+      const date = new Date(expense.created_at);
+      return date >= start && date < end;
+    })
+    .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+}
+
+function buildLinePath(points: ChartPoint[], width: number, height: number) {
   if (points.length <= 0) return "";
 
   const maxValue = Math.max(...points.map((item) => item.value), 1);
@@ -155,7 +446,7 @@ function buildLinePath(points: RevenuePoint[], width: number, height: number) {
     .join(" ");
 }
 
-function buildAreaPath(points: RevenuePoint[], width: number, height: number) {
+function buildAreaPath(points: ChartPoint[], width: number, height: number) {
   const line = buildLinePath(points, width, height);
 
   if (!line || points.length <= 0) return "";
@@ -163,212 +454,178 @@ function buildAreaPath(points: RevenuePoint[], width: number, height: number) {
   return `${line} L ${width} ${height} L 0 ${height} Z`;
 }
 
+function buildDonutGradient(items: DonutItem[], total: number) {
+  if (total <= 0) {
+    return "conic-gradient(#e5e7eb 0deg 360deg)";
+  }
+
+  let current = 0;
+
+  const parts = items.map((item) => {
+    const start = current;
+    const degree = (item.value / total) * 360;
+    const end = start + degree;
+
+    current = end;
+
+    return `${item.color} ${start}deg ${end}deg`;
+  });
+
+  return `conic-gradient(${parts.join(", ")})`;
+}
+
 export default function AdminPage() {
   const [stats, setStats] = useState<StatsState>(emptyStats);
-  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
-  const [recentDeposits, setRecentDeposits] = useState<RecentDeposit[]>([]);
-  const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
-  const [revenuePoints, setRevenuePoints] = useState<RevenuePoint[]>([]);
+  const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [deposits, setDeposits] = useState<DepositRow[]>([]);
+  const [users, setUsers] = useState<UserRow[]>([]);
+  const [tickets, setTickets] = useState<TicketRow[]>([]);
+  const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
+
+  const [recentOrders, setRecentOrders] = useState<OrderRow[]>([]);
+  const [recentDeposits, setRecentDeposits] = useState<DepositRow[]>([]);
+  const [recentUsers, setRecentUsers] = useState<UserRow[]>([]);
+
+  const [overviewMetric, setOverviewMetric] =
+    useState<OverviewMetric>("revenue");
+  const [overviewRange, setOverviewRange] = useState<RangeType>("month");
+  const [statisticsType, setStatisticsType] =
+    useState<StatisticType>("orders");
+
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string>("");
-
-  async function safeCount(table: string, filter?: (query: any) => any) {
-    let query = supabase.from(table).select("id", {
-      count: "exact",
-      head: true,
-    });
-
-    if (filter) query = filter(query);
-
-    const { count, error } = await query;
-
-    if (error) {
-      console.warn(`Count error for ${table}:`, error.message);
-      return 0;
-    }
-
-    return count || 0;
-  }
-
-  async function safeSum(
-    table: string,
-    column: string,
-    filter?: (query: any) => any,
-  ) {
-    let query = supabase.from(table).select(column);
-
-    if (filter) query = filter(query);
-
-    const { data, error } = await query;
-
-    if (error) {
-      console.warn(`Sum error for ${table}.${column}:`, error.message);
-      return 0;
-    }
-
-    return (
-      data?.reduce((sum: number, item: any) => {
-        return sum + Number(item?.[column] || 0);
-      }, 0) || 0
-    );
-  }
-
-  async function loadRevenueChart() {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
-
-    const startDate = new Date(year, month, 1);
-    const endDate = new Date(year, month + 1, 1);
-
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-    const { data, error } = await supabase
-      .from("orders")
-      .select("price, created_at, status")
-      .gte("created_at", startDate.toISOString())
-      .lt("created_at", endDate.toISOString());
-
-    const dayMap: Record<number, number> = {};
-
-    for (let day = 1; day <= daysInMonth; day++) {
-      dayMap[day] = 0;
-    }
-
-    if (!error && data) {
-      data.forEach((item: any) => {
-        const date = new Date(item.created_at);
-        const day = date.getDate();
-
-        dayMap[day] = (dayMap[day] || 0) + Number(item.price || 0);
-      });
-    }
-
-    const selectedDays = [1, 7, 13, 19, 25, daysInMonth].filter(
-      (day, index, array) => array.indexOf(day) === index && day <= daysInMonth,
-    );
-
-    const points = selectedDays.map((day) => ({
-      label: `May ${day}`,
-      value: dayMap[day] || 0,
-    }));
-
-    const totalRevenue = points.reduce((sum, item) => sum + item.value, 0);
-
-    if (totalRevenue <= 0) {
-      setRevenuePoints([
-        { label: "May 1", value: 8000 },
-        { label: "May 7", value: 15000 },
-        { label: "May 13", value: 24000 },
-        { label: "May 19", value: 26000 },
-        { label: "May 25", value: 34000 },
-        { label: "May 31", value: 42000 },
-      ]);
-
-      return;
-    }
-
-    setRevenuePoints(points);
-  }
 
   async function loadStats() {
     setLoading(true);
 
-    const [
-      users,
-      pendingPayments,
-      approvedDeposits,
-      activeOrders,
-      completedOrders,
-      pendingOrders,
-      processingOrders,
-      partialOrders,
-      cancelledOrders,
-      openTickets,
-      totalCash,
-      expenses,
-      totalDeposits,
-      totalOrderRevenue,
-    ] = await Promise.all([
-      safeCount("profiles"),
-      safeCount("deposits", (q) => q.eq("status", "pending")),
-      safeCount("deposits", (q) =>
-        q.in("status", ["approved", "completed", "success", "paid"]),
-      ),
-      safeCount("orders", (q) =>
-        q.in("status", ["pending", "processing", "partial"]),
-      ),
-      safeCount("orders", (q) => q.eq("status", "completed")),
-      safeCount("orders", (q) => q.eq("status", "pending")),
-      safeCount("orders", (q) => q.eq("status", "processing")),
-      safeCount("orders", (q) => q.eq("status", "partial")),
-      safeCount("orders", (q) => q.in("status", ["cancelled", "canceled"])),
-      safeCount("tickets", (q) => q.eq("status", "open")),
-      safeSum("cash_accounts", "balance"),
-      safeSum("expenses", "amount"),
-      safeSum("deposits", "amount", (q) =>
-        q.in("status", ["approved", "completed", "success", "paid"]),
-      ),
-      safeSum("orders", "price"),
-    ]);
-
-    setStats({
-      users,
-      pendingPayments,
-      approvedDeposits,
-      activeOrders,
-      completedOrders,
-      pendingOrders,
-      processingOrders,
-      partialOrders,
-      cancelledOrders,
-      openTickets,
-      totalCash,
-      expenses,
-      totalDeposits,
-      totalOrderRevenue,
-    });
-
-    await loadRevenueChart();
-
     const { data: orderData, error: orderError } = await supabase
       .from("orders")
       .select("id, user_id, service_name, quantity, status, price, created_at")
-      .order("created_at", { ascending: false })
-      .limit(5);
-
-    if (orderError) {
-      console.warn("Recent orders error:", orderError.message);
-      setRecentOrders([]);
-    } else {
-      setRecentOrders((orderData || []) as RecentOrder[]);
-    }
+      .order("created_at", { ascending: false });
 
     const { data: depositData, error: depositError } = await supabase
       .from("deposits")
       .select("id, user_id, amount, method, status, created_at")
-      .order("created_at", { ascending: false })
-      .limit(5);
-
-    if (depositError) {
-      console.warn("Recent deposits error:", depositError.message);
-      setRecentDeposits([]);
-    } else {
-      setRecentDeposits((depositData || []) as RecentDeposit[]);
-    }
+      .order("created_at", { ascending: false });
 
     const { data: userData, error: userError } = await supabase
       .from("profiles")
-      .select("id, username, email, role, created_at")
-      .order("created_at", { ascending: false })
-      .limit(5);
+      .select("id, username, role, created_at")
+      .order("created_at", { ascending: false });
 
-    if (userError) {
-      console.warn("Recent users error:", userError.message);
-      setRecentUsers([]);
+    const { data: ticketData, error: ticketError } = await supabase
+      .from("tickets")
+      .select("id, status, created_at")
+      .order("created_at", { ascending: false });
+
+    const { data: cashAccounts, error: cashError } = await supabase
+      .from("cash_accounts")
+      .select("balance");
+
+    let expenseRows: ExpenseRow[] = [];
+
+    const { data: expenseDataWithDate, error: expenseDateError } =
+      await supabase.from("expenses").select("amount, created_at");
+
+    if (!expenseDateError && expenseDataWithDate) {
+      expenseRows = expenseDataWithDate as ExpenseRow[];
     } else {
-      setRecentUsers((userData || []) as RecentUser[]);
+      const { data: expenseData } = await supabase
+        .from("expenses")
+        .select("amount");
+
+      expenseRows = (expenseData || []) as ExpenseRow[];
     }
+
+    const loadedOrders = orderError ? [] : ((orderData || []) as OrderRow[]);
+    const loadedDeposits = depositError
+      ? []
+      : ((depositData || []) as DepositRow[]);
+    const loadedUsers = userError ? [] : ((userData || []) as UserRow[]);
+    const loadedTickets = ticketError ? [] : ((ticketData || []) as TicketRow[]);
+
+    const pendingPayments = loadedDeposits.filter(
+      (item) => cleanStatus(item.status) === "pending",
+    ).length;
+
+    const approvedDeposits = loadedDeposits.filter((item) =>
+      isApprovedDeposit(item.status),
+    ).length;
+
+    const totalDeposits = loadedDeposits
+      .filter((item) => isApprovedDeposit(item.status))
+      .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+
+    const pendingOrders = loadedOrders.filter(
+      (item) => cleanStatus(item.status) === "pending",
+    ).length;
+
+    const processingOrders = loadedOrders.filter(
+      (item) => cleanStatus(item.status) === "processing",
+    ).length;
+
+    const partialOrders = loadedOrders.filter(
+      (item) => cleanStatus(item.status) === "partial",
+    ).length;
+
+    const completedOrders = loadedOrders.filter(
+      (item) => cleanStatus(item.status) === "completed",
+    ).length;
+
+    const cancelledOrders = loadedOrders.filter((item) =>
+      isCancelled(item.status),
+    ).length;
+
+    const activeOrders = pendingOrders + processingOrders + partialOrders;
+
+    const openTickets = loadedTickets.filter(
+      (item) => cleanStatus(item.status) === "open",
+    ).length;
+
+    const totalCash =
+      cashError || !cashAccounts
+        ? 0
+        : cashAccounts.reduce(
+            (sum, item: any) => sum + Number(item.balance || 0),
+            0,
+          );
+
+    const expenseTotal = expenseRows.reduce(
+      (sum, item) => sum + Number(item.amount || 0),
+      0,
+    );
+
+    const totalOrderRevenue = loadedOrders.reduce(
+      (sum, item) => sum + Number(item.price || 0),
+      0,
+    );
+
+    setOrders(loadedOrders);
+    setDeposits(loadedDeposits);
+    setUsers(loadedUsers);
+    setTickets(loadedTickets);
+    setExpenses(expenseRows);
+
+    setRecentOrders(loadedOrders.slice(0, 5));
+    setRecentDeposits(loadedDeposits.slice(0, 5));
+    setRecentUsers(loadedUsers.slice(0, 5));
+
+    setStats({
+      users: loadedUsers.length,
+      pendingPayments,
+      approvedDeposits,
+      activeOrders,
+      completedOrders,
+      pendingOrders,
+      processingOrders,
+      partialOrders,
+      cancelledOrders,
+      openTickets,
+      totalCash,
+      expenses: expenseTotal,
+      totalDeposits,
+      totalOrderRevenue,
+    });
 
     setLastUpdated(
       new Date().toLocaleTimeString("en-PH", {
@@ -393,6 +650,123 @@ export default function AdminPage() {
   const estimatedProfit = useMemo(() => {
     return stats.totalOrderRevenue - stats.expenses;
   }, [stats.totalOrderRevenue, stats.expenses]);
+
+  const overviewPoints = useMemo(() => {
+    const buckets = createBuckets(overviewRange);
+
+    return buckets.map((bucket) => {
+      const revenue = sumOrdersInBucket(orders, bucket.start, bucket.end);
+      const bucketExpenses = sumExpensesInBucket(expenses, bucket.start, bucket.end);
+
+      let value = revenue;
+
+      if (overviewMetric === "revenue") value = revenue;
+      if (overviewMetric === "grossProfit") value = Math.max(0, revenue - bucketExpenses);
+      if (overviewMetric === "orders") value = countOrdersInBucket(orders, bucket.start, bucket.end);
+      if (overviewMetric === "users") value = countUsersInBucket(users, bucket.start, bucket.end);
+      if (overviewMetric === "addFundCount") value = countDepositsInBucket(deposits, bucket.start, bucket.end);
+      if (overviewMetric === "addFundAmount") value = sumDepositsInBucket(deposits, bucket.start, bucket.end);
+      if (overviewMetric === "estimatedProfit") value = revenue - bucketExpenses;
+
+      return {
+        label: bucket.label,
+        value,
+      };
+    });
+  }, [overviewMetric, overviewRange, orders, users, deposits, expenses]);
+
+  const currentOverviewTotal = useMemo(() => {
+    return overviewPoints.reduce((sum, item) => sum + Number(item.value || 0), 0);
+  }, [overviewPoints]);
+
+  const statisticsItems = useMemo<DonutItem[]>(() => {
+    if (statisticsType === "orders") {
+      return [
+        { label: "Completed", value: stats.completedOrders, color: "#16a34a" },
+        { label: "Processing", value: stats.processingOrders, color: "#2563eb" },
+        { label: "Pending", value: stats.pendingOrders, color: "#f59e0b" },
+        { label: "Partial", value: stats.partialOrders, color: "#8b5cf6" },
+        { label: "Canceled", value: stats.cancelledOrders, color: "#ef4444" },
+      ];
+    }
+
+    if (statisticsType === "tickets") {
+      return [
+        {
+          label: "Open",
+          value: tickets.filter((item) => cleanStatus(item.status) === "open").length,
+          color: "#ef4444",
+        },
+        {
+          label: "Pending",
+          value: tickets.filter((item) => cleanStatus(item.status) === "pending").length,
+          color: "#f59e0b",
+        },
+        {
+          label: "Answered",
+          value: tickets.filter((item) =>
+            ["answered", "reply", "replied"].includes(cleanStatus(item.status)),
+          ).length,
+          color: "#2563eb",
+        },
+        {
+          label: "Resolved",
+          value: tickets.filter((item) =>
+            ["resolved", "closed", "completed"].includes(cleanStatus(item.status)),
+          ).length,
+          color: "#16a34a",
+        },
+      ];
+    }
+
+    if (statisticsType === "payments") {
+      return [
+        {
+          label: "Approved",
+          value: deposits.filter((item) => isApprovedDeposit(item.status)).length,
+          color: "#16a34a",
+        },
+        {
+          label: "Pending",
+          value: deposits.filter((item) => cleanStatus(item.status) === "pending").length,
+          color: "#f59e0b",
+        },
+        {
+          label: "Rejected",
+          value: deposits.filter((item) => isCancelled(item.status)).length,
+          color: "#ef4444",
+        },
+      ];
+    }
+
+    return [
+      {
+        label: "Users",
+        value: users.filter((item) => cleanStatus(item.role) === "user").length,
+        color: "#2563eb",
+      },
+      {
+        label: "Admins",
+        value: users.filter((item) => cleanStatus(item.role) === "admin").length,
+        color: "#16a34a",
+      },
+      {
+        label: "Head Admin",
+        value: users.filter((item) => cleanStatus(item.role) === "head_admin").length,
+        color: "#f59e0b",
+      },
+      {
+        label: "Super Admin",
+        value: users.filter((item) => cleanStatus(item.role) === "super_admin").length,
+        color: "#8b5cf6",
+      },
+    ];
+  }, [statisticsType, stats, tickets, deposits, users]);
+
+  const statisticsTotal = statisticsItems.reduce(
+    (sum, item) => sum + item.value,
+    0,
+  );
 
   const cards = [
     {
@@ -448,37 +822,6 @@ export default function AdminPage() {
     },
   ];
 
-  const totalOrdersForDonut =
-    stats.completedOrders +
-    stats.processingOrders +
-    stats.pendingOrders +
-    stats.cancelledOrders;
-
-  const donutItems = [
-    {
-      label: "Completed",
-      value: stats.completedOrders,
-      color: "#16a34a",
-    },
-    {
-      label: "Processing",
-      value: stats.processingOrders,
-      color: "#2563eb",
-    },
-    {
-      label: "Pending",
-      value: stats.pendingOrders,
-      color: "#f59e0b",
-    },
-    {
-      label: "Canceled",
-      value: stats.cancelledOrders,
-      color: "#ef4444",
-    },
-  ];
-
-  const donutGradient = buildDonutGradient(donutItems, totalOrdersForDonut);
-
   return (
     <AdminLayout>
       <div className="space-y-7">
@@ -494,8 +837,8 @@ export default function AdminPage() {
             </h1>
 
             <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-500">
-              Monitor revenue, orders, payments, users, support activity, cash,
-              and business expenses.
+              Monitor revenue, gross profit, orders, users, add funds, tickets,
+              payments, and platform activity.
             </p>
           </div>
 
@@ -561,65 +904,22 @@ export default function AdminPage() {
           })}
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-          <RevenueLineChart points={revenuePoints} />
+        <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
+          <OverviewChart
+            points={overviewPoints}
+            metric={overviewMetric}
+            range={overviewRange}
+            total={currentOverviewTotal}
+            onMetricChange={setOverviewMetric}
+            onRangeChange={setOverviewRange}
+          />
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-black text-slate-950">
-              Order Statistics
-            </h2>
-
-            <div className="mt-6 grid gap-6 md:grid-cols-[260px_1fr] xl:grid-cols-1 2xl:grid-cols-[260px_1fr]">
-              <div className="relative mx-auto flex h-[230px] w-[230px] items-center justify-center">
-                <div
-                  className="h-[210px] w-[210px] rounded-full"
-                  style={{
-                    background: donutGradient,
-                  }}
-                />
-
-                <div className="absolute flex h-[128px] w-[128px] flex-col items-center justify-center rounded-full bg-white shadow-sm">
-                  <h3 className="text-3xl font-black text-slate-950">
-                    {formatNumber(totalOrdersForDonut)}
-                  </h3>
-                  <p className="text-sm font-semibold text-slate-500">Total</p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {donutItems.map((item) => {
-                  const percent =
-                    totalOrdersForDonut > 0
-                      ? (item.value / totalOrdersForDonut) * 100
-                      : 0;
-
-                  return (
-                    <div
-                      key={item.label}
-                      className="flex items-center justify-between gap-4"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span
-                          className="h-3 w-3 rounded-full"
-                          style={{ backgroundColor: item.color }}
-                        />
-                        <p className="text-sm font-black text-slate-600">
-                          {item.label}
-                        </p>
-                      </div>
-
-                      <p className="text-sm font-black text-slate-950">
-                        {formatNumber(item.value)}{" "}
-                        <span className="text-slate-400">
-                          ({percent.toFixed(1)}%)
-                        </span>
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+          <StatisticsDonut
+            type={statisticsType}
+            onTypeChange={setStatisticsType}
+            items={statisticsItems}
+            total={statisticsTotal}
+          />
         </div>
 
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -675,65 +975,102 @@ export default function AdminPage() {
   );
 }
 
-function buildDonutGradient(
-  items: { label: string; value: number; color: string }[],
-  total: number,
-) {
-  if (total <= 0) {
-    return "conic-gradient(#e5e7eb 0deg 360deg)";
-  }
-
-  let current = 0;
-
-  const parts = items.map((item) => {
-    const start = current;
-    const degree = (item.value / total) * 360;
-    const end = start + degree;
-
-    current = end;
-
-    return `${item.color} ${start}deg ${end}deg`;
-  });
-
-  return `conic-gradient(${parts.join(", ")})`;
-}
-
-function RevenueLineChart({ points }: { points: RevenuePoint[] }) {
-  const width = 640;
-  const height = 230;
+function OverviewChart({
+  points,
+  metric,
+  range,
+  total,
+  onMetricChange,
+  onRangeChange,
+}: {
+  points: ChartPoint[];
+  metric: OverviewMetric;
+  range: RangeType;
+  total: number;
+  onMetricChange: (value: OverviewMetric) => void;
+  onRangeChange: (value: RangeType) => void;
+}) {
+  const width = 760;
+  const height = 250;
 
   const linePath = buildLinePath(points, width, height);
   const areaPath = buildAreaPath(points, width, height);
   const maxValue = Math.max(...points.map((item) => item.value), 1);
 
-  const yLabels = [50000, 40000, 30000, 20000, 10000, 0];
+  const moneyMetrics: OverviewMetric[] = [
+    "revenue",
+    "grossProfit",
+    "addFundAmount",
+    "estimatedProfit",
+  ];
+
+  const isMoney = moneyMetrics.includes(metric);
+
+  const yLabels = [1, 0.8, 0.6, 0.4, 0.2, 0].map((ratio) =>
+    isMoney
+      ? formatShortMoney(maxValue * ratio)
+      : formatNumber(Math.round(maxValue * ratio)),
+  );
+
+  const activeMetric = overviewTabs.find((item) => item.value === metric)?.label;
 
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-black text-slate-950">
-            Revenue Overview
-          </h2>
-          <p className="mt-1 text-sm font-semibold text-slate-500">
-            Current month order revenue.
-          </p>
+      <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div>
+            <h2 className="text-xl font-black text-slate-950">
+              {activeMetric} Overview
+            </h2>
+
+            <p className="mt-1 text-sm font-semibold text-slate-500">
+              Total: {isMoney ? formatMoney(total) : formatNumber(total)}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {rangeTabs.map((item) => (
+              <button
+                key={item.value}
+                onClick={() => onRangeChange(item.value)}
+                className={`rounded-xl px-4 py-2 text-xs font-black transition ${
+                  range === item.value
+                    ? "bg-green-600 text-white shadow-lg shadow-green-600/20"
+                    : "border border-slate-200 bg-white text-slate-500 hover:border-green-200 hover:text-green-700"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <select className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-600 outline-none">
-          <option>This Month</option>
-        </select>
+        <div className="flex flex-wrap gap-2">
+          {overviewTabs.map((item) => (
+            <button
+              key={item.value}
+              onClick={() => onMetricChange(item.value)}
+              className={`rounded-xl px-4 py-2 text-xs font-black transition ${
+                metric === item.value
+                  ? "bg-slate-950 text-white"
+                  : "bg-slate-50 text-slate-500 hover:bg-green-50 hover:text-green-700"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="mt-6 flex gap-4">
-        <div className="flex h-[260px] flex-col justify-between pt-2 text-xs font-black text-slate-400">
-          {yLabels.map((item) => (
-            <span key={item}>{formatShortMoney(item)}</span>
+        <div className="flex h-[280px] flex-col justify-between pt-2 text-xs font-black text-slate-400">
+          {yLabels.map((item, index) => (
+            <span key={`${item}-${index}`}>{item}</span>
           ))}
         </div>
 
-        <div className="relative h-[290px] flex-1 overflow-hidden rounded-2xl bg-gradient-to-b from-white to-slate-50">
-          <div className="absolute inset-x-0 top-0 h-[230px]">
+        <div className="relative h-[315px] flex-1 overflow-hidden rounded-2xl bg-gradient-to-b from-white to-slate-50">
+          <div className="absolute inset-x-0 top-0 h-[250px]">
             {[0, 1, 2, 3, 4].map((item) => (
               <div
                 key={item}
@@ -748,6 +1085,7 @@ function RevenueLineChart({ points }: { points: RevenuePoint[] }) {
               className="absolute inset-0 h-full w-full overflow-visible"
             >
               <path d={areaPath} fill="rgba(34, 197, 94, 0.12)" />
+
               <path
                 d={linePath}
                 fill="none"
@@ -777,7 +1115,12 @@ function RevenueLineChart({ points }: { points: RevenuePoint[] }) {
             </svg>
           </div>
 
-          <div className="absolute bottom-0 left-0 right-0 grid grid-cols-6 gap-2 border-t border-slate-100 pt-4">
+          <div
+            className={`absolute bottom-0 left-0 right-0 grid gap-2 border-t border-slate-100 pt-4`}
+            style={{
+              gridTemplateColumns: `repeat(${points.length}, minmax(0, 1fr))`,
+            }}
+          >
             {points.map((point) => (
               <p
                 key={point.label}
@@ -787,6 +1130,94 @@ function RevenueLineChart({ points }: { points: RevenuePoint[] }) {
               </p>
             ))}
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatisticsDonut({
+  type,
+  onTypeChange,
+  items,
+  total,
+}: {
+  type: StatisticType;
+  onTypeChange: (value: StatisticType) => void;
+  items: DonutItem[];
+  total: number;
+}) {
+  const donutGradient = buildDonutGradient(items, total);
+
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div>
+        <h2 className="text-xl font-black text-slate-950">Statistics</h2>
+        <p className="mt-1 text-sm font-semibold text-slate-500">
+          View breakdown by orders, tickets, payments, or users.
+        </p>
+      </div>
+
+      <div className="mt-5 flex flex-wrap gap-2">
+        {statisticsTabs.map((item) => (
+          <button
+            key={item.value}
+            onClick={() => onTypeChange(item.value)}
+            className={`rounded-xl px-4 py-2 text-xs font-black transition ${
+              type === item.value
+                ? "bg-green-600 text-white shadow-lg shadow-green-600/20"
+                : "bg-slate-50 text-slate-500 hover:bg-green-50 hover:text-green-700"
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-7 grid gap-6 md:grid-cols-[250px_1fr] xl:grid-cols-1 2xl:grid-cols-[250px_1fr]">
+        <div className="relative mx-auto flex h-[230px] w-[230px] items-center justify-center">
+          <div
+            className="h-[210px] w-[210px] rounded-full"
+            style={{ background: donutGradient }}
+          />
+
+          <div className="absolute flex h-[128px] w-[128px] flex-col items-center justify-center rounded-full bg-white shadow-sm">
+            <h3 className="text-3xl font-black text-slate-950">
+              {formatNumber(total)}
+            </h3>
+            <p className="text-sm font-semibold text-slate-500">Total</p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {items.map((item) => {
+            const percent = total > 0 ? (item.value / total) * 100 : 0;
+
+            return (
+              <div
+                key={item.label}
+                className="flex items-center justify-between gap-4"
+              >
+                <div className="flex items-center gap-3">
+                  <span
+                    className="h-3 w-3 rounded-full"
+                    style={{ backgroundColor: item.color }}
+                  />
+
+                  <p className="text-sm font-black text-slate-600">
+                    {item.label}
+                  </p>
+                </div>
+
+                <p className="text-sm font-black text-slate-950">
+                  {formatNumber(item.value)}{" "}
+                  <span className="text-slate-400">
+                    ({percent.toFixed(1)}%)
+                  </span>
+                </p>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -822,11 +1253,12 @@ function SnapshotCard({
   );
 }
 
-function RecentOrdersTable({ orders }: { orders: RecentOrder[] }) {
+function RecentOrdersTable({ orders }: { orders: OrderRow[] }) {
   return (
     <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
       <div className="flex items-center justify-between border-b border-slate-100 p-5">
         <h2 className="text-lg font-black text-slate-950">Recent Orders</h2>
+
         <Link href="/admin/orders" className="text-sm font-black text-green-700">
           View All
         </Link>
@@ -843,6 +1275,7 @@ function RecentOrdersTable({ orders }: { orders: RecentOrder[] }) {
                   <p className="truncate text-sm font-black text-slate-950">
                     {order.service_name || "Unknown Service"}
                   </p>
+
                   <p className="mt-1 text-xs font-semibold text-slate-400">
                     #{order.id.slice(0, 8)} • {formatDate(order.created_at)}
                   </p>
@@ -861,6 +1294,7 @@ function RecentOrdersTable({ orders }: { orders: RecentOrder[] }) {
                 <span className="font-semibold text-slate-500">
                   Qty: {formatNumber(Number(order.quantity || 0))}
                 </span>
+
                 <span className="font-black text-slate-950">
                   {formatMoney(Number(order.price || 0))}
                 </span>
@@ -873,13 +1307,14 @@ function RecentOrdersTable({ orders }: { orders: RecentOrder[] }) {
   );
 }
 
-function RecentDepositsTable({ deposits }: { deposits: RecentDeposit[] }) {
+function RecentDepositsTable({ deposits }: { deposits: DepositRow[] }) {
   return (
     <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
       <div className="flex items-center justify-between border-b border-slate-100 p-5">
         <h2 className="text-lg font-black text-slate-950">
           Recent Transactions
         </h2>
+
         <Link
           href="/admin/payments"
           className="text-sm font-black text-green-700"
@@ -899,6 +1334,7 @@ function RecentDepositsTable({ deposits }: { deposits: RecentDeposit[] }) {
                   <p className="text-sm font-black text-slate-950">
                     {formatMoney(Number(deposit.amount || 0))}
                   </p>
+
                   <p className="mt-1 text-xs font-semibold text-slate-400">
                     {deposit.method || "Payment"} •{" "}
                     {formatDate(deposit.created_at)}
@@ -921,11 +1357,12 @@ function RecentDepositsTable({ deposits }: { deposits: RecentDeposit[] }) {
   );
 }
 
-function RecentUsersTable({ users }: { users: RecentUser[] }) {
+function RecentUsersTable({ users }: { users: UserRow[] }) {
   return (
     <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
       <div className="flex items-center justify-between border-b border-slate-100 p-5">
         <h2 className="text-lg font-black text-slate-950">Recent Users</h2>
+
         <Link href="/admin/users" className="text-sm font-black text-green-700">
           View All
         </Link>
@@ -939,15 +1376,16 @@ function RecentUsersTable({ users }: { users: RecentUser[] }) {
             <div key={user.id} className="p-5">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-green-50 text-sm font-black text-green-700">
-                  {(user.username || user.email || "U").charAt(0).toUpperCase()}
+                  {(user.username || "U").charAt(0).toUpperCase()}
                 </div>
 
                 <div className="min-w-0">
                   <p className="truncate text-sm font-black text-slate-950">
                     {user.username || "User"}
                   </p>
+
                   <p className="truncate text-xs font-semibold text-slate-400">
-                    {user.email || "No email"} • {formatDate(user.created_at)}
+                    {user.role || "user"} • {formatDate(user.created_at)}
                   </p>
                 </div>
               </div>
