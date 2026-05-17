@@ -108,7 +108,7 @@ const steps = [
 export default function HomePage() {
   return (
     <main className="min-h-screen bg-[#f7faff] text-slate-950">
-      <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
+      <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/95 backdrop-blur-xl">
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 lg:px-8">
           <Link href="/" className="flex items-center gap-3">
             <img
@@ -132,8 +132,8 @@ export default function HomePage() {
                 href={href}
                 className={`rounded-2xl px-5 py-3 text-sm font-black transition ${
                   name === "Home"
-                    ? "bg-blue-50 text-blue-600"
-                    : "text-slate-700 hover:bg-slate-100 hover:text-blue-600"
+                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                    : "text-slate-200 hover:bg-white/10 hover:text-white"
                 }`}
               >
                 {name}
@@ -144,7 +144,7 @@ export default function HomePage() {
           <div className="flex items-center gap-3">
             <Link
               href="/login"
-              className="hidden rounded-2xl border border-slate-200 bg-white px-6 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:border-blue-300 hover:text-blue-600 sm:block"
+              className="hidden rounded-2xl border border-slate-700 bg-slate-900 px-6 py-3 text-sm font-black text-white shadow-sm transition hover:border-blue-500 hover:text-blue-400 sm:block"
             >
               Login
             </Link>
@@ -665,16 +665,20 @@ export default function HomePage() {
             </p>
 
             <div className="mt-5 flex gap-3">
-              {[TelegramIcon, FacebookIcon, TikTokIcon, InstagramIcon, YouTubeIcon].map(
-                (Icon, index) => (
-                  <div
-                    key={index}
-                    className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500"
-                  >
-                    <Icon size={18} />
-                  </div>
-                ),
-              )}
+              {[
+                TelegramIcon,
+                FacebookIcon,
+                TikTokIcon,
+                InstagramIcon,
+                YouTubeIcon,
+              ].map((Icon, index) => (
+                <div
+                  key={index}
+                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500"
+                >
+                  <Icon size={18} />
+                </div>
+              ))}
             </div>
           </div>
 
