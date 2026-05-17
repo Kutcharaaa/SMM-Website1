@@ -24,7 +24,6 @@ import {
   ShieldCheck,
   ShoppingCart,
   TrendingUp,
-  Wallet,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -40,6 +39,9 @@ type ApiOrder = {
   status?: string | null;
   order_source?: string | null;
 };
+
+type CodeTab = "curl" | "php" | "javascript" | "python";
+type ActionTab = "add" | "status" | "balance" | "services";
 
 const API_RATE_LIMIT = 60;
 
@@ -68,16 +70,9 @@ const endpoints = [
   {
     action: "balance",
     endpoint: "/api/v2",
-    description: "Check API balance",
+    description: "Check wallet/API balance",
     required: "key",
     color: "bg-orange-100 text-orange-700",
-  },
-  {
-    action: "info",
-    endpoint: "/api/v2",
-    description: "Get account information",
-    required: "key",
-    color: "bg-slate-100 text-slate-700",
   },
 ];
 
@@ -89,9 +84,8 @@ export default function ApiPage() {
   const [copiedKey, setCopiedKey] = useState(false);
   const [copiedBaseUrl, setCopiedBaseUrl] = useState(false);
   const [copiedExample, setCopiedExample] = useState(false);
-  const [activeTab, setActiveTab] = useState<"curl" | "php" | "javascript" | "python">(
-    "curl",
-  );
+  const [activeCodeTab, setActiveCodeTab] = useState<CodeTab>("curl");
+  const [activeActionTab, setActiveActionTab] = useState<ActionTab>("add");
 
   const baseUrl =
     typeof window !== "undefined"
@@ -234,7 +228,14 @@ export default function ApiPage() {
     setShowApiKey(true);
   }
 
-  const exampleCode = getExampleCode(activeTab, baseUrl, profile?.api_key || "YOUR_API_KEY");
+  const exampleCode = getExampleCode(
+    activeCodeTab,
+    activeActionTab,
+    baseUrl,
+    profile?.api_key || "YOUR_API_KEY",
+  );
+
+  const exampleResponse = getExampleResponse(activeActionTab);
 
   return (
     <DashboardGuard>
@@ -351,7 +352,7 @@ export default function ApiPage() {
                 icon={TrendingUp}
                 title="Success Rate"
                 value={loading ? "..." : `${successRate.toFixed(1)}%`}
-                subtitle="Last 30 days"
+                subtitle="Based on API orders"
                 color="bg-purple-600 text-white"
               />
 
@@ -381,9 +382,9 @@ export default function ApiPage() {
                 <div className="mt-5 space-y-4">
                   {[
                     "Get your API key above",
-                    "Make API requests to our endpoints",
-                    "Check the response",
-                    "Monitor your orders",
+                    "Send POST requests to /api/v2",
+                    "Use action=services, add, status, or balance",
+                    "Use the returned order ID to check status",
                   ].map((item, index) => (
                     <div key={item} className="flex items-center gap-3">
                       <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-xs font-black text-white">
@@ -395,7 +396,7 @@ export default function ApiPage() {
                 </div>
 
                 <div className="mt-5 rounded-xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700">
-                  Need help? Check our API documentation below.
+                  Use form-data or x-www-form-urlencoded body parameters.
                 </div>
               </div>
 
@@ -448,7 +449,7 @@ export default function ApiPage() {
                     API Endpoints
                   </h3>
                   <p className="mt-1 text-sm font-semibold text-slate-500">
-                    Available API endpoints and their descriptions
+                    Available API actions and required parameters
                   </p>
                 </div>
               </div>
@@ -503,23 +504,40 @@ export default function ApiPage() {
                   <Code2 size={24} className="text-blue-600" />
                   <div>
                     <h3 className="text-xl font-black text-slate-950">
-                      Create Order - Example Request
+                      Example Request
                     </h3>
                     <p className="mt-1 text-sm font-semibold text-slate-500">
-                      Example: Create a new order
+                      Select an API action and language example.
                     </p>
                   </div>
                 </div>
 
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {(["add", "status", "balance", "services"] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => setActiveActionTab(tab)}
+                      className={`rounded-xl px-4 py-2 text-sm font-black capitalize transition ${
+                        activeActionTab === tab
+                          ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                          : "bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-600"
+                      }`}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                </div>
+
                 <div className="mt-5 border-b border-slate-200">
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 overflow-x-auto">
                     {(["curl", "php", "javascript", "python"] as const).map((tab) => (
                       <button
                         key={tab}
                         type="button"
-                        onClick={() => setActiveTab(tab)}
+                        onClick={() => setActiveCodeTab(tab)}
                         className={`border-b-2 px-5 py-3 text-sm font-black capitalize transition ${
-                          activeTab === tab
+                          activeCodeTab === tab
                             ? "border-blue-600 text-blue-600"
                             : "border-transparent text-slate-500 hover:text-blue-600"
                         }`}
@@ -539,7 +557,7 @@ export default function ApiPage() {
                     <Copy size={17} />
                   </button>
 
-                  <pre className="overflow-x-auto p-5 pr-16 text-sm font-semibold leading-7 text-blue-100">
+                  <pre className="max-h-[360px] overflow-auto p-5 pr-16 text-sm font-semibold leading-7 text-blue-100">
                     <code>{exampleCode}</code>
                   </pre>
                 </div>
@@ -559,7 +577,7 @@ export default function ApiPage() {
                       Example Response
                     </h3>
                     <p className="mt-1 text-sm font-semibold text-slate-500">
-                      Example: Successful order response
+                      Real Ascend Service response format.
                     </p>
                   </div>
                 </div>
@@ -567,34 +585,20 @@ export default function ApiPage() {
                 <div className="relative mt-5 overflow-hidden rounded-xl bg-[#071225]">
                   <button
                     type="button"
-                    onClick={() =>
-                      copyText(
-                        JSON.stringify(
-                          {
-                            success: true,
-                            order: "AS-10025",
-                            balance: "11350.00",
-                            message: "Order placed successfully",
-                          },
-                          null,
-                          2,
-                        ),
-                        "example",
-                      )
-                    }
+                    onClick={() => copyText(exampleResponse, "example")}
                     className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-lg bg-white text-slate-700 transition hover:bg-blue-50"
                   >
                     <Copy size={17} />
                   </button>
 
-                  <pre className="overflow-x-auto p-5 pr-16 text-sm font-semibold leading-7 text-green-200">
-                    <code>{`{
-  "success": true,
-  "order": "AS-10025",
-  "balance": "11350.00",
-  "message": "Order placed successfully"
-}`}</code>
+                  <pre className="max-h-[360px] overflow-auto p-5 pr-16 text-sm font-semibold leading-7 text-green-200">
+                    <code>{exampleResponse}</code>
                   </pre>
+                </div>
+
+                <div className="mt-5 rounded-xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700">
+                  For status requests, use the <span className="font-black">order</span>{" "}
+                  value returned from the add request, not the provider_order_id.
                 </div>
               </div>
             </section>
@@ -632,14 +636,14 @@ export default function ApiPage() {
                 <NoteCard
                   icon={AlertCircle}
                   title="Order Status"
-                  text="There may be a delay in status updates. Please check later."
+                  text="There may be a delay in provider status updates."
                   color="bg-purple-100 text-purple-600"
                 />
 
                 <NoteCard
                   icon={Lock}
                   title="No Refund via API"
-                  text="Orders created through API are not eligible for refund by API."
+                  text="Refunds must be handled through support/admin review."
                   color="bg-red-100 text-red-500"
                 />
               </div>
@@ -667,7 +671,9 @@ function StatCard({
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-center gap-5">
-        <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${color}`}>
+        <div
+          className={`flex h-14 w-14 items-center justify-center rounded-2xl ${color}`}
+        >
           <Icon size={26} />
         </div>
 
@@ -694,7 +700,9 @@ function NoteCard({
 }) {
   return (
     <div className="flex gap-4 rounded-2xl bg-slate-50 p-4">
-      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${color}`}>
+      <div
+        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${color}`}
+      >
         <Icon size={21} />
       </div>
 
@@ -708,21 +716,51 @@ function NoteCard({
   );
 }
 
+function getActionPayload(action: ActionTab, apiKey: string): Record<string, string> {
+  if (action === "services") {
+    return {
+      key: apiKey,
+      action: "services",
+    };
+  }
+
+  if (action === "balance") {
+    return {
+      key: apiKey,
+      action: "balance",
+    };
+  }
+
+  if (action === "status") {
+    return {
+      key: apiKey,
+      action: "status",
+      order: "6fbf76be-ee45-4363-9d7a-b4b3ea4ebf45",
+    };
+  }
+
+  return {
+    key: apiKey,
+    action: "add",
+    service: "174",
+    link: "https://www.tiktok.com/@username/video/7610258462613802241",
+    quantity: "100",
+  };
+}
+
 function getExampleCode(
-  tab: "curl" | "php" | "javascript" | "python",
+  codeTab: CodeTab,
+  actionTab: ActionTab,
   baseUrl: string,
   apiKey: string,
 ) {
-  if (tab === "php") {
+  const safeApiKey = apiKey === "No API key yet" ? "YOUR_API_KEY" : apiKey;
+  const payload = getActionPayload(actionTab, safeApiKey);
+
+  if (codeTab === "php") {
     return `<?php
 $api_url = "${baseUrl}";
-$data = [
-  "key" => "${apiKey}",
-  "action" => "add",
-  "service" => "1234",
-  "link" => "https://youtube.com/watch?v=example",
-  "quantity" => "1000"
-];
+$data = ${phpArray(payload)};
 
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $api_url);
@@ -737,37 +775,25 @@ echo $response;
 ?>`;
   }
 
-  if (tab === "javascript") {
+  if (codeTab === "javascript") {
     return `const response = await fetch("${baseUrl}", {
   method: "POST",
   headers: {
     "Content-Type": "application/x-www-form-urlencoded"
   },
-  body: new URLSearchParams({
-    key: "${apiKey}",
-    action: "add",
-    service: "1234",
-    link: "https://youtube.com/watch?v=example",
-    quantity: "1000"
-  })
+  body: new URLSearchParams(${JSON.stringify(payload, null, 4)})
 });
 
 const data = await response.json();
 console.log(data);`;
   }
 
-  if (tab === "python") {
+  if (codeTab === "python") {
     return `import requests
 
 url = "${baseUrl}"
 
-payload = {
-    "key": "${apiKey}",
-    "action": "add",
-    "service": "1234",
-    "link": "https://youtube.com/watch?v=example",
-    "quantity": "1000"
-}
+payload = ${pythonDict(payload)}
 
 response = requests.post(url, data=payload)
 
@@ -775,11 +801,72 @@ print(response.json())`;
   }
 
   return `curl -X POST ${baseUrl} \\
-  -d "key=${apiKey}" \\
-  -d "action=add" \\
-  -d "service=1234" \\
-  -d "link=https://youtube.com/watch?v=example" \\
-  -d "quantity=1000"`;
+${Object.entries(payload)
+  .map(([key, value]) => `  -d "${key}=${value}"`)
+  .join(" \\\n")}`;
+}
+
+function getExampleResponse(action: ActionTab) {
+  if (action === "services") {
+    return `[
+  {
+    "service": "174",
+    "name": "TikTok - Views",
+    "category": "TikTok - Views",
+    "rate": 2.5,
+    "min": 100,
+    "max": 100000,
+    "refill": false,
+    "cancel": false
+  }
+]`;
+  }
+
+  if (action === "balance") {
+    return `{
+  "success": true,
+  "balance": "3.55",
+  "currency": "PHP"
+}`;
+  }
+
+  if (action === "status") {
+    return `{
+  "success": true,
+  "order": "6fbf76be-ee45-4363-9d7a-b4b3ea4ebf45",
+  "status": "processing",
+  "charge": "0.25",
+  "start_count": 0,
+  "current_count": 0,
+  "provider_order_id": "1189631"
+}`;
+  }
+
+  return `{
+  "success": true,
+  "order": "6fbf76be-ee45-4363-9d7a-b4b3ea4ebf45",
+  "charge": "0.25",
+  "balance": "3.55",
+  "status": "processing",
+  "provider_order_id": "1189631",
+  "message": "Order placed successfully. Your order is now processing."
+}`;
+}
+
+function phpArray(payload: Record<string, string>) {
+  const rows = Object.entries(payload)
+    .map(([key, value]) => `  "${key}" => "${value}"`)
+    .join(",\n");
+
+  return `[\n${rows}\n]`;
+}
+
+function pythonDict(payload: Record<string, string>) {
+  const rows = Object.entries(payload)
+    .map(([key, value]) => `    "${key}": "${value}"`)
+    .join(",\n");
+
+  return `{\n${rows}\n}`;
 }
 
 function toNumber(value: unknown) {
