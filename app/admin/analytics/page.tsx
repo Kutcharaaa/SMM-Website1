@@ -661,7 +661,7 @@ export default function AdminAnalyticsPage() {
 
   return (
     <AdminGuard allowedRoles={["head_admin", "super_admin"]}>
-      <main className="min-h-screen bg-black text-white">
+      <main className="min-h-screen bg-[#f6f8fb] text-slate-950">
         <AdminSidebar />
 
         <section className="lg:ml-72 min-h-screen">
@@ -683,21 +683,20 @@ export default function AdminAnalyticsPage() {
                   )}
                 </div>
 
-                <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">Analytics / Reports</h1>
+                <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+  Analytics / Reports
+</h1>
 
-                <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-zinc-400">
-                  Accounting overview for order revenue, gross profit, net profit, expenses, cash accounts, reseller point conversions, and user commissions.
-                </p>
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
-                <div className="flex overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950 p-1 shadow-sm">
+                <div className="flex overflow-hidden rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
                   {periodOptions.map((option) => (
                     <button
                       key={option.value}
                       onClick={() => setPeriod(option.value)}
                       className={`rounded-xl px-4 py-2 text-sm font-black transition ${
-                        period === option.value ? "bg-emerald-600 text-white shadow-sm" : "text-zinc-400 hover:bg-zinc-900"
+                        period === option.value ? "bg-emerald-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-50"
                       }`}
                     >
                       {option.label}
@@ -705,11 +704,11 @@ export default function AdminAnalyticsPage() {
                   ))}
                 </div>
 
-                <button onClick={loadData} className="rounded-2xl border border-zinc-800 bg-zinc-950 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-zinc-900">
+                <button onClick={loadData} className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50">
                   Refresh
                 </button>
 
-                <button className="rounded-2xl border border-zinc-800 bg-zinc-950 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-zinc-900">
+                <button className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50">
                   Export
                 </button>
               </div>
@@ -721,14 +720,14 @@ export default function AdminAnalyticsPage() {
               </div>
             )}
 
-            <div className="mb-6 rounded-[24px] border border-emerald-900/40 bg-gradient-to-r from-emerald-950/60 via-zinc-950 to-blue-950/50 p-5">
+            <div className="mb-6 rounded-[24px] border border-emerald-100 bg-gradient-to-r from-emerald-50 via-white to-blue-50 p-5">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-300">Selected Period</p>
-                  <h2 className="mt-1 text-xl font-black text-white">{range.label}</h2>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">Selected Period</p>
+                  <h2 className="mt-1 text-xl font-black text-slate-950">{range.label}</h2>
                 </div>
 
-                <p className="text-sm font-semibold text-zinc-400">
+                <p className="text-sm font-semibold text-slate-500">
                   Live parts use your current tables. Mock parts are marked and ready for later connection.
                 </p>
               </div>
