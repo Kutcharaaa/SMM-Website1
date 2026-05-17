@@ -3,7 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { LayoutDashboard, ShieldCheck, Menu, X } from "lucide-react";
+import {
+  LayoutDashboard,
+  ShieldCheck,
+  Menu,
+  X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 
 type Profile = {
@@ -13,12 +18,30 @@ type Profile = {
 };
 
 const navItems = [
-  { name: "Home", href: "/" },
-  { name: "Services", href: "/services" },
-  { name: "Reseller", href: "/reseller" },
-  { name: "Affiliates", href: "/affiliates" },
-  { name: "API", href: "/api" },
-  { name: "Support", href: "/support" },
+  {
+    name: "Home",
+    href: "/",
+  },
+  {
+    name: "Services",
+    href: "/services",
+  },
+  {
+    name: "Reseller",
+    href: "/reseller",
+  },
+  {
+    name: "Affiliates",
+    href: "/affiliates",
+  },
+  {
+    name: "API",
+    href: "/api",
+  },
+  {
+    name: "Support",
+    href: "/support",
+  },
 ];
 
 function getRoleLabel(role: string) {
@@ -38,6 +61,7 @@ export default function PublicNavbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loggedIn, setLoggedIn] = useState(false);
+
   const [profile, setProfile] = useState<Profile>({
     username: null,
     role: "user",
@@ -100,21 +124,27 @@ export default function PublicNavbar() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/95 backdrop-blur-xl">
-      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 lg:px-8">
-        <Link href="/" className="flex items-center gap-3">
-          <img src="/logo.png" alt="Ascend Service" className="h-12 w-auto" />
+      <div className="mx-auto flex h-24 w-full max-w-[1580px] items-center justify-between gap-6 px-6 xl:px-10 2xl:px-14">
+        <Link href="/" className="flex shrink-0 items-center gap-3">
+          <img
+            src="/logo.png"
+            alt="Ascend Service"
+            className="h-14 w-auto"
+          />
         </Link>
 
-        <nav className="hidden items-center gap-2 lg:flex">
+        <nav className="hidden min-w-0 flex-1 items-center justify-center gap-2 xl:flex">
           {navItems.map((item) => {
             const active =
-              item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+              item.href === "/"
+                ? pathname === "/"
+                : pathname.startsWith(item.href);
 
             return (
               <Link
                 key={item.name}
                 href={item.href}
-                className={`rounded-2xl px-5 py-3 text-sm font-black transition ${
+                className={`whitespace-nowrap rounded-2xl px-5 py-3 text-sm font-black transition ${
                   active
                     ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
                     : "text-slate-200 hover:bg-white/10 hover:text-white"
@@ -126,19 +156,19 @@ export default function PublicNavbar() {
           })}
         </nav>
 
-        <div className="hidden items-center gap-3 lg:flex">
+        <div className="hidden shrink-0 items-center gap-3 xl:flex">
           {!loading && !loggedIn && (
             <>
               <Link
                 href="/login"
-                className="rounded-2xl border border-slate-700 bg-slate-900 px-6 py-3 text-sm font-black text-white shadow-sm transition hover:border-blue-500 hover:text-blue-400"
+                className="rounded-2xl border border-slate-700 bg-slate-900 px-7 py-3.5 text-sm font-black text-white shadow-sm transition hover:border-blue-500 hover:text-blue-400"
               >
                 Login
               </Link>
 
               <Link
                 href="/register"
-                className="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
+                className="rounded-2xl bg-blue-600 px-7 py-3.5 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
               >
                 Get Started
               </Link>
@@ -147,11 +177,13 @@ export default function PublicNavbar() {
 
           {!loading && loggedIn && (
             <>
-              <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900 px-4 py-2">
-                <div className="text-right">
-                  <p className="text-sm font-black leading-5 text-white">{username}</p>
+              <div className="flex min-w-[190px] items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-900 px-4 py-2.5">
+                <div className="min-w-0">
+                  <p className="max-w-[120px] truncate text-sm font-black leading-5 text-white">
+                    {username}
+                  </p>
 
-                  <div className="mt-1 flex justify-end gap-1">
+                  <div className="mt-1 flex flex-wrap gap-1">
                     <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-black text-white">
                       User
                     </span>
@@ -164,7 +196,7 @@ export default function PublicNavbar() {
                   </div>
                 </div>
 
-                <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-slate-700 bg-slate-800 text-sm font-black text-white">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-700 bg-slate-800 text-sm font-black text-white">
                   {profile.avatar_url ? (
                     <img
                       src={profile.avatar_url}
@@ -180,7 +212,7 @@ export default function PublicNavbar() {
               {adminAccess && (
                 <Link
                   href="/admin"
-                  className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700"
+                  className="inline-flex whitespace-nowrap items-center gap-2 rounded-2xl bg-emerald-600 px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700"
                 >
                   <ShieldCheck size={17} />
                   Admin
@@ -189,7 +221,7 @@ export default function PublicNavbar() {
 
               <Link
                 href="/dashboard"
-                className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
+                className="inline-flex whitespace-nowrap items-center gap-2 rounded-2xl bg-blue-600 px-6 py-3.5 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
               >
                 <LayoutDashboard size={17} />
                 Dashboard
@@ -200,17 +232,21 @@ export default function PublicNavbar() {
 
         <button
           onClick={() => setMobileOpen(true)}
-          className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-700 bg-slate-900 text-white lg:hidden"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-700 bg-slate-900 text-white xl:hidden"
         >
           <Menu size={22} />
         </button>
       </div>
 
       {mobileOpen && (
-        <div className="fixed inset-0 z-[999] bg-slate-950/70 backdrop-blur-sm lg:hidden">
-          <div className="ml-auto h-full w-[310px] bg-slate-950 p-5 shadow-2xl">
+        <div className="fixed inset-0 z-[999] bg-slate-950/70 backdrop-blur-sm xl:hidden">
+          <div className="ml-auto h-full w-[330px] bg-slate-950 p-5 shadow-2xl">
             <div className="flex items-center justify-between">
-              <img src="/logo.png" alt="Ascend Service" className="h-10 w-auto" />
+              <img
+                src="/logo.png"
+                alt="Ascend Service"
+                className="h-11 w-auto"
+              />
 
               <button
                 onClick={() => setMobileOpen(false)}
@@ -223,7 +259,9 @@ export default function PublicNavbar() {
             <div className="mt-8 space-y-2">
               {navItems.map((item) => {
                 const active =
-                  item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+                  item.href === "/"
+                    ? pathname === "/"
+                    : pathname.startsWith(item.href);
 
                 return (
                   <Link
@@ -231,7 +269,9 @@ export default function PublicNavbar() {
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
                     className={`block rounded-2xl px-4 py-3 text-sm font-black transition ${
-                      active ? "bg-blue-600 text-white" : "text-slate-200 hover:bg-white/10"
+                      active
+                        ? "bg-blue-600 text-white"
+                        : "text-slate-200 hover:bg-white/10"
                     }`}
                   >
                     {item.name}
@@ -264,7 +304,7 @@ export default function PublicNavbar() {
               {!loading && loggedIn && (
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-4">
-                    <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-slate-800 text-sm font-black text-white">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-800 text-sm font-black text-white">
                       {profile.avatar_url ? (
                         <img
                           src={profile.avatar_url}
@@ -276,10 +316,12 @@ export default function PublicNavbar() {
                       )}
                     </div>
 
-                    <div>
-                      <p className="text-sm font-black text-white">{username}</p>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-black text-white">
+                        {username}
+                      </p>
 
-                      <div className="mt-1 flex gap-1">
+                      <div className="mt-1 flex flex-wrap gap-1">
                         <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-black text-white">
                           User
                         </span>
@@ -299,7 +341,7 @@ export default function PublicNavbar() {
                       onClick={() => setMobileOpen(false)}
                       className="block rounded-2xl bg-emerald-600 px-5 py-3 text-center text-sm font-black text-white"
                     >
-                      Admin Dashboard
+                      Admin
                     </Link>
                   )}
 
