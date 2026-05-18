@@ -666,6 +666,65 @@ useEffect(() => {
   const pendingDeposits = deposits.filter((deposit) => normalizeStatus(deposit.status) === "pending");
   const rejectedDeposits = deposits.filter((deposit) => normalizeStatus(deposit.status) === "rejected");
 
+function exportDepositsToCSV() {
+  const rows = filteredDeposits.map((deposit) => ({
+    deposit_id: deposit.id,
+    user_id: deposit.user_id,
+    paid_amount: Number(deposit.amount || 0),
+    currency: deposit.currency || "PHP",
+    wallet_credit: Number(deposit.wallet_credit || deposit.amount || 0),
+    payment_method: deposit.method || "",
+    reference_number: deposit.reference_number || "",
+    status: deposit.status || "",
+    reject_reason: deposit.reject_reason || "",
+    created_date: formatDate(deposit.created_at),
+    created_time: formatTime(deposit.created_at),
+    proof_url: deposit.proof_url || "",
+  }));
+
+  const headers = [
+    "deposit_id",
+    "user_id",
+    "paid_amount",
+    "currency",
+    "wallet_credit",
+    "payment_method",
+    "reference_number",
+    "status",
+    "reject_reason",
+    "created_date",
+    "created_time",
+    "proof_url",
+  ];
+
+  const csvContent = [
+    headers.join(","),
+    ...rows.map((row) =>
+      headers
+        .map((header) => {
+          const value = String(row[header as keyof typeof row] ?? "");
+          return `"${value.replace(/"/g, '""')}"`;
+        })
+        .join(",")
+    ),
+  ].join("\n");
+
+  const blob = new Blob([csvContent], {
+    type: "text/csv;charset=utf-8;",
+  });
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  const date = new Date().toISOString().slice(0, 10);
+
+  link.href = url;
+  link.download = `deposits-payments-${date}.csv`;
+  link.click();
+
+  URL.revokeObjectURL(url);
+}
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -693,13 +752,14 @@ useEffect(() => {
               Refresh
             </button>
 
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-emerald-700"
-            >
-              <Banknote size={17} />
-              Export
-            </button>
+<button
+  type="button"
+  onClick={exportDepositsToCSV}
+  className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-emerald-700"
+>
+  <Banknote size={17} />
+  Export
+</button>
           </div>
         </div>
 
