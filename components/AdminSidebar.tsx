@@ -141,7 +141,7 @@ export default function AdminSidebar() {
         },
         {
           name: "Transactions",
-          href: "/admin/transactions",
+          href: "/admin/cash-movements",
           icon: ReceiptText,
           roles: ["head_admin", "super_admin"],
         },
