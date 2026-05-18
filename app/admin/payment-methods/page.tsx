@@ -606,17 +606,15 @@ export default function AdminPaymentMethodsPage() {
   const stats = useMemo(() => {
     const active = methods.filter((method) => method.is_active).length;
     const inactive = methods.filter((method) => !method.is_active).length;
-    const linkedCashAccounts = new Set(
-      methods.map((method) => method.cash_account_id).filter(Boolean),
-    ).size;
+const totalCashAccounts = cashAccounts.length;
 
-    return {
-      total: methods.length,
-      active,
-      inactive,
-      linkedCashAccounts,
-    };
-  }, [methods]);
+return {
+  total: methods.length,
+  active,
+  inactive,
+  totalCashAccounts,
+};
+  }, [methods, cashAccounts]);
 
   const filteredMethods = useMemo(() => {
     const query = search.toLowerCase().trim();
@@ -706,13 +704,13 @@ export default function AdminPaymentMethodsPage() {
               tone="orange"
             />
 
-            <StatCard
-              title="Cash Accounts"
-              value={String(stats.linkedCashAccounts)}
-              subtitle="Linked cash accounts"
-              icon={<Landmark size={26} />}
-              tone="purple"
-            />
+<StatCard
+  title="Cash Accounts"
+  value={String(stats.totalCashAccounts)}
+  subtitle="Saved cash accounts"
+  icon={<Landmark size={26} />}
+  tone="purple"
+/>
           </div>
 
           <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
