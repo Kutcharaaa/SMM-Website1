@@ -90,16 +90,29 @@ function serviceMatchesNetwork(service: Service, selectedNetwork: string) {
   if (selectedNetwork === "Everything") return true;
 
   const text = normalizeServiceText(
-    `${service.name} ${service.category} ${service.description || ""} ${
-      service.provider_name || ""
-    }`,
+    `${service.name || ""} ${service.category || ""} ${
+      service.description || ""
+    } ${service.provider_name || ""} ${service.provider_service_id || ""}`,
   );
 
   const aliases: Record<string, string[]> = {
     Instagram: ["instagram", "insta", "ig"],
     Facebook: ["facebook", "fb"],
     YouTube: ["youtube", "yt", "youtubeshorts"],
-    TikTok: ["tiktok", "tiktokshop", "tiktokservices", "tiktokservice"],
+    TikTok: [
+      "tiktok",
+      "tiktokshop",
+      "tiktokservice",
+      "tiktokservices",
+      "tiktokfollowers",
+      "tiktoklikes",
+      "tiktokviews",
+      "tiktokshares",
+      "tiktokcomments",
+      "tiktoklive",
+      "tik",
+      "tok",
+    ],
     Telegram: ["telegram", "tg"],
     Spotify: ["spotify"],
     Twitter: ["twitter", "x", "twitterx"],
@@ -514,9 +527,12 @@ export default function OrdersPage() {
   const filteredServices = useMemo(() => {
     const keyword = serviceSearch.toLowerCase().trim();
 
-    let rows = networkServices.filter((service) => {
+    // Important: when the user types in search, search across ALL active services first.
+    // This prevents the selected platform filter from hiding imported provider services
+    // with category formats like "Tik Tok", "TIKTOK", or provider-specific names.
+    let rows = (keyword ? services : networkServices).filter((service) => {
       if (!category) return true;
-      return service.category === category;
+      return normalizeServiceText(service.category) === normalizeServiceText(category);
     });
 
     if (keyword) {
@@ -524,9 +540,11 @@ export default function OrdersPage() {
         const normalizedKeyword = normalizeServiceText(keyword);
 
         const searchableText = normalizeServiceText(
-          `${getPublicServiceId(service)} ${service.name} ${service.category} ${
-            service.description || ""
-          } ${service.provider_service_id || ""} ${service.provider_name || ""}`,
+          `${getPublicServiceId(service)} ${service.name || ""} ${
+            service.category || ""
+          } ${service.description || ""} ${service.provider_service_id || ""} ${
+            service.provider_name || ""
+          }`,
         );
 
         return searchableText.includes(normalizedKeyword);
@@ -573,6 +591,7 @@ export default function OrdersPage() {
       return Number(a.price_per_1000 || 0) - Number(b.price_per_1000 || 0);
     });
   }, [
+    services,
     networkServices,
     category,
     serviceSearch,
