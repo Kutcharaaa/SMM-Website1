@@ -173,16 +173,23 @@ export default function DashboardServicesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const { formatAmount } = useDisplayCurrency();
 
-  async function loadServices() {
-    setLoading(true);
+async function loadServices() {
+  setLoading(true);
+
+  let allServices: DbService[] = [];
+  let from = 0;
+  const batchSize = 1000;
+
+  while (true) {
+    const to = from + batchSize - 1;
 
     const { data, error } = await supabase
       .from("services")
       .select(
         "id, provider_service_id, name, category, description, price_per_1000, min_quantity, max_quantity, status, fastest_delivery, average_delivery, service_tags",
       )
-      .in("status", ["active", "Active"])
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(from, to);
 
     if (error) {
       console.error("SERVICES_LOAD_ERROR:", error.message);
@@ -192,40 +199,64 @@ export default function DashboardServicesPage() {
       return;
     }
 
-    const formatted = ((data || []) as DbService[]).map((service) => {
-      const name = service.name || "Unnamed Service";
-      const category = service.category || "General";
-      const description = service.description || "No description available.";
-      const combinedText = `${name} ${category} ${description}`;
-      const platformName = detectPlatform(combinedText);
-      const tags = parseTags(service.service_tags, service);
-      const fastest = service.fastest_delivery || "Not specified";
-      const average = service.average_delivery || "Not specified";
+    const batch = (data || []) as DbService[];
 
-      return {
-        id: service.id,
-        publicId: service.provider_service_id || getPublicId(service.id),
-        name,
-        platform: platformName,
-        category,
-        price: Number(service.price_per_1000 || 0),
-        min: Number(service.min_quantity || 0),
-        max: Number(service.max_quantity || 0),
-        fastest,
-        average,
-        tags,
-        refill: getRefill(tags, description),
-        drop: "Not specified",
-        cancel: "Available",
-        speed: getSpeed(tags, fastest, average),
-        description,
-      };
-    });
+    allServices = [...allServices, ...batch];
 
-    setServices(formatted);
-    setSelectedService((current) => current || formatted[0] || null);
-    setLoading(false);
+    if (batch.length < batchSize) {
+      break;
+    }
+
+    from += batchSize;
   }
+
+  const activeServices = allServices.filter((service) => {
+    const cleanStatus = String(service.status || "active")
+      .toLowerCase()
+      .trim();
+
+    return (
+      cleanStatus === "active" ||
+      cleanStatus === "enabled" ||
+      cleanStatus === "available" ||
+      cleanStatus === ""
+    );
+  });
+
+  const formatted = activeServices.map((service) => {
+    const name = service.name || "Unnamed Service";
+    const category = service.category || "General";
+    const description = service.description || "No description available.";
+    const combinedText = `${name} ${category} ${description}`;
+    const platformName = detectPlatform(combinedText);
+    const tags = parseTags(service.service_tags, service);
+    const fastest = service.fastest_delivery || "Not specified";
+    const average = service.average_delivery || "Not specified";
+
+    return {
+      id: service.id,
+      publicId: service.provider_service_id || getPublicId(service.id),
+      name,
+      platform: platformName,
+      category,
+      price: Number(service.price_per_1000 || 0),
+      min: Number(service.min_quantity || 0),
+      max: Number(service.max_quantity || 0),
+      fastest,
+      average,
+      tags,
+      refill: getRefill(tags, description),
+      drop: "Not specified",
+      cancel: "Available",
+      speed: getSpeed(tags, fastest, average),
+      description,
+    };
+  });
+
+  setServices(formatted);
+  setSelectedService((current) => current || formatted[0] || null);
+  setLoading(false);
+}
 
   useEffect(() => {
     loadServices();
