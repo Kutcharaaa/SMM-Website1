@@ -369,15 +369,37 @@ export default function AdminProvidersPage() {
     setProviders((data || []) as Provider[]);
   }
 
-  async function loadPanelServices() {
+async function loadPanelServices() {
+  let allServices: PanelService[] = [];
+  let from = 0;
+  const batchSize = 1000;
+
+  while (true) {
+    const to = from + batchSize - 1;
+
     const { data, error } = await supabase
       .from("services")
-      .select("id, provider_id, provider_name");
+      .select("id, provider_id, provider_name")
+      .range(from, to);
 
-    if (!error) {
-      setPanelServices((data || []) as PanelService[]);
+    if (error) {
+      setMessage(error.message);
+      break;
     }
+
+    const batch = (data || []) as PanelService[];
+
+    allServices = [...allServices, ...batch];
+
+    if (batch.length < batchSize) {
+      break;
+    }
+
+    from += batchSize;
   }
+
+  setPanelServices(allServices);
+}
 
   async function loadUsdMarketRate() {
     const { data } = await supabase
