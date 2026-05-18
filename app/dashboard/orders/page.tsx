@@ -31,7 +31,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 type Order = {
   id: string;
@@ -50,13 +50,13 @@ type Service = {
   id: string;
   name: string;
   category: string;
-  description: string;
+  description?: string | null;
   price_per_1000: number;
   min_quantity: number;
   max_quantity: number;
-  provider_service_id: string;
-  provider_name: string;
-  status: string;
+  provider_service_id?: string | null;
+  provider_name?: string | null;
+  status?: string | null;
 };
 
 type Profile = {
@@ -79,6 +79,165 @@ const networks = [
   { name: "Others", icon: "＋" },
   { name: "Everything", icon: "☰" },
 ];
+
+function normalizeServiceText(value?: string | null) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function serviceMatchesNetwork(service: Service, selectedNetwork: string) {
+  if (selectedNetwork === "Everything") return true;
+
+  const text = normalizeServiceText(
+    `${service.name} ${service.category} ${service.description || ""} ${
+      service.provider_name || ""
+    }`,
+  );
+
+  const aliases: Record<string, string[]> = {
+    Instagram: ["instagram", "insta", "ig"],
+    Facebook: ["facebook", "fb"],
+    YouTube: ["youtube", "yt", "youtubeshorts"],
+    TikTok: ["tiktok", "tiktokshop", "tiktokservices", "tiktokservice"],
+    Telegram: ["telegram", "tg"],
+    Spotify: ["spotify"],
+    Twitter: ["twitter", "x", "twitterx"],
+    Twitch: ["twitch"],
+    Discord: ["discord"],
+    Google: ["google", "googlereviews"],
+    Website: ["website", "site", "websitereviews"],
+    Reviews: ["reviews", "review"],
+  };
+
+  const selectedAliases = aliases[selectedNetwork] || [selectedNetwork];
+
+  return selectedAliases.some((alias) =>
+    text.includes(normalizeServiceText(alias)),
+  );
+}
+
+function getPublicServiceId(service: Service | null) {
+  if (!service) return "N/A";
+  return service.provider_service_id || service.id.slice(0, 8);
+}
+
+function getOrderSource(order: Order) {
+  return (order.order_source || "dashboard").toLowerCase() === "api"
+    ? "api"
+    : "dashboard";
+}
+
+function getStatusStyle(status: string) {
+  const clean = String(status || "").toLowerCase();
+
+  if (clean === "completed") return "bg-green-50 text-green-600";
+  if (clean === "cancelled" || clean === "canceled")
+    return "bg-red-50 text-red-600";
+  if (clean === "processing") return "bg-blue-50 text-blue-600";
+  if (clean === "partial") return "bg-purple-50 text-purple-600";
+
+  return "bg-yellow-50 text-yellow-600";
+}
+
+function StatCard({
+  icon: Icon,
+  title,
+  value,
+  subtitle,
+  color,
+}: {
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  title: string;
+  value: string;
+  subtitle: string;
+  color: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex items-start gap-4">
+        <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${color}`}>
+          <Icon size={24} />
+        </div>
+
+        <div>
+          <p className="text-sm font-bold text-slate-500">{title}</p>
+          <h3 className="mt-1 text-2xl font-black text-slate-950">{value}</h3>
+          <p className="mt-1 text-xs font-semibold text-slate-500">{subtitle}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SourceBadge({ source }: { source: string }) {
+  const isApi = source === "api";
+
+  return (
+    <span
+      className={`inline-flex rounded-full px-3 py-1 text-xs font-black uppercase ${
+        isApi ? "bg-purple-50 text-purple-600" : "bg-blue-50 text-blue-600"
+      }`}
+    >
+      {isApi ? "API" : "Dashboard"}
+    </span>
+  );
+}
+
+function SideDetail({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <p className="text-sm font-bold text-slate-500">{label}</p>
+      <p className="max-w-[210px] truncate text-right text-sm font-black text-slate-800">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function StepHeader({ step, title }: { step: string; title: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-sm font-black text-white">
+        {step}
+      </span>
+      <h4 className="text-lg font-black text-slate-950">{title}</h4>
+    </div>
+  );
+}
+
+function PlatformIcon({ name }: { name: string }) {
+  const icon = networks.find((item) => item.name === name)?.icon || "🌐";
+
+  return <span className="text-2xl leading-none">{icon}</span>;
+}
+
+function ServiceFilterChip({
+  active,
+  onClick,
+  icon: Icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ComponentType<{ size?: number }>;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-black transition ${
+        active
+          ? "border-blue-600 bg-blue-50 text-blue-700"
+          : "border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-600"
+      }`}
+    >
+      <Icon size={15} />
+      {label}
+    </button>
+  );
+}
 
 export default function OrdersPage() {
   const { showToast } = useToast();
@@ -131,13 +290,24 @@ export default function OrdersPage() {
   }
 
   async function loadOrderData() {
-    const { data: serviceData } = await supabase
+    const { data: serviceData, error: serviceError } = await supabase
       .from("services")
       .select("*")
-      .eq("status", "active")
       .order("category");
 
-    setServices((serviceData || []) as Service[]);
+    if (serviceError) {
+      showToast(serviceError.message, "error");
+    } else {
+      const activeServices = (serviceData || []).filter((service) => {
+        const cleanStatus = String(service.status || "active")
+          .toLowerCase()
+          .trim();
+
+        return cleanStatus === "active";
+      });
+
+      setServices(activeServices as Service[]);
+    }
 
     const { data: authData } = await supabase.auth.getUser();
 
@@ -218,20 +388,15 @@ export default function OrdersPage() {
 
     if (network === "Others") {
       return services.filter((service) => {
-        const text = `${service.name} ${service.category}`.toLowerCase();
-
         return !networks
           .filter(
             (item) => item.name !== "Others" && item.name !== "Everything",
           )
-          .some((item) => text.includes(item.name.toLowerCase()));
+          .some((item) => serviceMatchesNetwork(service, item.name));
       });
     }
 
-    return services.filter((service) => {
-      const text = `${service.name} ${service.category}`.toLowerCase();
-      return text.includes(network.toLowerCase());
-    });
+    return services.filter((service) => serviceMatchesNetwork(service, network));
   }, [services, network]);
 
   const categories = useMemo(() => {
@@ -250,14 +415,15 @@ export default function OrdersPage() {
 
     if (keyword) {
       rows = rows.filter((service) => {
-        const publicId = getPublicServiceId(service).toLowerCase();
+        const normalizedKeyword = normalizeServiceText(keyword);
 
-        return (
-          publicId.includes(keyword) ||
-          service.name.toLowerCase().includes(keyword) ||
-          service.category.toLowerCase().includes(keyword) ||
-          service.provider_service_id?.toLowerCase().includes(keyword)
+        const searchableText = normalizeServiceText(
+          `${getPublicServiceId(service)} ${service.name} ${service.category} ${
+            service.description || ""
+          } ${service.provider_service_id || ""} ${service.provider_name || ""}`,
         );
+
+        return searchableText.includes(normalizedKeyword);
       });
     }
 
@@ -324,11 +490,6 @@ export default function OrdersPage() {
     selectedService && link && quantity && Number(quantity) > 0,
   );
 
-  function getPublicServiceId(service: Service | null) {
-    if (!service) return "N/A";
-    return service.provider_service_id || service.id.slice(0, 8);
-  }
-
   function getServiceTags(service: Service) {
     const text = `${service.name} ${service.description || ""}`.toLowerCase();
     const tags: string[] = [];
@@ -349,20 +510,6 @@ export default function OrdersPage() {
     const match = selectedService.name.match(regex);
 
     return match?.[1] || "N/A";
-  }
-
-  function getStatusStyle(status: string) {
-    if (status === "completed") return "bg-green-50 text-green-600";
-    if (status === "cancelled" || status === "canceled")
-      return "bg-red-50 text-red-600";
-    if (status === "processing") return "bg-blue-50 text-blue-600";
-    return "bg-yellow-50 text-yellow-600";
-  }
-
-  function getOrderSource(order: Order) {
-    return (order.order_source || "dashboard").toLowerCase() === "api"
-      ? "api"
-      : "dashboard";
   }
 
   function resetOrderForm() {
@@ -592,10 +739,7 @@ export default function OrdersPage() {
                   <tbody>
                     {loading ? (
                       <tr>
-                        <td
-                          colSpan={9}
-                          className="p-10 text-center text-slate-500"
-                        >
+                        <td colSpan={9} className="p-10 text-center text-slate-500">
                           Loading orders...
                         </td>
                       </tr>
@@ -642,9 +786,7 @@ export default function OrdersPage() {
                             key={order.id}
                             onClick={() => setSelectedOrder(order)}
                             className={`cursor-pointer border-t border-slate-100 transition hover:bg-blue-50/40 ${
-                              selectedOrder?.id === order.id
-                                ? "bg-blue-50/60"
-                                : ""
+                              selectedOrder?.id === order.id ? "bg-blue-50/60" : ""
                             }`}
                           >
                             <td className="p-5 font-black text-blue-600">
@@ -675,11 +817,7 @@ export default function OrdersPage() {
                             <td className="p-5">
                               <div className="w-32">
                                 <div className="mb-2 flex items-center justify-between text-xs font-bold text-slate-500">
-                                  <span>
-                                    {Number(
-                                      order.current_count || 0,
-                                    ).toLocaleString()}
-                                  </span>
+                                  <span>{Number(order.current_count || 0).toLocaleString()}</span>
                                   <span>{progress.toFixed(0)}%</span>
                                 </div>
 
@@ -687,9 +825,7 @@ export default function OrdersPage() {
                                   <div
                                     style={{ width: `${progress}%` }}
                                     className={`h-full rounded-full ${
-                                      order.status === "completed"
-                                        ? "bg-green-500"
-                                        : "bg-blue-600"
+                                      order.status === "completed" ? "bg-green-500" : "bg-blue-600"
                                     }`}
                                   />
                                 </div>
@@ -740,9 +876,7 @@ export default function OrdersPage() {
           <aside className="hidden border-l border-slate-200 bg-white p-6 lg:block">
             <div className="sticky top-6">
               <div className="mb-6 flex items-center justify-between">
-                <h3 className="text-xl font-black text-slate-950">
-                  Order Details
-                </h3>
+                <h3 className="text-xl font-black text-slate-950">Order Details</h3>
 
                 <button
                   onClick={() => setSelectedOrder(null)}
@@ -757,9 +891,7 @@ export default function OrdersPage() {
                   <div className="rounded-2xl border border-slate-200 p-5">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-bold text-slate-500">
-                          Order ID
-                        </p>
+                        <p className="text-sm font-bold text-slate-500">Order ID</p>
 
                         <div className="mt-2 flex items-center gap-2">
                           <p className="font-black text-slate-950">
@@ -820,15 +952,9 @@ export default function OrdersPage() {
                         value={Number(sideOrder.quantity || 0).toLocaleString()}
                       />
 
-                      <SideDetail
-                        label="Charge"
-                        value={formatAmount(sideOrder.price)}
-                      />
+                      <SideDetail label="Charge" value={formatAmount(sideOrder.price)} />
 
-                      <SideDetail
-                        label="Start Count"
-                        value={String(sideOrder.start_count || 0)}
-                      />
+                      <SideDetail label="Start Count" value={String(sideOrder.start_count || 0)} />
 
                       <SideDetail
                         label="Current Count"
@@ -837,15 +963,11 @@ export default function OrdersPage() {
 
                       <div>
                         <div className="flex items-center justify-between">
-                          <p className="text-sm font-bold text-slate-500">
-                            Progress
-                          </p>
+                          <p className="text-sm font-bold text-slate-500">Progress</p>
 
                           <p className="text-sm font-black text-slate-700">
-                            {Number(
-                              sideOrder.current_count || 0,
-                            ).toLocaleString()}{" "}
-                            / {Number(sideOrder.quantity || 0).toLocaleString()}
+                            {Number(sideOrder.current_count || 0).toLocaleString()} /{" "}
+                            {Number(sideOrder.quantity || 0).toLocaleString()}
                           </p>
                         </div>
 
@@ -854,9 +976,7 @@ export default function OrdersPage() {
                             <div
                               style={{ width: `${sideProgress}%` }}
                               className={`h-full rounded-full ${
-                                sideOrder.status === "completed"
-                                  ? "bg-green-500"
-                                  : "bg-blue-600"
+                                sideOrder.status === "completed" ? "bg-green-500" : "bg-blue-600"
                               }`}
                             />
                           </div>
@@ -877,8 +997,7 @@ export default function OrdersPage() {
                   </div>
 
                   <div className="rounded-2xl bg-blue-50 p-5 text-sm font-semibold text-slate-600">
-                    Keep this page open to receive live updates on your order
-                    progress.
+                    Keep this page open to receive live updates on your order progress.
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -1024,9 +1143,17 @@ export default function OrdersPage() {
                         ))}
                       </select>
 
-                      <button className="flex h-14 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-600 transition hover:border-blue-300 hover:text-blue-600">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setServiceSearch("");
+                          setCategory("");
+                          setServiceFilter("all");
+                        }}
+                        className="flex h-14 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-600 transition hover:border-blue-300 hover:text-blue-600"
+                      >
                         <Filter size={18} />
-                        Filter
+                        Clear
                       </button>
                     </div>
 
@@ -1085,106 +1212,111 @@ export default function OrdersPage() {
                       />
                     </div>
 
-                    <div className="mt-5 max-h-[330px] space-y-3 overflow-y-auto pr-1">
+                    <div className="mt-5 flex items-center justify-between">
+                      <p className="text-sm font-bold text-slate-500">
+                        Showing{" "}
+                        <span className="text-slate-900">{filteredServices.length}</span>{" "}
+                        services for <span className="text-blue-600">{network}</span>
+                      </p>
+
+                      <p className="text-xs font-bold text-slate-400">
+                        Total active services loaded: {services.length}
+                      </p>
+                    </div>
+
+                    <div className="mt-5 grid max-h-[420px] gap-3 overflow-y-auto pr-1">
                       {filteredServices.length <= 0 ? (
-                        <div className="rounded-3xl border border-dashed border-slate-200 p-10 text-center">
-                          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                        <div className="rounded-2xl border border-dashed border-slate-200 p-10 text-center">
+                          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-slate-400">
                             <Search size={28} />
                           </div>
-                          <h5 className="mt-4 text-lg font-black text-slate-950">
-                            No matching services found
-                          </h5>
-                          <p className="mt-2 text-sm font-semibold text-slate-500">
-                            Search directly by service ID or service name.
+
+                          <h4 className="mt-4 font-black text-slate-950">
+                            No match service found
+                          </h4>
+
+                          <p className="mt-1 text-sm font-semibold text-slate-500">
+                            Try selecting Everything or clearing the search/category filter.
                           </p>
                         </div>
                       ) : (
                         filteredServices.map((service) => {
-                          const active = selectedServiceId === service.id;
-                          const tags = getServiceTags(service);
+                          const selected = selectedServiceId === service.id;
                           const favorite = favoriteServiceIds.includes(service.id);
+                          const tags = getServiceTags(service);
 
                           return (
                             <button
+                              type="button"
                               key={service.id}
-                              onClick={() => setSelectedServiceId(service.id)}
-                              className={`w-full rounded-2xl border p-4 text-left transition ${
-                                active
-                                  ? "border-blue-600 bg-blue-50 shadow-sm"
-                                  : "border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/40"
+                              onClick={() => {
+                                setSelectedServiceId(service.id);
+                                setQuantity("");
+                              }}
+                              className={`rounded-2xl border p-4 text-left transition ${
+                                selected
+                                  ? "border-blue-600 bg-blue-50 ring-4 ring-blue-500/10"
+                                  : "border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/30"
                               }`}
                             >
-                              <div className="flex gap-4">
-                                <div
-                                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${
-                                    active
-                                      ? "bg-blue-600 text-white"
-                                      : "bg-slate-100 text-slate-600"
-                                  }`}
-                                >
-                                  <ShoppingCart size={22} />
-                                </div>
-
+                              <div className="flex items-start justify-between gap-4">
                                 <div className="min-w-0 flex-1">
                                   <div className="flex flex-wrap items-center gap-2">
-                                    <span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-black text-slate-600">
-                                      ID {getPublicServiceId(service)}
+                                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-black text-slate-500">
+                                      {getPublicServiceId(service)}
                                     </span>
 
                                     {tags.map((tag) => (
                                       <span
                                         key={tag}
-                                        className="rounded-lg bg-blue-100 px-2 py-1 text-xs font-black text-blue-600"
+                                        className="rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-black text-blue-700"
                                       >
                                         {tag}
                                       </span>
                                     ))}
-
-                                    {active && (
-                                      <span className="rounded-lg bg-green-100 px-2 py-1 text-xs font-black text-green-600">
-                                        SELECTED
-                                      </span>
-                                    )}
                                   </div>
 
-                                  <p className="mt-2 line-clamp-2 font-black text-slate-950">
+                                  <h5 className="mt-2 line-clamp-2 font-black text-slate-950">
                                     {service.name}
-                                  </p>
+                                  </h5>
 
                                   <p className="mt-1 text-xs font-semibold text-slate-500">
-                                    {service.category}
+                                    {service.category || "Uncategorized"}
                                   </p>
 
-                                  <div className="mt-3 flex flex-wrap gap-3 text-xs font-bold text-slate-600">
-                                    <span>
-                                      {formatAmount(service.price_per_1000)}
-                                      /1k
-                                    </span>
-                                    <span>
-                                      Min {Number(service.min_quantity || 0).toLocaleString()}
-                                    </span>
-                                    <span>
-                                      Max {Number(service.max_quantity || 0).toLocaleString()}
-                                    </span>
+                                  <div className="mt-3 flex flex-wrap gap-4 text-xs font-bold text-slate-500">
+                                    <span>Min: {Number(service.min_quantity || 0).toLocaleString()}</span>
+                                    <span>Max: {Number(service.max_quantity || 0).toLocaleString()}</span>
+                                    <span>Provider: {service.provider_name || "Manual"}</span>
                                   </div>
                                 </div>
 
-                                <span
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    toggleFavoriteService(service.id);
-                                  }}
-                                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${
-                                    favorite
-                                      ? "border-red-200 bg-red-50 text-red-500"
-                                      : "border-slate-200 text-slate-400 hover:text-red-500"
-                                  }`}
-                                >
-                                  <Heart
-                                    size={18}
-                                    fill={favorite ? "currentColor" : "none"}
-                                  />
-                                </span>
+                                <div className="flex flex-col items-end gap-3">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleFavoriteService(service.id);
+                                    }}
+                                    className={`flex h-9 w-9 items-center justify-center rounded-xl ${
+                                      favorite
+                                        ? "bg-yellow-50 text-yellow-500"
+                                        : "bg-slate-50 text-slate-400 hover:text-yellow-500"
+                                    }`}
+                                  >
+                                    <Heart
+                                      size={17}
+                                      fill={favorite ? "currentColor" : "none"}
+                                    />
+                                  </button>
+
+                                  <p className="text-right text-lg font-black text-blue-600">
+                                    {formatAmount(service.price_per_1000)}
+                                  </p>
+                                  <p className="-mt-2 text-xs font-bold text-slate-400">
+                                    per 1000
+                                  </p>
+                                </div>
                               </div>
                             </button>
                           );
@@ -1192,120 +1324,147 @@ export default function OrdersPage() {
                       )}
                     </div>
                   </div>
-
-                  <div className="mt-5 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-                    <StepHeader step="3" title="Order Details" />
-
-                    <div className="mt-5 grid gap-4">
-                      <div>
-                        <label className="text-sm font-black text-slate-700">
-                          Link
-                        </label>
-                        <div className="relative mt-2">
-                          <LinkIcon
-                            size={18}
-                            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                          />
-                          <input
-                            value={link}
-                            onChange={(e) => setLink(e.target.value)}
-                            placeholder="Paste your social media link here"
-                            className="h-14 w-full rounded-2xl border border-slate-200 pl-12 pr-4 text-sm font-semibold outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="text-sm font-black text-slate-700">
-                          Quantity
-                        </label>
-                        <input
-                          value={quantity}
-                          onChange={(e) => setQuantity(e.target.value)}
-                          type="number"
-                          placeholder="Enter quantity"
-                          className="mt-2 h-14 w-full rounded-2xl border border-slate-200 px-4 text-sm font-semibold outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-sm font-black text-slate-700">
-                          Note
-                        </label>
-                        <textarea
-                          value={notes}
-                          onChange={(e) => setNotes(e.target.value)}
-                          placeholder="Optional note"
-                          className="mt-2 min-h-[90px] w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
-                        />
-                      </div>
-                    </div>
-                  </div>
                 </div>
 
-                <aside className="hidden min-h-0 overflow-y-auto border-l border-slate-200 bg-slate-50 p-6 xl:block">
+                <aside className="min-h-0 overflow-y-auto border-t border-slate-200 bg-slate-50/70 p-6 xl:border-l xl:border-t-0">
                   <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-                    <h4 className="text-lg font-black text-slate-950">
-                      Order Summary
-                    </h4>
+                    <StepHeader step="3" title="Order Details" />
 
-                    <div className="mt-5 space-y-4">
-                      <SideDetail
-                        label="Selected Service"
-                        value={selectedService?.name || "No service selected"}
-                      />
-                      <SideDetail
-                        label="Service ID"
-                        value={getPublicServiceId(selectedService)}
-                      />
-                      <SideDetail
-                        label="Category"
-                        value={selectedService?.category || "N/A"}
-                      />
-                      <SideDetail
-                        label="Min / Max"
-                        value={
-                          selectedService
-                            ? `${Number(
-                                selectedService.min_quantity || 0,
-                              ).toLocaleString()} / ${Number(
-                                selectedService.max_quantity || 0,
-                              ).toLocaleString()}`
-                            : "N/A"
-                        }
-                      />
-                      <SideDetail
-                        label="Rate"
-                        value={
-                          selectedService
-                            ? `${formatAmount(selectedService.price_per_1000)} / 1,000`
-                            : "N/A"
-                        }
-                      />
-                      <SideDetail
-                        label="Estimated Charge"
-                        value={formatAmount(estimatedCharge)}
-                      />
-                      <SideDetail
-                        label="Wallet Balance"
-                        value={formatAmount(profile?.balance || 0)}
-                      />
+                    {selectedService ? (
+                      <div className="mt-5 space-y-5">
+                        <div className="rounded-2xl border border-slate-200 p-4">
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                                Selected Service
+                              </p>
+                              <h4 className="mt-2 line-clamp-3 font-black text-slate-950">
+                                {selectedService.name}
+                              </h4>
+                            </div>
+
+                            <button onClick={() => copyText(getPublicServiceId(selectedService))}>
+                              <Copy size={16} className="text-slate-400" />
+                            </button>
+                          </div>
+
+                          <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                            <SideDetail
+                              label="Service ID"
+                              value={getPublicServiceId(selectedService)}
+                            />
+                            <SideDetail
+                              label="Price"
+                              value={formatAmount(selectedService.price_per_1000)}
+                            />
+                            <SideDetail
+                              label="Min"
+                              value={Number(selectedService.min_quantity || 0).toLocaleString()}
+                            />
+                            <SideDetail
+                              label="Max"
+                              value={Number(selectedService.max_quantity || 0).toLocaleString()}
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="mb-2 block text-sm font-black text-slate-700">
+                            Link
+                          </label>
+                          <div className="relative">
+                            <LinkIcon
+                              size={18}
+                              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                            />
+                            <input
+                              value={link}
+                              onChange={(e) => setLink(e.target.value)}
+                              placeholder="https://..."
+                              className="h-13 w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm font-semibold outline-none transition focus:border-blue-500"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="mb-2 block text-sm font-black text-slate-700">
+                            Quantity
+                          </label>
+                          <input
+                            type="number"
+                            value={quantity}
+                            onChange={(e) => setQuantity(e.target.value)}
+                            placeholder={`${selectedService.min_quantity} - ${selectedService.max_quantity}`}
+                            className="h-13 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition focus:border-blue-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="mb-2 block text-sm font-black text-slate-700">
+                            Notes (optional)
+                          </label>
+                          <textarea
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
+                            placeholder="Add special instructions if needed..."
+                            rows={3}
+                            className="w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition focus:border-blue-500"
+                          />
+                        </div>
+
+                        <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-black text-slate-700">
+                              Estimated Charge
+                            </p>
+                            <p className="text-2xl font-black text-blue-600">
+                              {formatAmount(estimatedCharge)}
+                            </p>
+                          </div>
+
+                          <div className="mt-3 flex items-center justify-between text-sm font-semibold text-slate-600">
+                            <span>Wallet Balance</span>
+                            <span>{formatAmount(profile?.balance || 0)}</span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleOrder}
+                          disabled={!canPlaceOrder || placingOrder}
+                          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 py-4 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {placingOrder ? (
+                            <RefreshCw size={18} className="animate-spin" />
+                          ) : (
+                            <ShoppingCart size={18} />
+                          )}
+                          {placingOrder ? "Placing Order..." : "Place Order"}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="mt-5 rounded-2xl border border-dashed border-slate-200 p-8 text-center">
+                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                          <Sparkles size={28} />
+                        </div>
+                        <h4 className="mt-4 font-black text-slate-950">
+                          Select a service first
+                        </h4>
+                        <p className="mt-1 text-sm font-semibold text-slate-500">
+                          Choose a service from the list to continue.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 text-sm font-semibold text-slate-600 shadow-sm">
+                    <div className="flex gap-3">
+                      <Info size={19} className="mt-0.5 shrink-0 text-blue-600" />
+                      <p>
+                        Search now supports TikTok, Tik Tok, Tik-Tok and other imported
+                        provider category formats.
+                      </p>
                     </div>
-
-                    <div className="mt-5 rounded-2xl bg-blue-50 p-4 text-sm font-semibold text-blue-700">
-                      {selectedService
-                        ? "Review your order before placing it."
-                        : "Select a service to see details here."}
-                    </div>
-
-                    <button
-                      onClick={handleOrder}
-                      disabled={!canPlaceOrder || placingOrder}
-                      className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {placingOrder ? "Placing Order..." : "Place Order"}
-                      <Sparkles size={18} />
-                    </button>
                   </div>
                 </aside>
               </div>
@@ -1314,113 +1473,5 @@ export default function OrdersPage() {
         )}
       </DashboardLayout>
     </DashboardGuard>
-  );
-}
-
-function StatCard({
-  icon: Icon,
-  title,
-  value,
-  subtitle,
-  color,
-}: {
-  icon: any;
-  title: string;
-  value: string;
-  subtitle: string;
-  color: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-center gap-5">
-        <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${color}`}>
-          <Icon size={26} />
-        </div>
-
-        <div>
-          <p className="text-xs font-black uppercase tracking-wide text-slate-500">
-            {title}
-          </p>
-          <h3 className="mt-2 text-2xl font-black text-slate-950">{value}</h3>
-          <p className="mt-1 text-sm font-semibold text-slate-400">{subtitle}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SourceBadge({ source }: { source: "api" | "dashboard" }) {
-  if (source === "api") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-3 py-1 text-xs font-black text-purple-700">
-        <Zap size={13} />
-        API
-      </span>
-    );
-  }
-
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-3 py-1 text-xs font-black text-blue-700">
-      <ShoppingCart size={13} />
-      Dashboard
-    </span>
-  );
-}
-
-function SideDetail({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-3 last:border-b-0 last:pb-0">
-      <p className="text-sm font-bold text-slate-500">{label}</p>
-      <p className="max-w-[210px] text-right text-sm font-black text-slate-800">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function StepHeader({ step, title }: { step: string; title: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-sm font-black text-white">
-        {step}
-      </span>
-      <h4 className="text-lg font-black text-slate-950">{title}</h4>
-    </div>
-  );
-}
-
-function ServiceFilterChip({
-  active,
-  onClick,
-  icon: Icon,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: any;
-  label: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex h-10 items-center gap-2 rounded-xl border px-4 text-xs font-black transition ${
-        active
-          ? "border-blue-600 bg-blue-50 text-blue-700"
-          : "border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-600"
-      }`}
-    >
-      <Icon size={15} />
-      {label}
-    </button>
-  );
-}
-
-function PlatformIcon({ name }: { name: string }) {
-  const icon = networks.find((item) => item.name === name)?.icon || "•";
-
-  return (
-    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-lg">
-      {icon}
-    </span>
   );
 }
