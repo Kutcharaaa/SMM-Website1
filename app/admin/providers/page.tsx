@@ -354,6 +354,7 @@ export default function AdminProvidersPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [modeFilter, setModeFilter] = useState<ModeFilter>("all");
+  const [totalImportedServicesCount, setTotalImportedServicesCount] = useState(0);
 
   async function loadProviders() {
     const { data, error } = await supabase
@@ -401,6 +402,19 @@ async function loadPanelServices() {
   setPanelServices(allServices);
 }
 
+async function loadTotalImportedServicesCount() {
+  const { count, error } = await supabase
+    .from("services")
+    .select("id", { count: "exact", head: true });
+
+  if (error) {
+    setMessage(error.message);
+    return;
+  }
+
+  setTotalImportedServicesCount(count || 0);
+}
+
   async function loadUsdMarketRate() {
     const { data } = await supabase
       .from("exchange_rates")
@@ -411,19 +425,21 @@ async function loadPanelServices() {
     setUsdMarketRate(Number(data?.market_rate || 0));
   }
 
-  useEffect(() => {
+useEffect(() => {
+  loadProviders();
+  loadPanelServices();
+  loadTotalImportedServicesCount();
+  loadUsdMarketRate();
+
+  const interval = setInterval(() => {
     loadProviders();
     loadPanelServices();
+    loadTotalImportedServicesCount();
     loadUsdMarketRate();
+  }, 15000);
 
-    const interval = setInterval(() => {
-      loadProviders();
-      loadPanelServices();
-      loadUsdMarketRate();
-    }, 15000);
-
-    return () => clearInterval(interval);
-  }, []);
+  return () => clearInterval(interval);
+}, []);
 
   function clearForm() {
     setSelectedProvider(null);
@@ -796,7 +812,7 @@ async function loadPanelServices() {
       lowBalanceCount,
       importedServices: panelServices.length,
     };
-  }, [panelServices.length, providers]);
+  }, [panelServices.length, providers, totalImportedServicesCount]);
 
   const quickInsights = useMemo(() => {
     const providerCounts = providers.map((provider) => ({
