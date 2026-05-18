@@ -104,7 +104,7 @@ export default function AdminSidebar() {
         },
         {
           name: "New Order Monitor",
-          href: "/admin/order-monitor",
+          href: "/admin/new-order-monitoring",
           icon: Activity,
           roles: ["head_admin", "super_admin"],
         },
