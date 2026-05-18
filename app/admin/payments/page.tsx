@@ -666,65 +666,268 @@ useEffect(() => {
   const pendingDeposits = deposits.filter((deposit) => normalizeStatus(deposit.status) === "pending");
   const rejectedDeposits = deposits.filter((deposit) => normalizeStatus(deposit.status) === "rejected");
 
-function exportDepositsToCSV() {
-  const rows = filteredDeposits.map((deposit) => ({
-    deposit_id: deposit.id,
-    user_id: deposit.user_id,
-    paid_amount: Number(deposit.amount || 0),
-    currency: deposit.currency || "PHP",
-    wallet_credit: Number(deposit.wallet_credit || deposit.amount || 0),
-    payment_method: deposit.method || "",
-    reference_number: deposit.reference_number || "",
-    status: deposit.status || "",
-    reject_reason: deposit.reject_reason || "",
-    created_date: formatDate(deposit.created_at),
-    created_time: formatTime(deposit.created_at),
-    proof_url: deposit.proof_url || "",
-  }));
+function exportDepositsToPDF() {
+  const logoUrl = "/logo.png";
 
-  const headers = [
-    "deposit_id",
-    "user_id",
-    "paid_amount",
-    "currency",
-    "wallet_credit",
-    "payment_method",
-    "reference_number",
-    "status",
-    "reject_reason",
-    "created_date",
-    "created_time",
-    "proof_url",
-  ];
-
-  const csvContent = [
-    headers.join(","),
-    ...rows.map((row) =>
-      headers
-        .map((header) => {
-          const value = String(row[header as keyof typeof row] ?? "");
-          return `"${value.replace(/"/g, '""')}"`;
-        })
-        .join(",")
-    ),
-  ].join("\n");
-
-  const blob = new Blob([csvContent], {
-    type: "text/csv;charset=utf-8;",
+  const reportDate = new Date().toLocaleDateString("en-PH", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
   });
 
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
+  const totalApprovedAmount = filteredDeposits
+    .filter((deposit) => normalizeStatus(deposit.status) === "approved")
+    .reduce(
+      (sum, deposit) =>
+        sum + Number(deposit.wallet_credit || deposit.amount || 0),
+      0
+    );
 
-  const date = new Date().toISOString().slice(0, 10);
+  const pendingCount = filteredDeposits.filter(
+    (deposit) => normalizeStatus(deposit.status) === "pending"
+  ).length;
 
-  link.href = url;
-  link.download = `deposits-payments-${date}.csv`;
-  link.click();
+  const approvedCount = filteredDeposits.filter(
+    (deposit) => normalizeStatus(deposit.status) === "approved"
+  ).length;
 
-  URL.revokeObjectURL(url);
+  const rejectedCount = filteredDeposits.filter(
+    (deposit) => normalizeStatus(deposit.status) === "rejected"
+  ).length;
+
+  const rowsHtml = filteredDeposits
+    .map((deposit) => {
+      return `
+        <tr>
+          <td>${shortDepositId(deposit.id)}</td>
+          <td>${deposit.user_id}</td>
+          <td>${formatMoney(deposit.amount, deposit.currency || "PHP")}</td>
+          <td>${formatMoney(deposit.wallet_credit || deposit.amount)}</td>
+          <td>${deposit.method || "Manual Payment"}</td>
+          <td>${deposit.reference_number || "—"}</td>
+          <td>${normalizeStatus(deposit.status)}</td>
+          <td>${formatDate(deposit.created_at)} ${formatTime(deposit.created_at)}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  const printWindow = window.open("", "_blank", "width=1200,height=900");
+
+  if (!printWindow) {
+    alert("Please allow popups to export PDF.");
+    return;
+  }
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Deposits / Payments Report</title>
+        <style>
+          body {
+            margin: 0;
+            padding: 32px;
+            font-family: Arial, Helvetica, sans-serif;
+            color: #0f172a;
+            background: #ffffff;
+          }
+
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 20px;
+            margin-bottom: 24px;
+          }
+
+          .brand {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+          }
+
+          .logo {
+            width: 160px;
+            max-height: 70px;
+            object-fit: contain;
+          }
+
+          h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 900;
+          }
+
+          .muted {
+            color: #64748b;
+            font-size: 13px;
+            font-weight: 700;
+          }
+
+          .summary {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            margin-bottom: 24px;
+          }
+
+          .card {
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            padding: 16px;
+            background: #f8fafc;
+          }
+
+          .card span {
+            display: block;
+            font-size: 11px;
+            font-weight: 900;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+          }
+
+          .card strong {
+            display: block;
+            margin-top: 8px;
+            font-size: 22px;
+            font-weight: 900;
+          }
+
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            border: 1px solid #e2e8f0;
+          }
+
+          th {
+            background: #f8fafc;
+            color: #64748b;
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: 0.08em;
+            font-weight: 900;
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            text-align: left;
+          }
+
+          td {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            font-weight: 700;
+          }
+
+          .footer {
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid #e2e8f0;
+            color: #64748b;
+            font-size: 11px;
+            font-weight: 700;
+          }
+
+          @media print {
+            body {
+              padding: 18px;
+            }
+
+            table {
+              font-size: 10px;
+            }
+
+            th, td {
+              padding: 8px;
+            }
+          }
+        </style>
+      </head>
+
+      <body>
+        <div class="header">
+          <div class="brand">
+            <img src="${logoUrl}" class="logo" />
+            <div>
+              <h1>Deposits / Payments Report</h1>
+              <p class="muted">Ascend Service · Generated ${reportDate}</p>
+            </div>
+          </div>
+
+          <div class="muted">
+            <div>Total Records: ${filteredDeposits.length}</div>
+            <div>Status Filter: ${statusFilter}</div>
+            <div>Method Filter: ${methodFilter}</div>
+          </div>
+        </div>
+
+        <div class="summary">
+          <div class="card">
+            <span>Pending</span>
+            <strong>${pendingCount}</strong>
+          </div>
+
+          <div class="card">
+            <span>Approved</span>
+            <strong>${approvedCount}</strong>
+          </div>
+
+          <div class="card">
+            <span>Rejected</span>
+            <strong>${rejectedCount}</strong>
+          </div>
+
+          <div class="card">
+            <span>Approved Amount</span>
+            <strong>${formatMoney(totalApprovedAmount)}</strong>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Deposit ID</th>
+              <th>User ID</th>
+              <th>Paid Amount</th>
+              <th>Wallet Credit</th>
+              <th>Method</th>
+              <th>Reference</th>
+              <th>Status</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            ${
+              rowsHtml ||
+              `<tr>
+                <td colspan="8" style="text-align:center; padding: 32px;">
+                  No deposit records found.
+                </td>
+              </tr>`
+            }
+          </tbody>
+        </table>
+
+        <div class="footer">
+          Ascend Service · Elevate Your Social Presence
+        </div>
+
+        <script>
+          window.onload = function () {
+            setTimeout(function () {
+              window.print();
+            }, 500);
+          };
+        </script>
+      </body>
+    </html>
+  `);
+
+  printWindow.document.close();
 }
-
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -754,11 +957,11 @@ function exportDepositsToCSV() {
 
 <button
   type="button"
-  onClick={exportDepositsToCSV}
+  onClick={exportDepositsToPDF}
   className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-emerald-700"
 >
   <Banknote size={17} />
-  Export
+  Export PDF
 </button>
           </div>
         </div>
