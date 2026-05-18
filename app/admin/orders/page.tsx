@@ -53,6 +53,13 @@ type Order = {
   reseller_points_awarded?: boolean;
 };
 
+type UserProfile = {
+  id: string;
+  username: string | null;
+  firstname: string | null;
+  lastname: string | null;
+};
+
 type StatusFilter =
   | "all"
   | "pending"
@@ -141,6 +148,22 @@ function shortOrderId(id: string) {
 
 function shortUserId(id: string) {
   return `User ${String(id).slice(0, 6).toUpperCase()}`;
+}
+
+function getUserDisplayName(userId: string, profiles: UserProfile[]) {
+  const profile = profiles.find((item) => item.id === userId);
+
+  if (!profile) {
+    return shortUserId(userId);
+  }
+
+  if (profile.username) {
+    return profile.username;
+  }
+
+  const fullName = `${profile.firstname || ""} ${profile.lastname || ""}`.trim();
+
+  return fullName || shortUserId(userId);
 }
 
 function getRemains(order: Order) {
@@ -385,6 +408,7 @@ function InfoBlock({
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
 
@@ -429,15 +453,27 @@ export default function AdminOrdersPage() {
     setRefundEnabled(setting?.value === "true");
   }
 
-  useEffect(() => {
+async function loadProfiles() {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, username, firstname, lastname");
+
+  if (!error) {
+    setProfiles((data || []) as UserProfile[]);
+  }
+}
+  
+useEffect(() => {
+  loadOrders();
+  loadProfiles();
+
+  const interval = setInterval(() => {
     loadOrders();
+    loadProfiles();
+  }, 3000);
 
-    const interval = setInterval(() => {
-      loadOrders();
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, []);
+  return () => clearInterval(interval);
+}, []);
 
   function openModal(order: Order, mode: Exclude<ModalMode, null>) {
     setSelectedOrder(order);
@@ -960,12 +996,15 @@ export default function AdminOrdersPage() {
                             {shortOrderId(order.id)}
                           </td>
 
-                          <td className="px-5 py-5 align-top">
-                            <p className="font-black text-slate-700">{shortUserId(order.user_id)}</p>
-                            <p className="mt-1 max-w-[140px] truncate text-xs font-semibold text-slate-400">
-                              {order.user_id}
-                            </p>
-                          </td>
+<td className="px-5 py-5 align-top">
+  <p className="font-black text-slate-700">
+    {getUserDisplayName(order.user_id, profiles)}
+  </p>
+
+  <p className="mt-1 max-w-[140px] truncate text-xs font-semibold text-slate-400">
+    {shortUserId(order.user_id)}
+  </p>
+</td>
 
                           <td className="px-5 py-5 align-top">
                             <div className="flex items-start gap-3">

@@ -40,7 +40,18 @@ type Deposit = {
 };
 
 type Profile = {
+  id?: string;
+  username?: string | null;
+  firstname?: string | null;
+  lastname?: string | null;
   balance: number;
+};
+
+type UserProfile = {
+  id: string;
+  username: string | null;
+  firstname: string | null;
+  lastname: string | null;
 };
 
 type PaymentMethod = {
@@ -108,6 +119,22 @@ function shortDepositId(id: string) {
 
 function shortUserId(id: string) {
   return `#${String(id).slice(0, 8).toUpperCase()}`;
+}
+
+function getUserDisplayName(userId: string, profiles: UserProfile[]) {
+  const profile = profiles.find((item) => item.id === userId);
+
+  if (!profile) {
+    return shortUserId(userId);
+  }
+
+  if (profile.username) {
+    return profile.username;
+  }
+
+  const fullName = `${profile.firstname || ""} ${profile.lastname || ""}`.trim();
+
+  return fullName || shortUserId(userId);
 }
 
 function isToday(dateValue?: string | null) {
@@ -284,6 +311,7 @@ function InfoBlock({
 export default function AdminPaymentsPage() {
   const [deposits, setDeposits] = useState<Deposit[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [selectedDeposit, setSelectedDeposit] = useState<Deposit | null>(null);
   const [showRejectBox, setShowRejectBox] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
@@ -321,17 +349,29 @@ export default function AdminPaymentsPage() {
     }
   }
 
-  useEffect(() => {
+async function loadProfiles() {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, username, firstname, lastname");
+
+  if (!error) {
+    setProfiles((data || []) as UserProfile[]);
+  }
+}
+
+useEffect(() => {
+  loadDeposits();
+  loadPaymentMethods();
+  loadProfiles();
+
+  const interval = setInterval(() => {
     loadDeposits();
     loadPaymentMethods();
+    loadProfiles();
+  }, 3000);
 
-    const interval = setInterval(() => {
-      loadDeposits();
-      loadPaymentMethods();
-    }, 15000);
-
-    return () => clearInterval(interval);
-  }, []);
+  return () => clearInterval(interval);
+}, []);
 
   function getPaymentMethod(methodName: string) {
     return (
@@ -783,12 +823,14 @@ export default function AdminPaymentsPage() {
                           {shortDepositId(deposit.id)}
                         </td>
 
-                        <td className="px-5 py-5 align-top">
-                          <p className="font-black text-slate-700">{shortUserId(deposit.user_id)}</p>
-                          <p className="mt-1 max-w-[150px] truncate text-xs font-semibold text-slate-400">
-                            {deposit.user_id}
-                          </p>
-                        </td>
+<td className="px-5 py-5 align-top">
+  <p className="font-black text-slate-700">
+    {getUserDisplayName(deposit.user_id, profiles)}
+  </p>
+  <p className="mt-1 max-w-[150px] truncate text-xs font-semibold text-slate-400">
+    {shortUserId(deposit.user_id)}
+  </p>
+</td>
 
                         <td className="px-5 py-5 align-top font-black text-blue-600">
                           {formatMoney(deposit.amount, deposit.currency || "PHP")}
@@ -1063,7 +1105,17 @@ export default function AdminPaymentsPage() {
               <div className="space-y-5">
                 <div className="grid gap-4 md:grid-cols-2">
                   <InfoBlock label="Deposit ID" value={shortDepositId(selectedDeposit.id)} />
-                  <InfoBlock label="User" value={shortUserId(selectedDeposit.user_id)} />
+                  <InfoBlock
+  label="User"
+  value={
+    <div>
+      <p>{getUserDisplayName(selectedDeposit.user_id, profiles)}</p>
+      <p className="mt-1 text-xs font-semibold text-slate-400">
+        {shortUserId(selectedDeposit.user_id)}
+      </p>
+    </div>
+  }
+/>
                   <InfoBlock
                     label="Paid Amount"
                     value={formatMoney(selectedDeposit.amount, selectedDeposit.currency || "PHP")}
