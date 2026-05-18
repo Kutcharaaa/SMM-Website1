@@ -342,11 +342,19 @@ export default function AdminServicesPage() {
 
   const { confirmAction } = useConfirm();
 
-  async function loadServices() {
+async function loadServices() {
+  let allServices: Service[] = [];
+  let from = 0;
+  const batchSize = 1000;
+
+  while (true) {
+    const to = from + batchSize - 1;
+
     const { data, error } = await supabase
       .from("services")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .range(from, to);
 
     if (error) {
       setMessage(error.message);
@@ -354,8 +362,19 @@ export default function AdminServicesPage() {
       return;
     }
 
-    setServices((data || []) as Service[]);
+    const batch = (data || []) as Service[];
+
+    allServices = [...allServices, ...batch];
+
+    if (batch.length < batchSize) {
+      break;
+    }
+
+    from += batchSize;
   }
+
+  setServices(allServices);
+}
 
   async function loadProviders() {
     const { data, error } = await supabase
