@@ -408,38 +408,63 @@ export default function OrdersPage() {
     setLoading(false);
   }
 
-  async function loadOrderData() {
-    const { data: serviceData, error: serviceError } = await supabase
+async function loadOrderData() {
+  let allServices: Service[] = [];
+  let from = 0;
+  const batchSize = 1000;
+
+  while (true) {
+    const to = from + batchSize - 1;
+
+    const { data, error } = await supabase
       .from("services")
       .select("*")
-      .order("category");
+      .order("category")
+      .range(from, to);
 
-    if (serviceError) {
-      showToast(serviceError.message, "error");
-    } else {
-      const activeServices = (serviceData || []).filter((service) => {
-        const cleanStatus = String(service.status || "active")
-          .toLowerCase()
-          .trim();
-
-        return cleanStatus === "active";
-      });
-
-      setServices(activeServices as Service[]);
+    if (error) {
+      showToast(error.message, "error");
+      break;
     }
 
-    const { data: authData } = await supabase.auth.getUser();
+    const batch = (data || []) as Service[];
 
-    if (!authData.user) return;
+    allServices = [...allServices, ...batch];
 
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("balance")
-      .eq("id", authData.user.id)
-      .single();
+    if (batch.length < batchSize) {
+      break;
+    }
 
-    if (profileData) setProfile(profileData as Profile);
+    from += batchSize;
   }
+
+  const activeServices = allServices.filter((service) => {
+    const cleanStatus = String(service.status || "active")
+      .toLowerCase()
+      .trim();
+
+    return (
+      cleanStatus === "active" ||
+      cleanStatus === "enabled" ||
+      cleanStatus === "available" ||
+      cleanStatus === ""
+    );
+  });
+
+  setServices(activeServices);
+
+  const { data: authData } = await supabase.auth.getUser();
+
+  if (!authData.user) return;
+
+  const { data: profileData } = await supabase
+    .from("profiles")
+    .select("balance")
+    .eq("id", authData.user.id)
+    .single();
+
+  if (profileData) setProfile(profileData as Profile);
+}
 
   useEffect(() => {
     async function refreshOrders() {
