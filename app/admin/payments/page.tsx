@@ -435,7 +435,7 @@ export default function AdminOrdersPage() {
 
     const interval = setInterval(() => {
       loadOrders();
-    }, 15000);
+    }, 3000);
 
     return () => clearInterval(interval);
   }, []);
