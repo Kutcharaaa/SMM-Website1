@@ -4,7 +4,38 @@ import AdminLayout from "@/components/AdminLayout";
 import AdminGuard from "@/components/AdminGuard";
 import { useConfirm } from "@/components/ConfirmProvider";
 import { supabase } from "@/lib/supabase";
-import { useEffect, useState } from "react";
+import {
+  Activity,
+  CheckCircle2,
+  ChevronDown,
+  Edit3,
+  Eye,
+  Filter,
+  Import,
+  Loader2,
+  Package,
+  Plus,
+  RefreshCw,
+  Search,
+  SlidersHorizontal,
+  Trash2,
+  X,
+  XCircle,
+  Zap,
+} from "lucide-react";
+import {
+  FaDiscord,
+  FaFacebookF,
+  FaGlobe,
+  FaInstagram,
+  FaSpotify,
+  FaTelegramPlane,
+  FaTiktok,
+  FaTwitch,
+  FaTwitter,
+  FaYoutube,
+} from "react-icons/fa";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 type Service = {
   id: string;
@@ -29,6 +60,253 @@ type Provider = {
   mode: string;
 };
 
+type StatusFilter = "all" | "active" | "inactive";
+type AutoOrderFilter = "all" | "auto" | "manual";
+type ServiceModalMode = "add" | "edit" | "view" | null;
+
+const statusOptions: { label: string; value: StatusFilter }[] = [
+  { label: "All Status", value: "all" },
+  { label: "Active", value: "active" },
+  { label: "Inactive", value: "inactive" },
+];
+
+const autoOrderOptions: { label: string; value: AutoOrderFilter }[] = [
+  { label: "All Order Types", value: "all" },
+  { label: "Auto Order", value: "auto" },
+  { label: "Manual Order", value: "manual" },
+];
+
+function normalizeStatus(status?: string | null) {
+  return String(status || "active").toLowerCase().trim();
+}
+
+function formatMoney(value: number | string | null | undefined) {
+  return `₱${Number(value || 0).toLocaleString("en-PH", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function formatNumber(value: number | string | null | undefined) {
+  return Number(value || 0).toLocaleString("en-PH");
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "—";
+
+  return new Date(value).toLocaleDateString("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function shortServiceId(id: string) {
+  return `ID: ${String(id).slice(0, 6).toUpperCase()}`;
+}
+
+function getPlatformName(value?: string | null) {
+  const name = String(value || "").toLowerCase();
+
+  if (name.includes("instagram") || name.includes("ig ")) return "Instagram";
+  if (name.includes("tiktok")) return "TikTok";
+  if (name.includes("youtube") || name.includes("yt ")) return "YouTube";
+  if (name.includes("facebook") || name.includes("fb ")) return "Facebook";
+  if (name.includes("telegram")) return "Telegram";
+  if (name.includes("spotify")) return "Spotify";
+  if (name.includes("twitter") || name.includes(" x ") || name.startsWith("x ")) return "Twitter / X";
+  if (name.includes("twitch")) return "Twitch";
+  if (name.includes("discord")) return "Discord";
+
+  return "Other";
+}
+
+function PlatformIcon({ service }: { service?: string | null }) {
+  const name = String(service || "").toLowerCase();
+
+  let icon: ReactNode = <FaGlobe />;
+  let className = "bg-slate-50 text-slate-700 ring-slate-100";
+
+  if (name.includes("instagram") || name.includes("ig ")) {
+    icon = <FaInstagram />;
+    className = "bg-pink-50 text-pink-600 ring-pink-100";
+  } else if (name.includes("tiktok")) {
+    icon = <FaTiktok />;
+    className = "bg-slate-950 text-white ring-slate-900";
+  } else if (name.includes("youtube") || name.includes("yt ")) {
+    icon = <FaYoutube />;
+    className = "bg-red-50 text-red-600 ring-red-100";
+  } else if (name.includes("facebook") || name.includes("fb ")) {
+    icon = <FaFacebookF />;
+    className = "bg-blue-50 text-blue-600 ring-blue-100";
+  } else if (name.includes("telegram")) {
+    icon = <FaTelegramPlane />;
+    className = "bg-sky-50 text-sky-600 ring-sky-100";
+  } else if (name.includes("spotify")) {
+    icon = <FaSpotify />;
+    className = "bg-emerald-50 text-emerald-600 ring-emerald-100";
+  } else if (name.includes("twitter") || name.includes(" x ") || name.startsWith("x ")) {
+    icon = <FaTwitter />;
+    className = "bg-slate-950 text-white ring-slate-900";
+  } else if (name.includes("twitch")) {
+    icon = <FaTwitch />;
+    className = "bg-purple-50 text-purple-600 ring-purple-100";
+  } else if (name.includes("discord")) {
+    icon = <FaDiscord />;
+    className = "bg-indigo-50 text-indigo-600 ring-indigo-100";
+  }
+
+  return (
+    <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-lg ring-1 ${className}`}>
+      {icon}
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status?: string | null }) {
+  const active = normalizeStatus(status) === "active";
+
+  return (
+    <span
+      className={`inline-flex rounded-full px-3 py-1 text-xs font-black ring-1 ${
+        active
+          ? "bg-emerald-50 text-emerald-700 ring-emerald-100"
+          : "bg-red-50 text-red-700 ring-red-100"
+      }`}
+    >
+      {active ? "Active" : "Inactive"}
+    </span>
+  );
+}
+
+function AutoOrderSwitch({ enabled }: { enabled: boolean }) {
+  return (
+    <span
+      className={`relative inline-flex h-7 w-12 items-center rounded-full transition ${
+        enabled ? "bg-blue-600" : "bg-slate-300"
+      }`}
+    >
+      <span
+        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
+          enabled ? "translate-x-6" : "translate-x-1"
+        }`}
+      />
+    </span>
+  );
+}
+
+function CategoryBadge({ category }: { category?: string | null }) {
+  const label = category || "Uncategorized";
+  const platform = getPlatformName(label);
+
+  const className =
+    platform === "Instagram"
+      ? "bg-pink-50 text-pink-700 ring-pink-100"
+      : platform === "TikTok"
+        ? "bg-slate-100 text-slate-800 ring-slate-200"
+        : platform === "YouTube"
+          ? "bg-red-50 text-red-700 ring-red-100"
+          : platform === "Facebook"
+            ? "bg-blue-50 text-blue-700 ring-blue-100"
+            : platform === "Telegram"
+              ? "bg-sky-50 text-sky-700 ring-sky-100"
+              : platform === "Spotify"
+                ? "bg-emerald-50 text-emerald-700 ring-emerald-100"
+                : "bg-slate-100 text-slate-700 ring-slate-200";
+
+  return (
+    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-black ring-1 ${className}`}>
+      {label}
+    </span>
+  );
+}
+
+function StatCard({
+  title,
+  value,
+  subtitle,
+  icon,
+  tone,
+}: {
+  title: string;
+  value: string;
+  subtitle: string;
+  icon: ReactNode;
+  tone: "blue" | "green" | "orange" | "purple";
+}) {
+  const toneClass = {
+    blue: "bg-blue-50 text-blue-700 ring-blue-100",
+    green: "bg-emerald-50 text-emerald-700 ring-emerald-100",
+    orange: "bg-orange-50 text-orange-700 ring-orange-100",
+    purple: "bg-purple-50 text-purple-700 ring-purple-100",
+  }[tone];
+
+  return (
+    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+      <div className="flex items-start gap-4">
+        <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-3xl ring-1 ${toneClass}`}>
+          {icon}
+        </div>
+
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-slate-500">{title}</p>
+          <h3 className="mt-1 text-3xl font-black tracking-tight text-slate-950">{value}</h3>
+          <p className="mt-1 text-sm font-semibold text-slate-500">{subtitle}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ActionButton({
+  title,
+  children,
+  onClick,
+  disabled,
+  tone = "slate",
+}: {
+  title: string;
+  children: ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  tone?: "slate" | "blue" | "red";
+}) {
+  const toneClass = {
+    slate: "border-slate-200 text-slate-600 hover:bg-slate-50",
+    blue: "border-blue-200 text-blue-700 hover:bg-blue-50",
+    red: "border-red-200 text-red-700 hover:bg-red-50",
+  }[tone];
+
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      disabled={disabled}
+      className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border bg-white transition disabled:cursor-not-allowed disabled:opacity-50 ${toneClass}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function InfoBlock({
+  label,
+  value,
+  valueClassName = "text-slate-950",
+}: {
+  label: string;
+  value: ReactNode;
+  valueClassName?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+      <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">{label}</p>
+      <div className={`mt-2 text-sm font-black ${valueClassName}`}>{value}</div>
+    </div>
+  );
+}
+
 export default function AdminServicesPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [providers, setProviders] = useState<Provider[]>([]);
@@ -39,9 +317,9 @@ export default function AdminServicesPage() {
   const [deletingServices, setDeletingServices] = useState(false);
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-
-  const [showAddModal, setShowAddModal] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [modalMode, setModalMode] = useState<ServiceModalMode>(null);
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false);
 
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
@@ -53,6 +331,15 @@ export default function AdminServicesPage() {
   const [providerId, setProviderId] = useState("");
   const [autoOrder, setAutoOrder] = useState(false);
   const [status, setStatus] = useState("active");
+
+  const [search, setSearch] = useState("");
+  const [providerFilter, setProviderFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [autoOrderFilter, setAutoOrderFilter] = useState<AutoOrderFilter>("all");
+
+  const [bulkProviderId, setBulkProviderId] = useState("");
+
   const { confirmAction } = useConfirm();
 
   async function loadServices() {
@@ -67,27 +354,43 @@ export default function AdminServicesPage() {
       return;
     }
 
-    setServices(data || []);
+    setServices((data || []) as Service[]);
   }
 
   async function loadProviders() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("providers")
       .select("id, name, status, mode")
-      .eq("status", "active")
       .order("name");
 
-    setProviders(data || []);
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setProviders((data || []) as Provider[]);
   }
 
   useEffect(() => {
     loadServices();
     loadProviders();
+
+    const interval = setInterval(() => {
+      loadServices();
+      loadProviders();
+    }, 15000);
+
+    return () => clearInterval(interval);
   }, []);
 
   function getSelectedProviderName() {
     const provider = providers.find((item) => item.id === providerId);
     return provider?.name || "manual";
+  }
+
+  function getProviderName(id?: string | null, fallback?: string | null) {
+    if (!id) return fallback || "Manual";
+    return providers.find((provider) => provider.id === id)?.name || fallback || "Manual";
   }
 
   function resetForm() {
@@ -103,6 +406,19 @@ export default function AdminServicesPage() {
     setStatus("active");
   }
 
+  function openAddModal() {
+    resetForm();
+    setSelectedService(null);
+    setModalMode("add");
+    setMessage("");
+  }
+
+  function openViewModal(service: Service) {
+    setSelectedService(service);
+    setModalMode("view");
+    setMessage("");
+  }
+
   function openManage(service: Service) {
     setSelectedService(service);
     setName(service.name || "");
@@ -115,22 +431,155 @@ export default function AdminServicesPage() {
     setProviderId(service.provider_id || "");
     setAutoOrder(Boolean(service.auto_order));
     setStatus(service.status || "active");
+    setModalMode("edit");
+    setMessage("");
+  }
+
+  function closeModal() {
+    setSelectedService(null);
+    setModalMode(null);
+    resetForm();
   }
 
   function toggleSelectService(id: string) {
     setSelectedIds((current) =>
       current.includes(id)
         ? current.filter((item) => item !== id)
-        : [...current, id]
+        : [...current, id],
     );
   }
 
   function toggleSelectAll() {
-    if (selectedIds.length === services.length) {
-      setSelectedIds([]);
+    if (filteredServices.length <= 0) return;
+
+    const filteredIds = filteredServices.map((service) => service.id);
+    const allFilteredSelected = filteredIds.every((id) => selectedIds.includes(id));
+
+    if (allFilteredSelected) {
+      setSelectedIds((current) => current.filter((id) => !filteredIds.includes(id)));
     } else {
-      setSelectedIds(services.map((service) => service.id));
+      setSelectedIds((current) => Array.from(new Set([...current, ...filteredIds])));
     }
+  }
+
+  function validateServiceForm() {
+    if (!name.trim() || !category.trim() || !price || !minQuantity || !maxQuantity) {
+      setMessage("Please complete all required fields.");
+      return false;
+    }
+
+    if (Number(price) < 0) {
+      setMessage("Price cannot be negative.");
+      return false;
+    }
+
+    if (Number(minQuantity) < 0 || Number(maxQuantity) < 0) {
+      setMessage("Minimum and maximum quantity cannot be negative.");
+      return false;
+    }
+
+    if (Number(minQuantity) > Number(maxQuantity)) {
+      setMessage("Minimum quantity cannot be greater than maximum quantity.");
+      return false;
+    }
+
+    return true;
+  }
+
+  async function addService() {
+    if (savingService) return;
+    if (!validateServiceForm()) return;
+
+    setSavingService(true);
+
+    const { error } = await supabase.from("services").insert({
+      name: name.trim(),
+      category: category.trim(),
+      description: description.trim(),
+      price_per_1000: Number(price),
+      min_quantity: Number(minQuantity),
+      max_quantity: Number(maxQuantity),
+      provider_service_id: providerServiceId.trim(),
+      provider_id: providerId || null,
+      provider_name: getSelectedProviderName(),
+      auto_order: autoOrder,
+      status,
+    });
+
+    if (error) {
+      setMessage(error.message);
+      setSavingService(false);
+      return;
+    }
+
+    setMessage("Service added successfully.");
+    setSavingService(false);
+    closeModal();
+    loadServices();
+  }
+
+  async function updateService() {
+    if (savingService) return;
+    if (!selectedService) return;
+    if (!validateServiceForm()) return;
+
+    setSavingService(true);
+
+    const { error } = await supabase
+      .from("services")
+      .update({
+        name: name.trim(),
+        category: category.trim(),
+        description: description.trim(),
+        price_per_1000: Number(price),
+        min_quantity: Number(minQuantity),
+        max_quantity: Number(maxQuantity),
+        provider_service_id: providerServiceId.trim(),
+        provider_id: providerId || null,
+        provider_name: getSelectedProviderName(),
+        auto_order: autoOrder,
+        status,
+      })
+      .eq("id", selectedService.id);
+
+    if (error) {
+      setMessage(error.message);
+      setSavingService(false);
+      return;
+    }
+
+    setMessage("Service updated successfully.");
+    setSavingService(false);
+    closeModal();
+    loadServices();
+  }
+
+  async function deleteService(service: Service) {
+    if (deletingServices) return;
+
+    const confirmDelete = await confirmAction({
+      title: "Delete Service",
+      message: `Delete "${service.name}"? This action cannot be undone.`,
+      confirmText: "Delete Service",
+      variant: "danger",
+    });
+
+    if (!confirmDelete) return;
+
+    setDeletingServices(true);
+
+    const { error } = await supabase.from("services").delete().eq("id", service.id);
+
+    if (error) {
+      setMessage(error.message);
+      setDeletingServices(false);
+      return;
+    }
+
+    setMessage("Service deleted.");
+    setSelectedIds((current) => current.filter((id) => id !== service.id));
+    setDeletingServices(false);
+    loadServices();
   }
 
   async function deleteSelectedServices() {
@@ -141,17 +590,14 @@ export default function AdminServicesPage() {
       return;
     }
 
-const confirmDelete = await confirmAction({
-  title: "Delete Selected Services",
-  message: `Delete ${selectedIds.length} selected services? This action cannot be undone.`,
-  confirmText: "Delete Services",
-  variant: "danger",
-});
+    const confirmDelete = await confirmAction({
+      title: "Delete Selected Services",
+      message: `Delete ${selectedIds.length} selected services? This action cannot be undone.`,
+      confirmText: "Delete Services",
+      variant: "danger",
+    });
 
-if (!confirmDelete) {
-  setDeletingServices(false);
-  return;
-}
+    if (!confirmDelete) return;
 
     setDeletingServices(true);
 
@@ -169,12 +615,12 @@ if (!confirmDelete) {
       const result = await response.json();
 
       if (!result.success) {
-        setMessage(result.message);
+        setMessage(result.message || "Failed to delete selected services.");
         setDeletingServices(false);
         return;
       }
 
-      setMessage(result.message);
+      setMessage(result.message || "Selected services deleted.");
       setSelectedIds([]);
       setDeletingServices(false);
       loadServices();
@@ -187,30 +633,23 @@ if (!confirmDelete) {
   async function deleteAllServices() {
     if (deletingServices) return;
 
-const confirmDelete = await confirmAction({
-  title: "Delete All Services",
-  message: "Delete ALL services? This action cannot be undone.",
-  confirmText: "Delete All",
-  variant: "danger",
-});
+    const confirmDelete = await confirmAction({
+      title: "Delete All Services",
+      message: "Delete ALL services? This action cannot be undone.",
+      confirmText: "Delete All",
+      variant: "danger",
+    });
 
-if (!confirmDelete) {
-  setDeletingServices(false);
-  return;
-}
+    if (!confirmDelete) return;
 
-const doubleConfirm = await confirmAction({
-  title: "Final Confirmation",
-  message:
-    "Are you 100% sure? This will remove every service from your panel.",
-  confirmText: "Yes, Delete Everything",
-  variant: "danger",
-});
+    const doubleConfirm = await confirmAction({
+      title: "Final Confirmation",
+      message: "Are you 100% sure? This will remove every service from your panel.",
+      confirmText: "Yes, Delete Everything",
+      variant: "danger",
+    });
 
-if (!doubleConfirm) {
-  setDeletingServices(false);
-  return;
-}
+    if (!doubleConfirm) return;
 
     setDeletingServices(true);
 
@@ -222,12 +661,12 @@ if (!doubleConfirm) {
       const result = await response.json();
 
       if (!result.success) {
-        setMessage(result.message);
+        setMessage(result.message || "Failed to delete all services.");
         setDeletingServices(false);
         return;
       }
 
-      setMessage(result.message);
+      setMessage(result.message || "All services deleted.");
       setSelectedIds([]);
       setDeletingServices(false);
       loadServices();
@@ -237,435 +676,982 @@ if (!doubleConfirm) {
     }
   }
 
-  async function addService() {
-    if (savingService) return;
+  async function bulkImportServices() {
+    if (importingServices) return;
 
-    setSavingService(true);
-    if (!name || !category || !price || !minQuantity || !maxQuantity) {
-      setMessage("Please complete all required fields.");
-      setSavingService(false);
+    if (!bulkProviderId) {
+      setMessage("Please select a provider to import from.");
       return;
     }
 
-    const { error } = await supabase.from("services").insert({
-      name,
-      category,
-      description,
-      price_per_1000: Number(price),
-      min_quantity: Number(minQuantity),
-      max_quantity: Number(maxQuantity),
-      provider_service_id: providerServiceId,
-      provider_id: providerId || null,
-      provider_name: getSelectedProviderName(),
-      auto_order: autoOrder,
-      status: "active",
+    const confirmImport = await confirmAction({
+      title: "Bulk Import Services",
+      message: "Import services from this provider? Existing duplicate provider service IDs may be skipped by your API.",
+      confirmText: "Start Import",
     });
 
-    if (error) {
-      setMessage(error.message);
-      setSavingService(false);
-      return;
-    }
+    if (!confirmImport) return;
 
-    setMessage("Service added successfully.");
-    setSavingService(false);
-    resetForm();
-    setShowAddModal(false);
-    loadServices();
+    setImportingServices(true);
+    setMessage("Importing services...");
+
+    try {
+      const response = await fetch("/api/admin/services/import", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          providerId: bulkProviderId,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        setMessage(result.message || "Failed to import services.");
+        setImportingServices(false);
+        return;
+      }
+
+      setMessage(result.message || "Services imported successfully.");
+      setShowBulkImportModal(false);
+      setBulkProviderId("");
+      setImportingServices(false);
+      loadServices();
+    } catch {
+      setMessage("Failed to import services. Please check your import API route.");
+      setImportingServices(false);
+    }
   }
 
-  async function updateService() {
-    if (savingService) return;
+  const categoryOptions = useMemo(() => {
+    return Array.from(new Set(services.map((service) => service.category).filter(Boolean))).sort();
+  }, [services]);
 
-    if (!selectedService) return;
+  const stats = useMemo(() => {
+    const active = services.filter((service) => normalizeStatus(service.status) === "active").length;
+    const inactive = services.filter((service) => normalizeStatus(service.status) !== "active").length;
+    const auto = services.filter((service) => service.auto_order).length;
+    const activePercent = services.length > 0 ? (active / services.length) * 100 : 0;
+    const autoPercent = services.length > 0 ? (auto / services.length) * 100 : 0;
+    const averagePrice =
+      services.length > 0
+        ? services.reduce((sum, service) => sum + Number(service.price_per_1000 || 0), 0) / services.length
+        : 0;
 
-    setSavingService(true);
+    const providerMap = new Map<string, number>();
+    services.forEach((service) => {
+      const provider = service.provider_name || "Manual";
+      providerMap.set(provider, (providerMap.get(provider) || 0) + 1);
+    });
 
-    const { error } = await supabase
-      .from("services")
-      .update({
-        name,
+    const mostUsedProvider = Array.from(providerMap.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] || "—";
+
+    return {
+      total: services.length,
+      active,
+      inactive,
+      auto,
+      activePercent,
+      autoPercent,
+      averagePrice,
+      mostUsedProvider,
+      providerCount: providers.length,
+    };
+  }, [providers.length, services]);
+
+  const topCategories = useMemo(() => {
+    const categoryMap = new Map<string, number>();
+
+    services.forEach((service) => {
+      const key = service.category || "Uncategorized";
+      categoryMap.set(key, (categoryMap.get(key) || 0) + 1);
+    });
+
+    return Array.from(categoryMap.entries())
+      .map(([category, count]) => ({
         category,
-        description,
-        price_per_1000: Number(price),
-        min_quantity: Number(minQuantity),
-        max_quantity: Number(maxQuantity),
-        provider_service_id: providerServiceId,
-        provider_id: providerId || null,
-        provider_name: getSelectedProviderName(),
-        auto_order: autoOrder,
-        status,
-      })
-      .eq("id", selectedService.id);
+        count,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6);
+  }, [services]);
 
-    if (error) {
-      setMessage(error.message);
-      setSavingService(false);
-      return;
-    }
+  const filteredServices = useMemo(() => {
+    const query = search.toLowerCase().trim();
 
-    setMessage("Service updated successfully.");
-    setSavingService(false);
-    setSelectedService(null);
-    resetForm();
-    loadServices();
-  }
+    return services.filter((service) => {
+      const matchesSearch =
+        !query ||
+        String(service.name || "").toLowerCase().includes(query) ||
+        String(service.id || "").toLowerCase().includes(query) ||
+        String(service.category || "").toLowerCase().includes(query) ||
+        String(service.provider_name || "").toLowerCase().includes(query) ||
+        String(service.provider_service_id || "").toLowerCase().includes(query);
 
-  async function deleteService() {
-    if (deletingServices) return;
+      const matchesProvider =
+        providerFilter === "all"
+          ? true
+          : providerFilter === "manual"
+            ? !service.provider_id
+            : service.provider_id === providerFilter;
 
-    setDeletingServices(true);
-    if (!selectedService) {
-      setDeletingServices(false);
-      return;
-    }
+      const matchesCategory = categoryFilter === "all" ? true : service.category === categoryFilter;
 
-const confirmDelete = await confirmAction({
-  title: "Delete Service",
-  message: `Delete "${selectedService.name}"? This cannot be undone.`,
-  confirmText: "Delete Service",
-  variant: "danger",
-});
+      const matchesStatus =
+        statusFilter === "all"
+          ? true
+          : statusFilter === "active"
+            ? normalizeStatus(service.status) === "active"
+            : normalizeStatus(service.status) !== "active";
 
-if (!confirmDelete) {
-  setDeletingServices(false);
-  return;
-}
+      const matchesAuto =
+        autoOrderFilter === "all"
+          ? true
+          : autoOrderFilter === "auto"
+            ? service.auto_order
+            : !service.auto_order;
 
-    const { error } = await supabase
-      .from("services")
-      .delete()
-      .eq("id", selectedService.id);
+      return matchesSearch && matchesProvider && matchesCategory && matchesStatus && matchesAuto;
+    });
+  }, [autoOrderFilter, categoryFilter, providerFilter, search, services, statusFilter]);
 
-    if (error) {
-      setMessage(error.message);
-      setDeletingServices(false);
-      return;
-    }
-
-    setMessage("Service deleted successfully.");
-    setDeletingServices(false);
-    setSelectedService(null);
-    resetForm();
-    loadServices();
-  }
-
-  function getStatusStyle(serviceStatus: string) {
-    if (serviceStatus === "active") return "bg-green-500/10 text-green-400";
-    if (serviceStatus === "paused") return "bg-yellow-500/10 text-yellow-400";
-    return "bg-red-500/10 text-red-400";
-  }
+  const allFilteredSelected =
+    filteredServices.length > 0 && filteredServices.every((service) => selectedIds.includes(service.id));
 
   return (
     <AdminGuard allowedRoles={["head_admin", "super_admin"]}>
       <AdminLayout>
-        <h2 className="text-4xl font-black mb-4">Services</h2>
+        <div className="space-y-6">
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+            <div>
+              <h2 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+                Services
+              </h2>
 
-        <p className="text-zinc-400 mb-8">
-          Manage services, pricing, status, and provider mapping.
-        </p>
+              <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
+                Manage all services, pricing, categories, and provider settings.
+              </p>
+            </div>
 
-        {message && <p className="text-sm text-blue-400 mb-4">{message}</p>}
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  loadServices();
+                  loadProviders();
+                }}
+                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50"
+              >
+                <RefreshCw size={17} />
+                Refresh
+              </button>
 
-        <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 p-6 mb-8 flex flex-wrap gap-3 justify-between">
-          <button
-            onClick={() => {
-              resetForm();
-              setShowAddModal(true);
-            }}
-            className="bg-blue-600 hover:bg-blue-700 rounded-xl px-5 py-3 font-semibold transition"
-          >
-            Add Service
-          </button>
+              <button
+                type="button"
+                onClick={() => setShowBulkImportModal(true)}
+                className="inline-flex items-center gap-2 rounded-2xl border border-blue-200 bg-white px-5 py-3 text-sm font-black text-blue-700 shadow-sm transition hover:bg-blue-50"
+              >
+                <Import size={17} />
+                Bulk Import
+              </button>
 
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={toggleSelectAll}
-              className="border border-zinc-800 hover:border-blue-500 rounded-xl px-5 py-3 font-semibold transition"
-            >
-              {selectedIds.length === services.length && services.length > 0
-                ? "Unselect All"
-                : "Select All"}
-            </button>
+              <button
+                type="button"
+                onClick={openAddModal}
+                className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-blue-700"
+              >
+                <Plus size={17} />
+                Add Service
+              </button>
+            </div>
+          </div>
 
-            <button
-              onClick={deleteSelectedServices}
-              disabled={selectedIds.length <= 0 || deletingServices}
-              className="border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl px-5 py-3 font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {deletingServices
-                ? "Deleting..."
-                : `Delete Selected (${selectedIds.length})`}
-            </button>
+          {message && (
+            <div className="rounded-2xl border border-blue-100 bg-blue-50 px-5 py-4 text-sm font-bold text-blue-700">
+              {message}
+            </div>
+          )}
 
-            <button
-              onClick={deleteAllServices}
-              disabled={deletingServices}
-              className="border border-red-600 bg-red-600/20 hover:bg-red-600/30 text-red-300 rounded-xl px-5 py-3 font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {deletingServices ? "Deleting..." : "Delete All Services"}
-            </button>
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              title="Total Services"
+              value={formatNumber(stats.total)}
+              subtitle="All time services"
+              icon={<Package size={26} />}
+              tone="blue"
+            />
+
+            <StatCard
+              title="Active Services"
+              value={formatNumber(stats.active)}
+              subtitle={`${stats.activePercent.toFixed(2)}% active`}
+              icon={<CheckCircle2 size={26} />}
+              tone="green"
+            />
+
+            <StatCard
+              title="Auto Order Services"
+              value={formatNumber(stats.auto)}
+              subtitle={`${stats.autoPercent.toFixed(2)}% auto order`}
+              icon={<Zap size={26} />}
+              tone="orange"
+            />
+
+            <StatCard
+              title="Providers"
+              value={formatNumber(stats.providerCount)}
+              subtitle="Connected providers"
+              icon={<Activity size={26} />}
+              tone="purple"
+            />
+          </div>
+
+          <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
+            <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+              <div className="grid gap-4 border-b border-slate-100 p-5 xl:grid-cols-[1.2fr_0.65fr_0.65fr_0.55fr_0.55fr_auto]">
+                <div className="flex h-12 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 shadow-sm">
+                  <Search size={18} className="text-slate-400" />
+                  <input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Search services by name or ID..."
+                    className="h-full min-w-0 flex-1 bg-transparent text-sm font-semibold text-slate-700 outline-none placeholder:text-slate-400"
+                  />
+                </div>
+
+                <select
+                  value={providerFilter}
+                  onChange={(event) => setProviderFilter(event.target.value)}
+                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
+                >
+                  <option value="all">All Providers</option>
+                  <option value="manual">Manual</option>
+                  {providers.map((provider) => (
+                    <option key={provider.id} value={provider.id}>
+                      {provider.name}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={categoryFilter}
+                  onChange={(event) => setCategoryFilter(event.target.value)}
+                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
+                >
+                  <option value="all">All Categories</option>
+                  {categoryOptions.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={statusFilter}
+                  onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
+                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
+                >
+                  {statusOptions.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={autoOrderFilter}
+                  onChange={(event) => setAutoOrderFilter(event.target.value as AutoOrderFilter)}
+                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
+                >
+                  {autoOrderOptions.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch("");
+                    setProviderFilter("all");
+                    setCategoryFilter("all");
+                    setStatusFilter("all");
+                    setAutoOrderFilter("all");
+                  }}
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50"
+                >
+                  <Filter size={17} />
+                </button>
+              </div>
+
+              {selectedIds.length > 0 && (
+                <div className="flex flex-col gap-3 border-b border-orange-100 bg-orange-50 px-5 py-4 text-sm font-bold text-orange-700 sm:flex-row sm:items-center sm:justify-between">
+                  <p>{selectedIds.length} services selected.</p>
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={deleteSelectedServices}
+                      disabled={deletingServices}
+                      className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-xs font-black text-white transition hover:bg-red-700 disabled:opacity-50"
+                    >
+                      {deletingServices ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                      Delete Selected
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedIds([])}
+                      className="rounded-xl border border-orange-200 bg-white px-4 py-2 text-xs font-black text-orange-700 transition hover:bg-orange-50"
+                    >
+                      Clear Selection
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[1220px] text-sm">
+                  <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="px-5 py-4 text-left">
+                        <input
+                          type="checkbox"
+                          checked={allFilteredSelected}
+                          onChange={toggleSelectAll}
+                          className="h-4 w-4 rounded border-slate-300"
+                        />
+                      </th>
+                      <th className="px-5 py-4 text-left">Service</th>
+                      <th className="px-5 py-4 text-left">Category</th>
+                      <th className="px-5 py-4 text-left">Provider</th>
+                      <th className="px-5 py-4 text-left">Provider Service ID</th>
+                      <th className="px-5 py-4 text-left">Price / 1000</th>
+                      <th className="px-5 py-4 text-left">Min / Max</th>
+                      <th className="px-5 py-4 text-left">Auto Order</th>
+                      <th className="px-5 py-4 text-left">Status</th>
+                      <th className="px-5 py-4 text-left">Actions</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {filteredServices.map((service) => (
+                      <tr key={service.id} className="border-t border-slate-100 transition hover:bg-slate-50/70">
+                        <td className="px-5 py-5 align-top">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(service.id)}
+                            onChange={() => toggleSelectService(service.id)}
+                            className="h-4 w-4 rounded border-slate-300"
+                          />
+                        </td>
+
+                        <td className="px-5 py-5 align-top">
+                          <div className="flex items-start gap-3">
+                            <PlatformIcon service={`${service.name} ${service.category}`} />
+                            <div className="min-w-0">
+                              <p className="max-w-[250px] truncate font-black text-slate-900">{service.name}</p>
+                              <p className="mt-1 text-xs font-semibold text-slate-400">
+                                {shortServiceId(service.id)}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="px-5 py-5 align-top">
+                          <CategoryBadge category={service.category} />
+                        </td>
+
+                        <td className="px-5 py-5 align-top">
+                          <div className="flex items-center gap-2">
+                            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-xs font-black text-blue-700 ring-1 ring-blue-100">
+                              {(service.provider_name || "M").charAt(0).toUpperCase()}
+                            </span>
+                            <p className="max-w-[150px] truncate font-black text-slate-700">
+                              {getProviderName(service.provider_id, service.provider_name)}
+                            </p>
+                          </div>
+                        </td>
+
+                        <td className="px-5 py-5 align-top font-semibold text-slate-500">
+                          {service.provider_service_id || "—"}
+                        </td>
+
+                        <td className="px-5 py-5 align-top font-black text-slate-900">
+                          {formatMoney(service.price_per_1000)}
+                        </td>
+
+                        <td className="px-5 py-5 align-top font-semibold text-slate-600">
+                          {formatNumber(service.min_quantity)} / {formatNumber(service.max_quantity)}
+                        </td>
+
+                        <td className="px-5 py-5 align-top">
+                          <AutoOrderSwitch enabled={service.auto_order} />
+                        </td>
+
+                        <td className="px-5 py-5 align-top">
+                          <StatusBadge status={service.status} />
+                        </td>
+
+                        <td className="px-5 py-5 align-top">
+                          <div className="flex items-center gap-2">
+                            <ActionButton title="View service" onClick={() => openViewModal(service)}>
+                              <Eye size={16} />
+                            </ActionButton>
+
+                            <ActionButton title="Edit service" onClick={() => openManage(service)} tone="blue">
+                              <Edit3 size={16} />
+                            </ActionButton>
+
+                            <ActionButton
+                              title="Delete service"
+                              onClick={() => deleteService(service)}
+                              disabled={deletingServices}
+                              tone="red"
+                            >
+                              <Trash2 size={16} />
+                            </ActionButton>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+
+                    {filteredServices.length <= 0 && (
+                      <tr>
+                        <td colSpan={10} className="px-5 py-16 text-center">
+                          <div className="mx-auto flex max-w-sm flex-col items-center">
+                            <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-slate-50 text-slate-400 ring-1 ring-slate-100">
+                              <Package size={26} />
+                            </div>
+                            <h3 className="mt-4 text-lg font-black text-slate-950">No services found</h3>
+                            <p className="mt-1 text-sm font-semibold text-slate-500">
+                              Try clearing your search or filters.
+                            </p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 text-sm font-semibold text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+                <p>
+                  Showing <span className="font-black text-slate-800">{filteredServices.length}</span>{" "}
+                  of <span className="font-black text-slate-800">{services.length}</span> services
+                </p>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={deleteAllServices}
+                    disabled={deletingServices || services.length <= 0}
+                    className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2 text-xs font-black text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {deletingServices ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                    Delete All
+                  </button>
+
+                  <p>Auto-refreshing every 15 seconds</p>
+                </div>
+              </div>
+            </div>
+
+            <aside className="space-y-5">
+              <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 className="text-lg font-black text-slate-950">Services Summary</h3>
+
+                <div className="mt-5 flex items-center gap-5">
+                  <div
+                    className="relative flex h-32 w-32 shrink-0 items-center justify-center rounded-full"
+                    style={{
+                      background: `conic-gradient(#22c55e 0% ${stats.activePercent}%, #ef4444 ${stats.activePercent}% 100%)`,
+                    }}
+                  >
+                    <div className="flex h-20 w-20 flex-col items-center justify-center rounded-full bg-white shadow-inner">
+                      <p className="text-lg font-black text-slate-950">{formatNumber(stats.total)}</p>
+                      <p className="text-xs font-bold text-slate-500">Total</p>
+                    </div>
+                  </div>
+
+                  <div className="min-w-0 flex-1 space-y-3">
+                    <div className="flex items-center justify-between gap-3 text-sm">
+                      <span className="flex items-center gap-2 font-bold text-slate-600">
+                        <span className="h-3 w-3 rounded-full bg-emerald-500" />
+                        Active
+                      </span>
+                      <span className="font-black text-slate-800">
+                        {formatNumber(stats.active)} ({stats.activePercent.toFixed(2)}%)
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3 text-sm">
+                      <span className="flex items-center gap-2 font-bold text-slate-600">
+                        <span className="h-3 w-3 rounded-full bg-red-500" />
+                        Inactive
+                      </span>
+                      <span className="font-black text-slate-800">
+                        {formatNumber(stats.inactive)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 className="text-lg font-black text-slate-950">Top Categories</h3>
+
+                <div className="mt-5 space-y-4">
+                  {topCategories.map((item) => (
+                    <div key={item.category} className="flex items-center justify-between gap-4">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <PlatformIcon service={item.category} />
+                        <p className="truncate text-sm font-black text-slate-800">{item.category}</p>
+                      </div>
+
+                      <p className="font-black text-slate-700">{formatNumber(item.count)}</p>
+                    </div>
+                  ))}
+
+                  {topCategories.length <= 0 && (
+                    <p className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-500">
+                      No categories yet.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 className="text-lg font-black text-slate-950">Quick Insights</h3>
+
+                <div className="mt-5 space-y-3">
+                  <div className="rounded-2xl bg-emerald-50 p-4">
+                    <p className="text-sm font-black text-emerald-700">Average Price / 1000</p>
+                    <p className="mt-1 text-xl font-black text-slate-950">{formatMoney(stats.averagePrice)}</p>
+                  </div>
+
+                  <div className="rounded-2xl bg-blue-50 p-4">
+                    <p className="text-sm font-black text-blue-700">Most Used Provider</p>
+                    <p className="mt-1 text-xl font-black text-slate-950">{stats.mostUsedProvider}</p>
+                  </div>
+
+                  <div className="rounded-2xl bg-orange-50 p-4">
+                    <p className="text-sm font-black text-orange-700">Auto Order Rate</p>
+                    <p className="mt-1 text-xl font-black text-slate-950">{stats.autoPercent.toFixed(2)}%</p>
+                  </div>
+                </div>
+              </div>
+            </aside>
           </div>
         </div>
 
-        <div className="rounded-3xl border border-zinc-800 bg-zinc-950/80 overflow-x-auto">
-          <table className="w-full min-w-[1200px] text-sm">
-            <thead className="bg-black/60 text-zinc-500">
-              <tr>
-                <th className="text-left p-5">Select</th>
-                <th className="text-left p-5">Service</th>
-                <th className="text-left p-5">Category</th>
-                <th className="text-left p-5">Provider</th>
-                <th className="text-left p-5">Auto</th>
-                <th className="text-left p-5">Price / 1000</th>
-                <th className="text-left p-5">Min</th>
-                <th className="text-left p-5">Max</th>
-                <th className="text-left p-5">Status</th>
-                <th className="text-left p-5">Action</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {services.map((service) => (
-                <tr key={service.id} className="border-t border-zinc-900">
-                  <td className="p-5">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.includes(service.id)}
-                      onChange={() => toggleSelectService(service.id)}
-                      className="h-5 w-5 accent-blue-600"
-                    />
-                  </td>
-
-                  <td className="p-5">
-                    <p className="font-medium">{service.name}</p>
-                    <p className="text-xs text-zinc-500 max-w-xs truncate">
-                      {service.description}
-                    </p>
-                  </td>
-
-                  <td className="p-5 text-zinc-400">{service.category}</td>
-
-                  <td className="p-5 text-zinc-400">
-                    {service.provider_name || "manual"}
-                    {service.provider_service_id && (
-                      <p className="text-xs text-zinc-600">
-                        ID: {service.provider_service_id}
-                      </p>
-                    )}
-                  </td>
-
-                  <td className="p-5">
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs ${service.auto_order
-                        ? "bg-purple-500/10 text-purple-400"
-                        : "bg-zinc-800 text-zinc-400"
-                        }`}
-                    >
-                      {service.auto_order ? "Auto" : "Manual"}
-                    </span>
-                  </td>
-
-                  <td className="p-5 text-blue-400 font-semibold">
-                    ₱{Number(service.price_per_1000 || 0).toFixed(2)}
-                  </td>
-
-                  <td className="p-5 text-zinc-400">{service.min_quantity}</td>
-                  <td className="p-5 text-zinc-400">{service.max_quantity}</td>
-
-                  <td className="p-5">
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs capitalize ${getStatusStyle(
-                        service.status
-                      )}`}
-                    >
-                      {service.status}
-                    </span>
-                  </td>
-
-                  <td className="p-5">
-                    <button
-                      onClick={() => openManage(service)}
-                      className="text-blue-400 hover:text-blue-300 font-semibold"
-                    >
-                      Manage
-                    </button>
-                  </td>
-                </tr>
-              ))}
-
-              {services.length <= 0 && (
-                <tr>
-                  <td colSpan={10} className="p-10 text-center text-zinc-500">
-                    No services yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {(showAddModal || selectedService) && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-start lg:items-center justify-center p-3 lg:p-6 overflow-y-auto">
-            <div className="w-full max-w-2xl my-10 rounded-3xl border border-zinc-800 bg-zinc-950 overflow-hidden">
-              <div className="p-6 border-b border-zinc-800 flex items-center justify-between">
+        {(modalMode === "add" || modalMode === "edit") && (
+          <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm lg:items-center">
+            <div className="my-8 w-full max-w-6xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
                 <div>
-                  <h3 className="text-2xl font-black">
-                    {selectedService ? "Manage Service" : "Add Service"}
+                  <h3 className="text-2xl font-black text-slate-950">
+                    {modalMode === "edit" ? "Manage Service" : "Add Service"}
                   </h3>
-
-                  <p className="text-sm text-zinc-500">
-                    {selectedService
-                      ? "Edit service details, pricing, provider, and status."
-                      : "Create a new service for users."}
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    Configure service details, pricing, provider settings, and auto-order behavior.
                   </p>
                 </div>
 
                 <button
-                  onClick={() => {
-                    setShowAddModal(false);
-                    setSelectedService(null);
-                    resetForm();
-                  }}
-                  className="text-zinc-500 hover:text-white text-2xl"
+                  type="button"
+                  onClick={closeModal}
+                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
+                  disabled={savingService}
                 >
-                  ×
+                  <X size={20} />
                 </button>
               </div>
 
-              <div className="p-4 lg:p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500"
-                  placeholder="Service Name"
-                />
+              <div className="grid max-h-[75vh] overflow-y-auto lg:grid-cols-[1fr_360px]">
+                <div className="space-y-5 p-6">
+                  <div>
+                    <h4 className="text-lg font-black text-slate-950">Service Information</h4>
+                    <p className="mt-1 text-sm font-semibold text-slate-500">
+                      Main customer-facing service information.
+                    </p>
+                  </div>
 
-                <input
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500"
-                  placeholder="Category"
-                />
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="md:col-span-2">
+                      <label className="mb-2 block text-sm font-black text-slate-700">
+                        Service Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        value={name}
+                        onChange={(event) => setName(event.target.value)}
+                        placeholder="e.g. TikTok Followers"
+                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+                      />
+                    </div>
 
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500 min-h-24"
-                  placeholder="Description"
-                />
+                    <div>
+                      <label className="mb-2 block text-sm font-black text-slate-700">
+                        Category <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        value={category}
+                        onChange={(event) => setCategory(event.target.value)}
+                        placeholder="e.g. TikTok"
+                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+                      />
+                    </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <input
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    type="number"
-                    placeholder="Price / 1000"
-                    className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500"
-                  />
+                    <div>
+                      <label className="mb-2 block text-sm font-black text-slate-700">
+                        Price / 1000 <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={price}
+                        onChange={(event) => setPrice(event.target.value)}
+                        placeholder="120"
+                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+                      />
+                    </div>
 
-                  <input
-                    value={minQuantity}
-                    onChange={(e) => setMinQuantity(e.target.value)}
-                    type="number"
-                    placeholder="Min"
-                    className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500"
-                  />
+                    <div>
+                      <label className="mb-2 block text-sm font-black text-slate-700">
+                        Min Quantity <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={minQuantity}
+                        onChange={(event) => setMinQuantity(event.target.value)}
+                        placeholder="100"
+                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+                      />
+                    </div>
 
-                  <input
-                    value={maxQuantity}
-                    onChange={(e) => setMaxQuantity(e.target.value)}
-                    type="number"
-                    placeholder="Max"
-                    className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500"
-                  />
+                    <div>
+                      <label className="mb-2 block text-sm font-black text-slate-700">
+                        Max Quantity <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={maxQuantity}
+                        onChange={(event) => setMaxQuantity(event.target.value)}
+                        placeholder="100000"
+                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-black text-slate-700">Description</label>
+                    <textarea
+                      value={description}
+                      onChange={(event) => setDescription(event.target.value)}
+                      rows={4}
+                      placeholder="Describe the service rules, expected delivery, requirements, and notes..."
+                      className="w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+                    />
+                  </div>
+
+                  <div className="border-t border-slate-100 pt-5">
+                    <h4 className="text-lg font-black text-slate-950">Provider Settings</h4>
+                    <p className="mt-1 text-sm font-semibold text-slate-500">
+                      Connect this service to a provider or keep it manual.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="mb-2 block text-sm font-black text-slate-700">Provider</label>
+                      <select
+                        value={providerId}
+                        onChange={(event) => setProviderId(event.target.value)}
+                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+                      >
+                        <option value="">Manual</option>
+                        {providers.map((provider) => (
+                          <option key={provider.id} value={provider.id}>
+                            {provider.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-black text-slate-700">Provider Service ID</label>
+                      <input
+                        value={providerServiceId}
+                        onChange={(event) => setProviderServiceId(event.target.value)}
+                        placeholder="e.g. 12345"
+                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() => setAutoOrder(true)}
+                      className={`rounded-2xl border p-4 text-left transition ${
+                        autoOrder ? "border-blue-300 bg-blue-50 ring-4 ring-blue-50" : "border-slate-200 bg-white hover:bg-slate-50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className={`h-2.5 w-2.5 rounded-full ${autoOrder ? "bg-blue-600" : "bg-slate-300"}`} />
+                        <span className="font-black text-slate-900">Auto Order</span>
+                      </div>
+                      <p className="mt-2 text-xs font-semibold text-slate-500">
+                        Send order automatically to provider.
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setAutoOrder(false)}
+                      className={`rounded-2xl border p-4 text-left transition ${
+                        !autoOrder ? "border-slate-300 bg-slate-50 ring-4 ring-slate-50" : "border-slate-200 bg-white hover:bg-slate-50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className={`h-2.5 w-2.5 rounded-full ${!autoOrder ? "bg-slate-600" : "bg-slate-300"}`} />
+                        <span className="font-black text-slate-900">Manual Order</span>
+                      </div>
+                      <p className="mt-2 text-xs font-semibold text-slate-500">
+                        Admin will process manually.
+                      </p>
+                    </button>
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-sm font-black text-slate-700">Status</p>
+
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={() => setStatus("active")}
+                        className={`rounded-2xl border p-4 text-left transition ${
+                          status === "active"
+                            ? "border-emerald-300 bg-emerald-50 ring-4 ring-emerald-50"
+                            : "border-slate-200 bg-white hover:bg-slate-50"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className={`h-2.5 w-2.5 rounded-full ${status === "active" ? "bg-emerald-500" : "bg-slate-300"}`} />
+                          <span className="font-black text-slate-900">Active</span>
+                        </div>
+                        <p className="mt-2 text-xs font-semibold text-slate-500">
+                          Service is visible to customers.
+                        </p>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setStatus("inactive")}
+                        className={`rounded-2xl border p-4 text-left transition ${
+                          status !== "active"
+                            ? "border-red-300 bg-red-50 ring-4 ring-red-50"
+                            : "border-slate-200 bg-white hover:bg-slate-50"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className={`h-2.5 w-2.5 rounded-full ${status !== "active" ? "bg-red-500" : "bg-slate-300"}`} />
+                          <span className="font-black text-slate-900">Inactive</span>
+                        </div>
+                        <p className="mt-2 text-xs font-semibold text-slate-500">
+                          Service is hidden from customers.
+                        </p>
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <select
-                    value={providerId}
-                    onChange={(e) => setProviderId(e.target.value)}
-                    className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500"
-                  >
-                    <option value="">Manual / No Provider</option>
+                <div className="border-t border-slate-200 bg-slate-50/70 p-6 lg:border-l lg:border-t-0">
+                  <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+                    <p className="text-sm font-black text-slate-700">Service Preview</p>
+                    <p className="mt-1 text-xs font-semibold text-slate-500">
+                      This is how your service configuration looks.
+                    </p>
 
-                    {providers.map((provider) => (
-                      <option key={provider.id} value={provider.id}>
-                        {provider.name} ({provider.mode})
-                      </option>
-                    ))}
-                  </select>
+                    <div className="mt-5 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+                      <div className="flex items-start gap-4">
+                        <PlatformIcon service={`${name} ${category}`} />
+                        <div className="min-w-0">
+                          <h4 className="text-lg font-black text-slate-950">
+                            {name || "Service Name"}
+                          </h4>
+                          <div className="mt-2">
+                            <CategoryBadge category={category || "Category"} />
+                          </div>
+                        </div>
+                      </div>
 
-                  <input
-                    value={providerServiceId}
-                    onChange={(e) => setProviderServiceId(e.target.value)}
-                    className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500"
-                    placeholder="Provider Service ID"
-                  />
+                      <div className="mt-5 grid gap-3">
+                        <InfoBlock label="Price / 1000" value={formatMoney(price || 0)} valueClassName="text-blue-600" />
+                        <InfoBlock label="Min / Max" value={`${formatNumber(minQuantity || 0)} / ${formatNumber(maxQuantity || 0)}`} />
+                        <InfoBlock label="Provider" value={getSelectedProviderName()} />
+                        <InfoBlock label="Provider Service ID" value={providerServiceId || "—"} />
+                        <InfoBlock label="Auto Order" value={autoOrder ? "Enabled" : "Disabled"} valueClassName={autoOrder ? "text-blue-600" : "text-slate-700"} />
+                        <InfoBlock label="Status" value={<StatusBadge status={status} />} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col justify-end gap-3 border-t border-slate-200 p-5 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  disabled={savingService}
+                  className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={modalMode === "edit" ? updateService : addService}
+                  disabled={savingService}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {savingService ? <Loader2 size={17} className="animate-spin" /> : <Plus size={17} />}
+                  {savingService ? "Saving..." : modalMode === "edit" ? "Save Changes" : "Save Service"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {modalMode === "view" && selectedService && (
+          <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm lg:items-center">
+            <div className="my-8 w-full max-w-4xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
+                <div>
+                  <h3 className="text-2xl font-black text-slate-950">Service Details</h3>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    Review service pricing, provider settings, and order rules.
+                  </p>
                 </div>
 
                 <button
-                  onClick={() => setAutoOrder(!autoOrder)}
-                  className={`rounded-xl px-4 py-3 text-sm font-semibold transition ${autoOrder
-                    ? "bg-purple-500/10 text-purple-400"
-                    : "bg-zinc-800 text-zinc-400"
-                    }`}
+                  type="button"
+                  onClick={closeModal}
+                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
                 >
-                  Auto Order: {autoOrder ? "Enabled" : "Disabled"}
+                  <X size={20} />
                 </button>
-
-                {selectedService && (
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                    className="w-full rounded-xl border border-zinc-800 bg-black px-4 py-3 outline-none focus:border-blue-500"
-                  >
-                    <option value="active">Active</option>
-                    <option value="paused">Paused</option>
-                    <option value="disabled">Disabled</option>
-                  </select>
-                )}
               </div>
 
-              <div className="p-4 lg:p-6 border-t border-zinc-800 flex flex-col lg:flex-row justify-between gap-3">
-                <div>
-                  {selectedService && (
-                    <button
-                      onClick={deleteSelectedServices}
-                      disabled={selectedIds.length <= 0 || deletingServices}
-                      className="border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl px-5 py-3 font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      {deletingServices
-                        ? "Deleting..."
-                        : `Delete Selected (${selectedIds.length})`}
-                    </button>
-                  )}
+              <div className="space-y-6 p-6">
+                <div className="flex items-start gap-4 rounded-3xl border border-slate-200 bg-slate-50/70 p-5">
+                  <PlatformIcon service={`${selectedService.name} ${selectedService.category}`} />
+                  <div className="min-w-0 flex-1">
+                    <h4 className="text-xl font-black text-slate-950">{selectedService.name}</h4>
+                    <p className="mt-1 text-sm font-semibold text-slate-500">{selectedService.description || "No description added."}</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <CategoryBadge category={selectedService.category} />
+                      <StatusBadge status={selectedService.status} />
+                    </div>
+                  </div>
                 </div>
 
-                <div className="flex flex-col lg:flex-row gap-3">
+                <div className="grid gap-4 md:grid-cols-3">
+                  <InfoBlock label="Service ID" value={selectedService.id} />
+                  <InfoBlock label="Price / 1000" value={formatMoney(selectedService.price_per_1000)} valueClassName="text-blue-600" />
+                  <InfoBlock label="Min / Max" value={`${formatNumber(selectedService.min_quantity)} / ${formatNumber(selectedService.max_quantity)}`} />
+                  <InfoBlock label="Provider" value={getProviderName(selectedService.provider_id, selectedService.provider_name)} />
+                  <InfoBlock label="Provider Service ID" value={selectedService.provider_service_id || "—"} />
+                  <InfoBlock label="Auto Order" value={selectedService.auto_order ? "Enabled" : "Disabled"} />
+                  <InfoBlock label="Category" value={selectedService.category || "—"} />
+                  <InfoBlock label="Status" value={<StatusBadge status={selectedService.status} />} />
+                  <InfoBlock label="Created" value={formatDate(selectedService.created_at)} />
+                </div>
+
+                <div className="flex justify-end gap-3">
                   <button
+                    type="button"
                     onClick={() => {
-                      setShowAddModal(false);
-                      setSelectedService(null);
-                      resetForm();
+                      const current = selectedService;
+                      closeModal();
+                      openManage(current);
                     }}
-                    className="border border-zinc-800 hover:border-zinc-600 rounded-xl px-5 py-3 font-semibold transition"
+                    className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700"
                   >
-                    Cancel
-                  </button>
-
-                  <button
-                    onClick={selectedService ? updateService : addService}
-                    disabled={savingService}
-                    className="bg-blue-600 hover:bg-blue-700 rounded-xl px-5 py-3 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {savingService
-                      ? "Saving..."
-                      : selectedService
-                        ? "Save Changes"
-                        : "Create Service"}
+                    <Edit3 size={17} />
+                    Edit Service
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showBulkImportModal && (
+          <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm lg:items-center">
+            <div className="my-8 w-full max-w-xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
+                <div>
+                  <h3 className="text-2xl font-black text-slate-950">Bulk Import Services</h3>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    Import services from your provider API.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowBulkImportModal(false)}
+                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
+                  disabled={importingServices}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-5 p-6">
+                <div>
+                  <label className="mb-2 block text-sm font-black text-slate-700">Provider</label>
+                  <select
+                    value={bulkProviderId}
+                    onChange={(event) => setBulkProviderId(event.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+                  >
+                    <option value="">Select provider</option>
+                    {providers.map((provider) => (
+                      <option key={provider.id} value={provider.id}>
+                        {provider.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="rounded-2xl border border-orange-100 bg-orange-50 p-4 text-sm font-bold leading-6 text-orange-700">
+                  This will use your existing provider import API. If your endpoint name is different,
+                  tell me the error and we will connect the button to your exact route.
+                </div>
+              </div>
+
+              <div className="flex flex-col justify-end gap-3 border-t border-slate-200 p-5 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={() => setShowBulkImportModal(false)}
+                  disabled={importingServices}
+                  className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={bulkImportServices}
+                  disabled={importingServices}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {importingServices ? <Loader2 size={17} className="animate-spin" /> : <Import size={17} />}
+                  {importingServices ? "Importing..." : "Start Import"}
+                </button>
               </div>
             </div>
           </div>
