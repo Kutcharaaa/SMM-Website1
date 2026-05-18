@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Clock3,
   Eye,
+  FileText,
   Filter,
   Loader2,
   Package,
@@ -51,13 +52,6 @@ type Order = {
   provider_order_id?: string | null;
   provider_name?: string | null;
   reseller_points_awarded?: boolean;
-};
-
-type UserProfile = {
-  id: string;
-  username: string | null;
-  firstname: string | null;
-  lastname: string | null;
 };
 
 type StatusFilter =
@@ -148,22 +142,6 @@ function shortOrderId(id: string) {
 
 function shortUserId(id: string) {
   return `User ${String(id).slice(0, 6).toUpperCase()}`;
-}
-
-function getUserDisplayName(userId: string, profiles: UserProfile[]) {
-  const profile = profiles.find((item) => item.id === userId);
-
-  if (!profile) {
-    return shortUserId(userId);
-  }
-
-  if (profile.username) {
-    return profile.username;
-  }
-
-  const fullName = `${profile.firstname || ""} ${profile.lastname || ""}`.trim();
-
-  return fullName || shortUserId(userId);
 }
 
 function getRemains(order: Order) {
@@ -408,7 +386,6 @@ function InfoBlock({
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
 
@@ -453,27 +430,15 @@ export default function AdminOrdersPage() {
     setRefundEnabled(setting?.value === "true");
   }
 
-async function loadProfiles() {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, username, firstname, lastname");
-
-  if (!error) {
-    setProfiles((data || []) as UserProfile[]);
-  }
-}
-  
-useEffect(() => {
-  loadOrders();
-  loadProfiles();
-
-  const interval = setInterval(() => {
+  useEffect(() => {
     loadOrders();
-    loadProfiles();
-  }, 3000);
 
-  return () => clearInterval(interval);
-}, []);
+    const interval = setInterval(() => {
+      loadOrders();
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   function openModal(order: Order, mode: Exclude<ModalMode, null>) {
     setSelectedOrder(order);
@@ -832,6 +797,317 @@ useEffect(() => {
     });
   }, [orders, quickFilter, search, serviceFilter, statusFilter]);
 
+  function exportOrdersToPDF() {
+    const logoUrl = "/logo.png";
+
+    const reportDate = new Date().toLocaleDateString("en-PH", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+
+    const totalRevenue = filteredOrders.reduce(
+      (sum, order) => sum + Number(order.price || 0),
+      0,
+    );
+
+    const completedCount = filteredOrders.filter(
+      (order) => normalizeStatus(order.status) === "completed",
+    ).length;
+
+    const activeCount = filteredOrders.filter((order) =>
+      isActiveStatus(order.status),
+    ).length;
+
+    const failedCount = filteredOrders.filter(
+      (order) => normalizeStatus(order.status) === "failed",
+    ).length;
+
+    const rowsHtml = filteredOrders
+      .map((order) => {
+        return `
+          <tr>
+            <td>${shortOrderId(order.id)}</td>
+            <td>${shortUserId(order.user_id)}</td>
+            <td>${order.service_name || "Unknown Service"}</td>
+            <td>${Number(order.quantity || 0).toLocaleString("en-PH")}</td>
+            <td>${formatMoney(order.price)}</td>
+            <td><span class="status ${normalizeStatus(order.status)}">${normalizeStatus(order.status)}</span></td>
+            <td>${order.provider_name || "Manual"}</td>
+            <td>${order.provider_order_id || "No Provider ID"}</td>
+            <td>${formatDate(order.created_at)} ${formatTime(order.created_at)}</td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    const printWindow = window.open("", "_blank", "width=1200,height=900");
+
+    if (!printWindow) {
+      alert("Please allow popups to export PDF.");
+      return;
+    }
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Orders Report</title>
+          <style>
+            * {
+              box-sizing: border-box;
+            }
+
+            body {
+              margin: 0;
+              padding: 32px;
+              font-family: Arial, Helvetica, sans-serif;
+              color: #0f172a;
+              background: #ffffff;
+            }
+
+            .header {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              gap: 24px;
+              border-bottom: 2px solid #e2e8f0;
+              padding-bottom: 20px;
+              margin-bottom: 24px;
+            }
+
+            .brand {
+              display: flex;
+              align-items: center;
+              gap: 16px;
+            }
+
+            .logo {
+              width: 160px;
+              max-height: 70px;
+              object-fit: contain;
+            }
+
+            h1 {
+              margin: 0;
+              font-size: 28px;
+              font-weight: 900;
+              letter-spacing: -0.04em;
+            }
+
+            .muted {
+              color: #64748b;
+              font-size: 13px;
+              font-weight: 700;
+              line-height: 1.7;
+            }
+
+            .summary {
+              display: grid;
+              grid-template-columns: repeat(4, 1fr);
+              gap: 14px;
+              margin-bottom: 24px;
+            }
+
+            .card {
+              border: 1px solid #e2e8f0;
+              border-radius: 18px;
+              padding: 16px;
+              background: #f8fafc;
+            }
+
+            .card span {
+              display: block;
+              font-size: 11px;
+              font-weight: 900;
+              color: #64748b;
+              text-transform: uppercase;
+              letter-spacing: 0.08em;
+            }
+
+            .card strong {
+              display: block;
+              margin-top: 8px;
+              font-size: 22px;
+              font-weight: 900;
+              color: #0f172a;
+            }
+
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 12px;
+              border: 1px solid #e2e8f0;
+            }
+
+            th {
+              background: #f8fafc;
+              color: #64748b;
+              text-transform: uppercase;
+              font-size: 10px;
+              letter-spacing: 0.08em;
+              font-weight: 900;
+              padding: 12px;
+              border-bottom: 1px solid #e2e8f0;
+              text-align: left;
+            }
+
+            td {
+              padding: 12px;
+              border-bottom: 1px solid #e2e8f0;
+              font-weight: 700;
+              color: #334155;
+              vertical-align: top;
+            }
+
+            .status {
+              display: inline-block;
+              padding: 5px 10px;
+              border-radius: 999px;
+              font-size: 10px;
+              font-weight: 900;
+              text-transform: capitalize;
+            }
+
+            .status.completed {
+              color: #047857;
+              background: #ecfdf5;
+            }
+
+            .status.pending,
+            .status.processing,
+            .status.partial {
+              color: #c2410c;
+              background: #fff7ed;
+            }
+
+            .status.failed,
+            .status.cancelled,
+            .status.canceled {
+              color: #dc2626;
+              background: #fef2f2;
+            }
+
+            .status.refunded {
+              color: #475569;
+              background: #f1f5f9;
+            }
+
+            .footer {
+              margin-top: 24px;
+              padding-top: 16px;
+              border-top: 1px solid #e2e8f0;
+              color: #64748b;
+              font-size: 11px;
+              font-weight: 700;
+              display: flex;
+              justify-content: space-between;
+              gap: 20px;
+            }
+
+            @media print {
+              body {
+                padding: 18px;
+              }
+
+              table {
+                font-size: 10px;
+              }
+
+              th,
+              td {
+                padding: 8px;
+              }
+            }
+          </style>
+        </head>
+
+        <body>
+          <div class="header">
+            <div class="brand">
+              <img src="${logoUrl}" class="logo" />
+              <div>
+                <h1>Orders Report</h1>
+                <p class="muted">Ascend Service · Generated ${reportDate}</p>
+              </div>
+            </div>
+
+            <div class="muted">
+              <div>Total Records: ${filteredOrders.length}</div>
+              <div>Status Filter: ${statusFilter}</div>
+              <div>Service Filter: ${serviceFilter}</div>
+              <div>Quick Filter: ${quickFilter}</div>
+            </div>
+          </div>
+
+          <div class="summary">
+            <div class="card">
+              <span>Total Orders</span>
+              <strong>${filteredOrders.length}</strong>
+            </div>
+
+            <div class="card">
+              <span>Active Orders</span>
+              <strong>${activeCount}</strong>
+            </div>
+
+            <div class="card">
+              <span>Completed</span>
+              <strong>${completedCount}</strong>
+            </div>
+
+            <div class="card">
+              <span>Total Revenue</span>
+              <strong>${formatMoney(totalRevenue)}</strong>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>User</th>
+                <th>Service</th>
+                <th>Quantity</th>
+                <th>Price</th>
+                <th>Status</th>
+                <th>Provider</th>
+                <th>Provider ID</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              ${
+                rowsHtml ||
+                `<tr>
+                  <td colspan="9" style="text-align:center; padding: 32px;">
+                    No order records found.
+                  </td>
+                </tr>`
+              }
+            </tbody>
+          </table>
+
+          <div class="footer">
+            <span>Ascend Service · Elevate Your Social Presence</span>
+            <span>This report was generated from the Admin Orders page.</span>
+          </div>
+
+          <script>
+            window.onload = function () {
+              setTimeout(function () {
+                window.print();
+              }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+  }
+
   return (
     <AdminGuard allowedRoles={["admin", "head_admin", "super_admin"]}>
       <AdminLayout>
@@ -865,6 +1141,15 @@ useEffect(() => {
               >
                 {syncingOrders ? <Loader2 size={17} className="animate-spin" /> : <RefreshCw size={17} />}
                 {syncingOrders ? "Syncing..." : "Sync Status"}
+              </button>
+
+              <button
+                type="button"
+                onClick={exportOrdersToPDF}
+                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50"
+              >
+                <FileText size={17} />
+                Export PDF
               </button>
             </div>
           </div>
@@ -996,15 +1281,12 @@ useEffect(() => {
                             {shortOrderId(order.id)}
                           </td>
 
-<td className="px-5 py-5 align-top">
-  <p className="font-black text-slate-700">
-    {getUserDisplayName(order.user_id, profiles)}
-  </p>
-
-  <p className="mt-1 max-w-[140px] truncate text-xs font-semibold text-slate-400">
-    {shortUserId(order.user_id)}
-  </p>
-</td>
+                          <td className="px-5 py-5 align-top">
+                            <p className="font-black text-slate-700">{shortUserId(order.user_id)}</p>
+                            <p className="mt-1 max-w-[140px] truncate text-xs font-semibold text-slate-400">
+                              {order.user_id}
+                            </p>
+                          </td>
 
                           <td className="px-5 py-5 align-top">
                             <div className="flex items-start gap-3">
@@ -1116,7 +1398,7 @@ useEffect(() => {
                   <span className="font-black text-slate-800">{orders.length}</span> orders
                 </p>
 
-                <p>Auto-refreshing every 3 seconds</p>
+                <p>Auto-refreshing every 15 seconds</p>
               </div>
             </div>
 
