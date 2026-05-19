@@ -49,6 +49,8 @@ type StatsState = {
   expenses: number;
   totalDeposits: number;
   totalOrderRevenue: number;
+  childPanelRevenue: number;
+  totalRevenue: number;
 };
 
 type OrderRow = {
@@ -88,6 +90,13 @@ type ExpenseRow = {
   created_at?: string | null;
 };
 
+type CashMovementRow = {
+  id: string;
+  type: string | null;
+  amount: number | null;
+  created_at: string | null;
+};
+
 type ChartPoint = {
   label: string;
   value: number;
@@ -114,6 +123,8 @@ const emptyStats: StatsState = {
   expenses: 0,
   totalDeposits: 0,
   totalOrderRevenue: 0,
+  childPanelRevenue: 0,
+  totalRevenue: 0,
 };
 
 const overviewTabs: { label: string; value: OverviewMetric }[] = [
@@ -182,6 +193,30 @@ function isApprovedDeposit(status?: string | null) {
 function isCancelled(status?: string | null) {
   const clean = cleanStatus(status);
   return ["cancelled", "canceled", "rejected", "failed"].includes(clean);
+}
+
+function normalizeCashMovementType(type?: string | null) {
+  const clean = String(type || "")
+    .toLowerCase()
+    .trim()
+    .replaceAll("-", "_")
+    .replaceAll(" ", "_");
+
+  if (
+    [
+      "child_panel_subscription",
+      "child_panel_auto_renew",
+      "child_panel_renewal",
+    ].includes(clean)
+  ) {
+    return "child_panel_subscription";
+  }
+
+  return clean;
+}
+
+function isChildPanelMovement(type?: string | null) {
+  return normalizeCashMovementType(type) === "child_panel_subscription";
 }
 
 function getStatusStyle(status?: string | null) {
@@ -389,6 +424,20 @@ function sumOrdersInBucket(orders: OrderRow[], start: Date, end: Date) {
     .reduce((sum, order) => sum + Number(order.price || 0), 0);
 }
 
+function sumChildPanelRevenueInBucket(
+  movements: CashMovementRow[],
+  start: Date,
+  end: Date,
+) {
+  return movements
+    .filter((movement) => {
+      if (!movement.created_at) return false;
+      const date = new Date(movement.created_at);
+      return date >= start && date < end && isChildPanelMovement(movement.type);
+    })
+    .reduce((sum, movement) => sum + Math.max(0, Number(movement.amount || 0)), 0);
+}
+
 function countOrdersInBucket(orders: OrderRow[], start: Date, end: Date) {
   return orders.filter((order) => {
     const date = new Date(order.created_at);
@@ -481,6 +530,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [tickets, setTickets] = useState<TicketRow[]>([]);
   const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
+  const [cashMovements, setCashMovements] = useState<CashMovementRow[]>([]);
 
   const [recentOrders, setRecentOrders] = useState<OrderRow[]>([]);
   const [recentDeposits, setRecentDeposits] = useState<DepositRow[]>([]);
@@ -521,6 +571,35 @@ export default function AdminPage() {
     const { data: cashAccounts, error: cashError } = await supabase
       .from("cash_accounts")
       .select("balance");
+
+    let cashMovementRows: CashMovementRow[] = [];
+    let cashMovementFrom = 0;
+    const cashMovementBatchSize = 1000;
+
+    while (true) {
+      const cashMovementTo = cashMovementFrom + cashMovementBatchSize - 1;
+
+      const { data: cashMovementData, error: cashMovementError } =
+        await supabase
+          .from("cash_movements")
+          .select("id, type, amount, created_at")
+          .order("created_at", { ascending: false })
+          .range(cashMovementFrom, cashMovementTo);
+
+      if (cashMovementError) {
+        cashMovementRows = [];
+        break;
+      }
+
+      const batch = (cashMovementData || []) as CashMovementRow[];
+      cashMovementRows = [...cashMovementRows, ...batch];
+
+      if (batch.length < cashMovementBatchSize) {
+        break;
+      }
+
+      cashMovementFrom += cashMovementBatchSize;
+    }
 
     let expenseRows: ExpenseRow[] = [];
 
@@ -600,11 +679,18 @@ export default function AdminPage() {
       0,
     );
 
+    const childPanelRevenue = cashMovementRows
+      .filter((item) => isChildPanelMovement(item.type))
+      .reduce((sum, item) => sum + Math.max(0, Number(item.amount || 0)), 0);
+
+    const totalRevenue = totalOrderRevenue + childPanelRevenue;
+
     setOrders(loadedOrders);
     setDeposits(loadedDeposits);
     setUsers(loadedUsers);
     setTickets(loadedTickets);
     setExpenses(expenseRows);
+    setCashMovements(cashMovementRows);
 
     setRecentOrders(loadedOrders.slice(0, 5));
     setRecentDeposits(loadedDeposits.slice(0, 5));
@@ -625,6 +711,8 @@ export default function AdminPage() {
       expenses: expenseTotal,
       totalDeposits,
       totalOrderRevenue,
+      childPanelRevenue,
+      totalRevenue,
     });
 
     setLastUpdated(
@@ -648,14 +736,20 @@ export default function AdminPage() {
   }, []);
 
   const estimatedProfit = useMemo(() => {
-    return stats.totalOrderRevenue - stats.expenses;
-  }, [stats.totalOrderRevenue, stats.expenses]);
+    return stats.totalRevenue - stats.expenses;
+  }, [stats.totalRevenue, stats.expenses]);
 
   const overviewPoints = useMemo(() => {
     const buckets = createBuckets(overviewRange);
 
     return buckets.map((bucket) => {
-      const revenue = sumOrdersInBucket(orders, bucket.start, bucket.end);
+      const orderRevenue = sumOrdersInBucket(orders, bucket.start, bucket.end);
+      const childPanelRevenue = sumChildPanelRevenueInBucket(
+        cashMovements,
+        bucket.start,
+        bucket.end,
+      );
+      const revenue = orderRevenue + childPanelRevenue;
       const bucketExpenses = sumExpensesInBucket(expenses, bucket.start, bucket.end);
 
       let value = revenue;
@@ -673,7 +767,15 @@ export default function AdminPage() {
         value,
       };
     });
-  }, [overviewMetric, overviewRange, orders, users, deposits, expenses]);
+  }, [
+    overviewMetric,
+    overviewRange,
+    orders,
+    users,
+    deposits,
+    expenses,
+    cashMovements,
+  ]);
 
   const currentOverviewTotal = useMemo(() => {
     return overviewPoints.reduce((sum, item) => sum + Number(item.value || 0), 0);
@@ -934,7 +1036,7 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             <SnapshotCard
               title="Approved Deposits"
               value={formatNumber(stats.approvedDeposits)}
@@ -951,9 +1053,16 @@ export default function AdminPage() {
 
             <SnapshotCard
               title="Total Revenue"
-              value={formatMoney(stats.totalOrderRevenue)}
-              subtitle="Based on order price"
+              value={formatMoney(stats.totalRevenue)}
+              subtitle="Orders + child panel revenue"
               icon={DollarSign}
+            />
+
+            <SnapshotCard
+              title="Child Panel Revenue"
+              value={formatMoney(stats.childPanelRevenue)}
+              subtitle="Subscriptions and auto-renewals"
+              icon={ShieldCheck}
             />
 
             <SnapshotCard
