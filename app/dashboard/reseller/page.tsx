@@ -37,7 +37,6 @@ type ProfileData = {
   balance?: number | string | null;
   total_spent?: number | string | null;
   reseller_points?: number | string | null;
-
   reseller_level?: number | string | null;
   child_panel_access?: boolean | null;
   child_panel_access_type?: string | null;
@@ -128,6 +127,8 @@ export default function ResellerPage() {
   const [converting, setConverting] = useState(false);
   const [subscribingChildPanel, setSubscribingChildPanel] = useState(false);
   const [childPanelModalOpen, setChildPanelModalOpen] = useState(false);
+  const [childPanelAutoRenew, setChildPanelAutoRenew] = useState(false);
+  const [cancellingAutoRenew, setCancellingAutoRenew] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [pointsInput, setPointsInput] = useState("100");
   const [message, setMessage] = useState("");
@@ -146,6 +147,7 @@ export default function ResellerPage() {
     if (!user) {
       setProfile(null);
       setHistory([]);
+      setChildPanelAutoRenew(false);
       setLoading(false);
       return;
     }
@@ -160,11 +162,28 @@ export default function ResellerPage() {
       console.error("RESELLER_PROFILE_ERROR:", profileError.message);
       setProfile(null);
       setHistory([]);
+      setChildPanelAutoRenew(false);
       setLoading(false);
       return;
     }
 
     setProfile((profileData || null) as ProfileData);
+
+    const { data: activeSubscription, error: subscriptionError } = await supabase
+      .from("child_panel_subscriptions")
+      .select("auto_renew")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (subscriptionError) {
+      console.error("CHILD_PANEL_SUBSCRIPTION_LOAD_ERROR:", subscriptionError.message);
+      setChildPanelAutoRenew(false);
+    } else {
+      setChildPanelAutoRenew(Boolean(activeSubscription?.auto_renew));
+    }
 
     const { data: historyData, error: historyError } = await supabase
       .from("reseller_point_conversions")
@@ -245,7 +264,6 @@ export default function ResellerPage() {
     savedSubscriptionStatus === "active" || savedChildPanelType === "paid";
 
   const hasManualChildPanel = savedChildPanelType === "manual";
-
   const hasLevelChildPanel = currentLevel.level >= 3 || currentLevel.childPanel;
 
   const childPanelUnlocked =
@@ -269,14 +287,14 @@ export default function ResellerPage() {
 
   const progressPercent = nextLevel
     ? Math.min(
-      100,
-      Math.max(
-        0,
-        ((totalSpend - currentLevel.requiredSpend) /
-          (nextLevel.requiredSpend - currentLevel.requiredSpend)) *
         100,
-      ),
-    )
+        Math.max(
+          0,
+          ((totalSpend - currentLevel.requiredSpend) /
+            (nextLevel.requiredSpend - currentLevel.requiredSpend)) *
+            100,
+        ),
+      )
     : 100;
 
   const pointsToConvert = Math.max(0, Math.floor(Number(pointsInput || 0)));
@@ -373,9 +391,9 @@ export default function ResellerPage() {
   async function subscribeChildPanel() {
     if (subscribingChildPanel) return;
 
-setMessage("");
-setChildPanelModalMessage("");
-setSubscribingChildPanel(true);
+    setMessage("");
+    setChildPanelModalMessage("");
+    setSubscribingChildPanel(true);
 
     const {
       data: { session },
@@ -397,13 +415,14 @@ setSubscribingChildPanel(true);
 
       const result = await response.json();
 
-if (!result.success) {
-  setChildPanelModalMessage(
-    result.message || "Failed to subscribe to Child Panel.",
-  );
-  setSubscribingChildPanel(false);
-  return;
-}
+      if (!result.success) {
+        setChildPanelModalMessage(
+          result.message || "Failed to subscribe to Child Panel.",
+        );
+        setSubscribingChildPanel(false);
+        return;
+      }
+
       setMessage(result.message || "Child Panel subscription activated.");
       setChildPanelModalOpen(false);
       await loadData();
@@ -412,6 +431,53 @@ if (!result.success) {
     }
 
     setSubscribingChildPanel(false);
+  }
+
+  async function cancelChildPanelAutoRenew() {
+    if (cancellingAutoRenew) return;
+
+    const confirmCancel = confirm(
+      "Cancel Child Panel auto-renew? Your access will stay active until the current expiry date.",
+    );
+
+    if (!confirmCancel) return;
+
+    setMessage("");
+    setCancellingAutoRenew(true);
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      setMessage("You must be logged in to cancel auto-renew.");
+      setCancellingAutoRenew(false);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/child-panel/cancel-auto-renew", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        setMessage(result.message || "Failed to cancel auto-renew.");
+        setCancellingAutoRenew(false);
+        return;
+      }
+
+      setMessage(result.message || "Auto-renew cancelled successfully.");
+      await loadData();
+    } catch {
+      setMessage("Failed to cancel auto-renew.");
+    }
+
+    setCancellingAutoRenew(false);
   }
 
   return (
@@ -545,10 +611,16 @@ if (!result.success) {
                 accessLabel={childPanelAccessLabel}
                 price={CHILD_PANEL_PRICE}
                 subscribing={subscribingChildPanel}
+                autoRenew={childPanelAutoRenew}
+                cancellingAutoRenew={cancellingAutoRenew}
+                subscriptionExpiresAt={
+                  profile?.child_panel_subscription_expires_at || null
+                }
                 onSubscribe={() => {
-  setChildPanelModalMessage("");
-  setChildPanelModalOpen(true);
-}}
+                  setChildPanelModalMessage("");
+                  setChildPanelModalOpen(true);
+                }}
+                onCancelAutoRenew={cancelChildPanelAutoRenew}
               />
             </section>
 
@@ -571,23 +643,26 @@ if (!result.success) {
                       return (
                         <div key={level.level} className="relative z-10 text-center">
                           <div
-                            className={`mx-auto flex h-10 w-10 items-center justify-center rounded-full border text-sm font-black ${isCurrent
+                            className={`mx-auto flex h-10 w-10 items-center justify-center rounded-full border text-sm font-black ${
+                              isCurrent
                                 ? "border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-600/20"
                                 : "border-slate-200 bg-white text-slate-600"
-                              }`}
+                            }`}
                           >
                             {level.level}
                           </div>
 
                           <div
-                            className={`mt-5 min-h-[162px] rounded-xl border px-3 py-4 ${isCurrent
+                            className={`mt-5 min-h-[162px] rounded-xl border px-3 py-4 ${
+                              isCurrent
                                 ? "border-blue-300 bg-blue-50/60"
                                 : "border-slate-100 bg-white"
-                              }`}
+                            }`}
                           >
                             <p
-                              className={`text-sm font-black ${isCurrent ? "text-blue-600" : "text-slate-950"
-                                }`}
+                              className={`text-sm font-black ${
+                                isCurrent ? "text-blue-600" : "text-slate-950"
+                              }`}
                             >
                               {level.name}
                             </p>
@@ -605,8 +680,9 @@ if (!result.success) {
                             </p>
 
                             <p
-                              className={`mt-4 flex items-center justify-center gap-1 text-xs font-black ${level.childPanel ? "text-green-600" : "text-red-500"
-                                }`}
+                              className={`mt-4 flex items-center justify-center gap-1 text-xs font-black ${
+                                level.childPanel ? "text-green-600" : "text-red-500"
+                              }`}
                             >
                               {level.childPanel ? <Unlock size={13} /> : <Lock size={13} />}
                               {level.childPanel ? "Unlocked" : "Locked"}
@@ -871,10 +947,11 @@ if (!result.success) {
 
               <div className="space-y-5 p-6">
                 {childPanelModalMessage && (
-  <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold leading-6 text-red-700">
-    {childPanelModalMessage}
-  </div>
-)}
+                  <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold leading-6 text-red-700">
+                    {childPanelModalMessage}
+                  </div>
+                )}
+
                 <div className="rounded-3xl border border-blue-100 bg-blue-50 p-5">
                   <p className="text-sm font-black uppercase tracking-wide text-blue-700">
                     What is Child Panel?
@@ -914,40 +991,17 @@ if (!result.success) {
                   </p>
 
                   <div className="mt-4 space-y-3">
-                    <div className="flex gap-3">
-                      <CheckCircle2 size={19} className="mt-0.5 shrink-0 text-emerald-600" />
-                      <p className="text-sm font-semibold leading-6 text-slate-600">
-                        Create your own reseller panel for your customers.
-                      </p>
-                    </div>
-
-                    <div className="flex gap-3">
-                      <CheckCircle2 size={19} className="mt-0.5 shrink-0 text-emerald-600" />
-                      <p className="text-sm font-semibold leading-6 text-slate-600">
-                        Manage your own clients, orders, and service access.
-                      </p>
-                    </div>
-
-                    <div className="flex gap-3">
-                      <CheckCircle2 size={19} className="mt-0.5 shrink-0 text-emerald-600" />
-                      <p className="text-sm font-semibold leading-6 text-slate-600">
-                        Use Ascend Service as your main provider while growing your own brand.
-                      </p>
-                    </div>
-
-                    <div className="flex gap-3">
-                      <CheckCircle2 size={19} className="mt-0.5 shrink-0 text-emerald-600" />
-                      <p className="text-sm font-semibold leading-6 text-slate-600">
-                        Level 3 and above gets Child Panel free lifetime as a reseller perk.
-                      </p>
-                    </div>
+                    <BenefitItem text="Create your own reseller panel for your customers." />
+                    <BenefitItem text="Manage your own clients, orders, and service access." />
+                    <BenefitItem text="Use Ascend Service as your main provider while growing your own brand." />
+                    <BenefitItem text="Level 3 and above gets Child Panel free lifetime as a reseller perk." />
                   </div>
                 </div>
 
                 <div className="rounded-2xl border border-orange-100 bg-orange-50 p-4 text-sm font-bold leading-6 text-orange-700">
-By confirming, ₱{CHILD_PANEL_PRICE} will be deducted from your wallet
-balance. If your balance is not enough, the subscription will not proceed.
-Your subscription will auto-renew every month if you have enough balance.
+                  By confirming, ₱{CHILD_PANEL_PRICE} will be deducted from your wallet
+                  balance. If your balance is not enough, the subscription will not proceed.
+                  Your subscription will auto-renew every month if you have enough balance.
                 </div>
               </div>
 
@@ -985,6 +1039,17 @@ Your subscription will auto-renew every month if you have enough balance.
   );
 }
 
+function BenefitItem({ text }: { text: string }) {
+  return (
+    <div className="flex gap-3">
+      <CheckCircle2 size={19} className="mt-0.5 shrink-0 text-emerald-600" />
+      <p className="text-sm font-semibold leading-6 text-slate-600">
+        {text}
+      </p>
+    </div>
+  );
+}
+
 function ConversionTable({
   records,
   emptyText,
@@ -1014,8 +1079,9 @@ function ConversionTable({
               <tr>
                 <td
                   colSpan={4}
-                  className={`text-center text-sm font-semibold text-slate-500 ${compact ? "p-8" : "p-12"
-                    }`}
+                  className={`text-center text-sm font-semibold text-slate-500 ${
+                    compact ? "p-8" : "p-12"
+                  }`}
                 >
                   {emptyText}
                 </td>
@@ -1094,40 +1160,92 @@ function ChildPanelMetric({
   accessLabel,
   price,
   subscribing,
+  autoRenew,
+  cancellingAutoRenew,
+  subscriptionExpiresAt,
   onSubscribe,
+  onCancelAutoRenew,
 }: {
   isUnlocked: boolean;
   accessLabel: string;
   price: number;
   subscribing: boolean;
+  autoRenew: boolean;
+  cancellingAutoRenew: boolean;
+  subscriptionExpiresAt?: string | null;
   onSubscribe: () => void;
+  onCancelAutoRenew: () => void;
 }) {
   if (isUnlocked) {
+    const isPaidActive = accessLabel === "Paid Active";
+
     return (
-      <Link
-        href="/dashboard/child-panel"
-        className="rounded-2xl border border-green-200 bg-white p-5 shadow-sm transition hover:border-green-400 hover:bg-green-50"
-      >
-        <div className="flex items-center gap-5">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-green-100 text-green-600">
-            <Unlock size={26} />
-          </div>
+      <div className="rounded-2xl border border-green-200 bg-white p-5 shadow-sm transition hover:border-green-400 hover:bg-green-50">
+        <Link href="/dashboard/child-panel" className="block">
+          <div className="flex items-center gap-5">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-green-100 text-green-600">
+              <Unlock size={26} />
+            </div>
 
-          <div>
-            <p className="text-xs font-black uppercase tracking-wide text-slate-500">
-              Child Panel Access
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide text-slate-500">
+                Child Panel Access
+              </p>
+
+              <h3 className="mt-2 text-2xl font-black text-green-600">
+                Open Panel
+              </h3>
+
+              <p className="mt-1 text-sm font-semibold text-slate-400">
+                {accessLabel}
+              </p>
+            </div>
+          </div>
+        </Link>
+
+        {isPaidActive && (
+          <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-black uppercase tracking-wide text-slate-500">
+                Auto Renew
+              </p>
+
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-black ${
+                  autoRenew
+                    ? "bg-green-100 text-green-700"
+                    : "bg-red-100 text-red-700"
+                }`}
+              >
+                {autoRenew ? "Enabled" : "Cancelled"}
+              </span>
+            </div>
+
+            <p className="mt-2 text-xs font-semibold text-slate-500">
+              {autoRenew
+                ? `Renews automatically for ₱${price}/month.`
+                : "Access stays active until your current expiry date."}
             </p>
 
-            <h3 className="mt-2 text-2xl font-black text-green-600">
-              Open Panel
-            </h3>
+            {subscriptionExpiresAt && (
+              <p className="mt-1 text-xs font-semibold text-slate-500">
+                Expires: {formatDate(subscriptionExpiresAt)}
+              </p>
+            )}
 
-            <p className="mt-1 text-sm font-semibold text-slate-400">
-              {accessLabel}
-            </p>
+            {autoRenew && (
+              <button
+                type="button"
+                onClick={onCancelAutoRenew}
+                disabled={cancellingAutoRenew}
+                className="mt-3 w-full rounded-xl border border-red-200 bg-white px-4 py-2 text-xs font-black text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {cancellingAutoRenew ? "Cancelling..." : "Cancel Auto Renew"}
+              </button>
+            )}
           </div>
-        </div>
-      </Link>
+        )}
+      </div>
     );
   }
 
