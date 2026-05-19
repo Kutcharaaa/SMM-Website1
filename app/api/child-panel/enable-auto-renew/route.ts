@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     const { data: subscription, error: subscriptionError } =
       await supabaseAdmin
         .from("child_panel_subscriptions")
-        .select("id, expires_at")
+        .select("id, expires_at, auto_renew")
         .eq("user_id", user.id)
         .eq("status", "active")
         .order("created_at", { ascending: false })
@@ -79,6 +79,14 @@ export async function POST(request: NextRequest) {
         },
         { status: 400 },
       );
+    }
+
+    if (subscription.auto_renew === true) {
+      return NextResponse.json({
+        success: true,
+        expiresAt: subscription.expires_at,
+        message: "Auto-renew is already enabled.",
+      });
     }
 
     const { error: updateError } = await supabaseAdmin

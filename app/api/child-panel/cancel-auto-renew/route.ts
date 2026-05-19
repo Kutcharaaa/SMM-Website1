@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     const { data: subscription, error: subscriptionError } =
       await supabaseAdmin
         .from("child_panel_subscriptions")
-        .select("id, expires_at")
+        .select("id, expires_at, auto_renew")
         .eq("user_id", user.id)
         .eq("status", "active")
         .order("created_at", { ascending: false })
@@ -66,25 +66,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const expiresAt = subscription.expires_at
-      ? new Date(subscription.expires_at)
-      : null;
-
-    if (!expiresAt || expiresAt.getTime() <= Date.now()) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "Your subscription is already expired. Please renew your Child Panel subscription.",
-        },
-        { status: 400 },
-      );
+    if (subscription.auto_renew === false) {
+      return NextResponse.json({
+        success: true,
+        expiresAt: subscription.expires_at,
+        message:
+          "Auto-renew is already cancelled. Your Child Panel access will remain active until the current expiry date.",
+      });
     }
 
     const { error: updateError } = await supabaseAdmin
       .from("child_panel_subscriptions")
       .update({
-        auto_renew: true,
+        auto_renew: false,
       })
       .eq("id", subscription.id);
 
@@ -100,23 +94,24 @@ export async function POST(request: NextRequest) {
 
     await supabaseAdmin.from("notifications").insert({
       user_id: user.id,
-      title: "Child Panel Auto-Renew Enabled",
+      title: "Child Panel Auto-Renew Cancelled",
       message:
-        "Your Child Panel auto-renew has been enabled. It will renew automatically if your wallet balance is enough.",
-      type: "child_panel_auto_renew_enabled",
+        "Your Child Panel auto-renew has been cancelled. Your access will remain active until your current subscription expires.",
+      type: "child_panel_auto_renew_cancelled",
       is_read: false,
     });
 
     return NextResponse.json({
       success: true,
       expiresAt: subscription.expires_at,
-      message: "Auto-renew enabled successfully.",
+      message:
+        "Auto-renew cancelled successfully. Your Child Panel access will remain active until the current expiry date.",
     });
   } catch {
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to enable auto-renew.",
+        message: "Failed to cancel auto-renew.",
       },
       { status: 500 },
     );

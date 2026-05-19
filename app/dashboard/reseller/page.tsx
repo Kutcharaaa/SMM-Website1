@@ -290,14 +290,14 @@ export default function ResellerPage() {
 
   const progressPercent = nextLevel
     ? Math.min(
-      100,
-      Math.max(
-        0,
-        ((totalSpend - currentLevel.requiredSpend) /
-          (nextLevel.requiredSpend - currentLevel.requiredSpend)) *
         100,
-      ),
-    )
+        Math.max(
+          0,
+          ((totalSpend - currentLevel.requiredSpend) /
+            (nextLevel.requiredSpend - currentLevel.requiredSpend)) *
+            100,
+        ),
+      )
     : 100;
 
   const pointsToConvert = Math.max(0, Math.floor(Number(pointsInput || 0)));
@@ -439,13 +439,8 @@ export default function ResellerPage() {
   async function cancelChildPanelAutoRenew() {
     if (cancellingAutoRenew) return;
 
-    const confirmCancel = confirm(
-      "Cancel Child Panel auto-renew? Your access will stay active until the current expiry date.",
-    );
-
-    if (!confirmCancel) return;
-
     setMessage("");
+    setChildPanelManageMessage("");
     setCancellingAutoRenew(true);
 
     const {
@@ -453,7 +448,7 @@ export default function ResellerPage() {
     } = await supabase.auth.getSession();
 
     if (!session?.access_token) {
-      setMessage("You must be logged in to cancel auto-renew.");
+      setChildPanelManageMessage("You must be logged in to cancel auto-renew.");
       setCancellingAutoRenew(false);
       return;
     }
@@ -466,10 +461,27 @@ export default function ResellerPage() {
         },
       });
 
-      const result = await response.json();
+      const text = await response.text();
 
-      if (!result.success) {
-        setMessage(result.message || "Failed to cancel auto-renew.");
+      let result: {
+        success?: boolean;
+        message?: string;
+      } = {};
+
+      try {
+        result = JSON.parse(text);
+      } catch {
+        result = {
+          success: false,
+          message:
+            "Cancel Auto Renew API route was not found or returned an invalid response. Please check app/api/child-panel/cancel-auto-renew/route.ts.",
+        };
+      }
+
+      if (!response.ok || !result.success) {
+        setChildPanelManageMessage(
+          result.message || "Failed to cancel auto-renew.",
+        );
         setCancellingAutoRenew(false);
         return;
       }
@@ -478,76 +490,77 @@ export default function ResellerPage() {
       setChildPanelManageMessage(
         result.message || "Auto-renew cancelled successfully.",
       );
+
       await loadData();
     } catch {
-      setMessage("Failed to cancel auto-renew.");
+      setChildPanelManageMessage("Failed to cancel auto-renew.");
     }
 
     setCancellingAutoRenew(false);
   }
 
-async function enableChildPanelAutoRenew() {
-  if (enablingAutoRenew) return;
+  async function enableChildPanelAutoRenew() {
+    if (enablingAutoRenew) return;
 
-  setMessage("");
-  setChildPanelManageMessage("");
-  setEnablingAutoRenew(true);
+    setMessage("");
+    setChildPanelManageMessage("");
+    setEnablingAutoRenew(true);
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-  if (!session?.access_token) {
-    setChildPanelManageMessage("You must be logged in to enable auto-renew.");
-    setEnablingAutoRenew(false);
-    return;
-  }
-
-  try {
-    const response = await fetch("/api/child-panel/enable-auto-renew", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
-    });
-
-    const text = await response.text();
-
-    let result: {
-      success?: boolean;
-      message?: string;
-    } = {};
-
-    try {
-      result = JSON.parse(text);
-    } catch {
-      result = {
-        success: false,
-        message:
-          "Enable Auto Renew API route was not found or returned an invalid response. Please check the route.ts file path.",
-      };
-    }
-
-    if (!response.ok || !result.success) {
-      setChildPanelManageMessage(
-        result.message || "Failed to enable auto-renew",
-      );
+    if (!session?.access_token) {
+      setChildPanelManageMessage("You must be logged in to enable auto-renew.");
       setEnablingAutoRenew(false);
       return;
     }
 
-    setChildPanelAutoRenew(true);
-    setChildPanelManageMessage(
-      result.message || "Auto-renew enabled successfully.",
-    );
+    try {
+      const response = await fetch("/api/child-panel/enable-auto-renew", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
 
-    await loadData();
-  } catch {
-    setChildPanelManageMessage("Failed to enable auto-renew.");
+      const text = await response.text();
+
+      let result: {
+        success?: boolean;
+        message?: string;
+      } = {};
+
+      try {
+        result = JSON.parse(text);
+      } catch {
+        result = {
+          success: false,
+          message:
+            "Enable Auto Renew API route was not found or returned an invalid response. Please check app/api/child-panel/enable-auto-renew/route.ts.",
+        };
+      }
+
+      if (!response.ok || !result.success) {
+        setChildPanelManageMessage(
+          result.message || "Failed to enable auto-renew.",
+        );
+        setEnablingAutoRenew(false);
+        return;
+      }
+
+      setChildPanelAutoRenew(true);
+      setChildPanelManageMessage(
+        result.message || "Auto-renew enabled successfully.",
+      );
+
+      await loadData();
+    } catch {
+      setChildPanelManageMessage("Failed to enable auto-renew.");
+    }
+
+    setEnablingAutoRenew(false);
   }
-
-  setEnablingAutoRenew(false);
-}
 
   return (
     <DashboardGuard>
@@ -689,10 +702,7 @@ async function enableChildPanelAutoRenew() {
                   setChildPanelModalMessage("");
                   setChildPanelModalOpen(true);
                 }}
-                onManageSubscription={() => {
-                  setChildPanelManageMessage("");
-                  setChildPanelManageModalOpen(true);
-                }}
+                onManageSubscription={() => setChildPanelManageModalOpen(true)}
               />
             </section>
 
@@ -715,23 +725,26 @@ async function enableChildPanelAutoRenew() {
                       return (
                         <div key={level.level} className="relative z-10 text-center">
                           <div
-                            className={`mx-auto flex h-10 w-10 items-center justify-center rounded-full border text-sm font-black ${isCurrent
+                            className={`mx-auto flex h-10 w-10 items-center justify-center rounded-full border text-sm font-black ${
+                              isCurrent
                                 ? "border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-600/20"
                                 : "border-slate-200 bg-white text-slate-600"
-                              }`}
+                            }`}
                           >
                             {level.level}
                           </div>
 
                           <div
-                            className={`mt-5 min-h-[162px] rounded-xl border px-3 py-4 ${isCurrent
+                            className={`mt-5 min-h-[162px] rounded-xl border px-3 py-4 ${
+                              isCurrent
                                 ? "border-blue-300 bg-blue-50/60"
                                 : "border-slate-100 bg-white"
-                              }`}
+                            }`}
                           >
                             <p
-                              className={`text-sm font-black ${isCurrent ? "text-blue-600" : "text-slate-950"
-                                }`}
+                              className={`text-sm font-black ${
+                                isCurrent ? "text-blue-600" : "text-slate-950"
+                              }`}
                             >
                               {level.name}
                             </p>
@@ -749,8 +762,9 @@ async function enableChildPanelAutoRenew() {
                             </p>
 
                             <p
-                              className={`mt-4 flex items-center justify-center gap-1 text-xs font-black ${level.childPanel ? "text-green-600" : "text-red-500"
-                                }`}
+                              className={`mt-4 flex items-center justify-center gap-1 text-xs font-black ${
+                                level.childPanel ? "text-green-600" : "text-red-500"
+                              }`}
                             >
                               {level.childPanel ? <Unlock size={13} /> : <Lock size={13} />}
                               {level.childPanel ? "Unlocked" : "Locked"}
@@ -1014,19 +1028,6 @@ async function enableChildPanelAutoRenew() {
               </div>
 
               <div className="space-y-5 p-6">
-                {childPanelManageMessage && (
-                  <div
-                    className={`rounded-2xl px-4 py-3 text-sm font-bold leading-6 ${childPanelManageMessage.toLowerCase().includes("failed") ||
-                        childPanelManageMessage.toLowerCase().includes("expired") ||
-                        childPanelManageMessage.toLowerCase().includes("no active") ||
-                        childPanelManageMessage.toLowerCase().includes("unauthorized")
-                        ? "border border-red-100 bg-red-50 text-red-700"
-                        : "border border-green-100 bg-green-50 text-green-700"
-                      }`}
-                  >
-                    {childPanelManageMessage}
-                  </div>
-                )}
                 <div className="rounded-3xl border border-green-100 bg-green-50 p-5">
                   <div className="flex items-start gap-4">
                     <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-green-100 text-green-600">
@@ -1086,10 +1087,11 @@ async function enableChildPanelAutoRenew() {
                     </div>
 
                     <span
-                      className={`shrink-0 rounded-full px-4 py-2 text-xs font-black uppercase ${childPanelAutoRenew
+                      className={`shrink-0 rounded-full px-4 py-2 text-xs font-black uppercase ${
+                        childPanelAutoRenew
                           ? "bg-green-100 text-green-700"
                           : "bg-red-100 text-red-700"
-                        }`}
+                      }`}
                     >
                       {childPanelAutoRenew ? "Enabled" : "Off"}
                     </span>
@@ -1302,8 +1304,9 @@ function ConversionTable({
               <tr>
                 <td
                   colSpan={4}
-                  className={`text-center text-sm font-semibold text-slate-500 ${compact ? "p-8" : "p-12"
-                    }`}
+                  className={`text-center text-sm font-semibold text-slate-500 ${
+                    compact ? "p-8" : "p-12"
+                  }`}
                 >
                   {emptyText}
                 </td>
@@ -1428,10 +1431,11 @@ function ChildPanelMetric({
             </div>
 
             <span
-              className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-black uppercase ${autoRenew
+              className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-black uppercase ${
+                autoRenew
                   ? "bg-green-100 text-green-700"
                   : "bg-red-100 text-red-700"
-                }`}
+              }`}
             >
               {autoRenew ? "Auto" : "Off"}
             </span>
