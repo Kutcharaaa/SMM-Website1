@@ -1,8 +1,7 @@
 "use client";
 
 import DashboardGuard from "@/components/DashboardGuard";
-import DashboardSidebar from "@/components/DashboardSidebar";
-import DashboardTopbar from "@/components/DashboardTopbar";
+import DashboardLayout from "@/components/DashboardLayout";
 import { supabase } from "@/lib/supabase";
 import {
   AlertTriangle,
@@ -296,499 +295,595 @@ export default function TicketsPage() {
 
   return (
     <DashboardGuard>
-      <main className="min-h-screen bg-[#f6f9fc] text-slate-950">
-        <DashboardSidebar />
+      <DashboardLayout>
+        <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="min-w-0">
+            <div className="flex min-w-0 flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div className="min-w-0">
+                <h1 className="text-3xl font-black text-slate-950">Tickets</h1>
 
-        <section className="min-h-screen lg:ml-72">
-          <DashboardTopbar />
+                <p className="mt-2 text-sm font-semibold text-slate-500">
+                  Need help? Create a ticket and our support team will assist you.
+                </p>
+              </div>
 
-          <div className="grid min-h-[calc(100vh-80px)] gap-6 p-4 lg:grid-cols-[1fr_360px] lg:p-8">
-            <div>
-              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <h1 className="text-3xl font-black text-slate-950">
-                    Tickets
-                  </h1>
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(true)}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 sm:w-fit"
+              >
+                <Plus size={18} />
+                Create Ticket
+              </button>
+            </div>
 
-                  <p className="mt-2 text-sm font-semibold text-slate-500">
-                    Need help? Create a ticket and our support team will assist you.
+            <div className="mt-8 grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+              <StatCard
+                icon={MessageSquare}
+                title="Open Tickets"
+                value={loadingTickets ? "..." : openTickets.toLocaleString()}
+                link="View all open"
+                color="bg-blue-100 text-blue-600"
+                onClick={() => applyStatusFilter("Open")}
+              />
+
+              <StatCard
+                icon={Clock3}
+                title="Pending Reply"
+                value={loadingTickets ? "..." : pendingTickets.toLocaleString()}
+                link="View pending"
+                color="bg-orange-100 text-orange-500"
+                onClick={() => applyStatusFilter("Pending")}
+              />
+
+              <StatCard
+                icon={CheckCircle2}
+                title="Resolved Tickets"
+                value={loadingTickets ? "..." : resolvedTickets.toLocaleString()}
+                link="View resolved"
+                color="bg-green-100 text-green-600"
+                onClick={() => applyStatusFilter("Closed")}
+              />
+
+              <StatCard
+                icon={Clock3}
+                title="Average Response"
+                value={loadingTickets ? "..." : averageResponse}
+                link="View statistics"
+                color="bg-purple-100 text-purple-600"
+                onClick={resetTicketFilters}
+              />
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_190px_220px_190px_54px]">
+                <div className="relative min-w-0">
+                  <Search
+                    size={18}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                  />
+
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search ticket..."
+                    className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-12 pr-4 text-sm font-semibold outline-none transition focus:border-blue-500"
+                  />
+                </div>
+
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 outline-none transition focus:border-blue-500"
+                >
+                  {statuses.map((status) => (
+                    <option key={status}>{status}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 outline-none transition focus:border-blue-500"
+                >
+                  <option>All Categories</option>
+                  {categories.map((item) => (
+                    <option key={item}>{item}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={priorityFilter}
+                  onChange={(e) => setPriorityFilter(e.target.value)}
+                  className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 outline-none transition focus:border-blue-500"
+                >
+                  <option>All Priority</option>
+                  {priorities.map((item) => (
+                    <option key={item}>{item}</option>
+                  ))}
+                </select>
+
+                <button
+                  type="button"
+                  onClick={resetTicketFilters}
+                  className="flex h-12 w-full items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-blue-300 hover:text-blue-600 xl:w-[54px]"
+                  title="Reset filters"
+                >
+                  <Filter size={19} />
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="hidden overflow-x-auto xl:block">
+                <table className="w-full min-w-[950px] text-sm">
+                  <thead className="bg-slate-50 text-slate-500">
+                    <tr>
+                      <th className="p-5 text-left font-black">Ticket ID</th>
+                      <th className="p-5 text-left font-black">Subject</th>
+                      <th className="p-5 text-left font-black">Category</th>
+                      <th className="p-5 text-left font-black">Priority</th>
+                      <th className="p-5 text-left font-black">Status</th>
+                      <th className="p-5 text-left font-black">Last Update</th>
+                      <th className="p-5 text-left font-black">Action</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {loadingTickets ? (
+                      <tr>
+                        <td
+                          colSpan={7}
+                          className="p-12 text-center text-sm font-semibold text-slate-500"
+                        >
+                          Loading tickets...
+                        </td>
+                      </tr>
+                    ) : filteredTickets.length <= 0 ? (
+                      <tr>
+                        <td
+                          colSpan={7}
+                          className="p-12 text-center text-sm font-semibold text-slate-500"
+                        >
+                          No tickets found. Create a ticket if you need support.
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedTickets.map((ticket) => {
+                        const status = normalizeStatus(ticket.status);
+                        const ticketPriority = normalizePriority(ticket.priority);
+                        const displayCode =
+                          ticket.ticket_code || formatTicketId(ticket.id);
+
+                        return (
+                          <tr
+                            key={ticket.id}
+                            className="border-t border-slate-100 transition hover:bg-blue-50/40"
+                          >
+                            <td className="whitespace-nowrap p-5">
+                              <Link
+                                href={`/dashboard/tickets/${ticket.id}`}
+                                className="font-black text-blue-600"
+                              >
+                                {displayCode}
+                              </Link>
+                            </td>
+
+                            <td className="max-w-[260px] p-5">
+                              <p className="truncate font-black text-slate-800">
+                                {ticket.subject}
+                              </p>
+                            </td>
+
+                            <td className="p-5">
+                              <div className="flex items-center gap-2 text-sm font-bold text-slate-500">
+                                <CategoryIcon category={ticket.category || ""} />
+                                <span className="max-w-[170px] truncate">
+                                  {ticket.category || "General Question"}
+                                </span>
+                              </div>
+                            </td>
+
+                            <td className="whitespace-nowrap p-5">
+                              <span
+                                className={`rounded-lg px-3 py-1 text-xs font-black ${getPriorityStyle(
+                                  ticketPriority,
+                                )}`}
+                              >
+                                {ticketPriority}
+                              </span>
+                            </td>
+
+                            <td className="whitespace-nowrap p-5">
+                              <span
+                                className={`rounded-lg px-3 py-1 text-xs font-black ${getStatusStyle(
+                                  status,
+                                )}`}
+                              >
+                                {status}
+                              </span>
+                            </td>
+
+                            <td className="whitespace-nowrap p-5 font-semibold text-slate-600">
+                              {formatRelativeDate(
+                                ticket.updated_at || ticket.created_at,
+                              )}
+                            </td>
+
+                            <td className="whitespace-nowrap p-5">
+                              <Link
+                                href={`/dashboard/tickets/${ticket.id}`}
+                                className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:border-blue-300 hover:text-blue-600"
+                              >
+                                <Eye size={16} />
+                                View
+                              </Link>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="space-y-4 p-4 xl:hidden">
+                {loadingTickets ? (
+                  <div className="rounded-2xl border border-slate-100 p-8 text-center text-sm font-semibold text-slate-500">
+                    Loading tickets...
+                  </div>
+                ) : filteredTickets.length <= 0 ? (
+                  <div className="rounded-2xl border border-slate-100 p-8 text-center text-sm font-semibold text-slate-500">
+                    No tickets found. Create a ticket if you need support.
+                  </div>
+                ) : (
+                  paginatedTickets.map((ticket) => {
+                    const status = normalizeStatus(ticket.status);
+                    const ticketPriority = normalizePriority(ticket.priority);
+                    const displayCode =
+                      ticket.ticket_code || formatTicketId(ticket.id);
+
+                    return (
+                      <Link
+                        key={ticket.id}
+                        href={`/dashboard/tickets/${ticket.id}`}
+                        className="block rounded-2xl border border-slate-200 bg-white p-4 transition hover:border-blue-300 hover:bg-blue-50/40"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-xs font-black uppercase tracking-wide text-blue-600">
+                              {displayCode}
+                            </p>
+
+                            <h3 className="mt-2 line-clamp-2 text-sm font-black text-slate-950">
+                              {ticket.subject}
+                            </h3>
+                          </div>
+
+                          <span
+                            className={`shrink-0 rounded-lg px-3 py-1 text-xs font-black ${getStatusStyle(
+                              status,
+                            )}`}
+                          >
+                            {status}
+                          </span>
+                        </div>
+
+                        <div className="mt-4 grid grid-cols-2 gap-3">
+                          <div className="rounded-xl bg-slate-50 p-3">
+                            <p className="text-xs font-bold text-slate-400">
+                              Category
+                            </p>
+
+                            <div className="mt-1 flex min-w-0 items-center gap-2">
+                              <CategoryIcon category={ticket.category || ""} />
+                              <p className="min-w-0 truncate text-xs font-black text-slate-700">
+                                {ticket.category || "General Question"}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="rounded-xl bg-slate-50 p-3">
+                            <p className="text-xs font-bold text-slate-400">
+                              Priority
+                            </p>
+
+                            <span
+                              className={`mt-1 inline-flex rounded-lg px-2.5 py-1 text-xs font-black ${getPriorityStyle(
+                                ticketPriority,
+                              )}`}
+                            >
+                              {ticketPriority}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 flex items-center justify-between gap-3">
+                          <p className="min-w-0 truncate text-xs font-semibold text-slate-500">
+                            Updated{" "}
+                            {formatRelativeDate(
+                              ticket.updated_at || ticket.created_at,
+                            )}
+                          </p>
+
+                          <span className="shrink-0 text-xs font-black text-blue-600">
+                            View Ticket →
+                          </span>
+                        </div>
+                      </Link>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="flex flex-col gap-4 border-t border-slate-100 p-5 md:flex-row md:items-center md:justify-between">
+                <p className="text-sm font-semibold text-slate-500">
+                  Showing{" "}
+                  <span className="font-black text-slate-700">
+                    {startItem.toLocaleString()} to {endItem.toLocaleString()}
+                  </span>{" "}
+                  of{" "}
+                  <span className="font-black text-slate-700">
+                    {filteredTickets.length.toLocaleString()}
+                  </span>{" "}
+                  tickets
+                </p>
+
+                <div className="flex items-center justify-between gap-2 md:justify-end">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentPage((page) => Math.max(1, page - 1))
+                    }
+                    disabled={currentPage === 1}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-blue-300 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+
+                  <button
+                    type="button"
+                    className="flex h-10 min-w-10 items-center justify-center rounded-xl bg-blue-600 px-3 text-sm font-black text-white shadow-lg shadow-blue-600/20"
+                  >
+                    {currentPage}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentPage((page) => Math.min(totalPages, page + 1))
+                    }
+                    disabled={currentPage === totalPages}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-blue-300 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <aside className="min-w-0 space-y-6">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-4">
+                <h3 className="min-w-0 truncate text-xl font-black text-slate-950">
+                  Support Center
+                </h3>
+
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-100 text-blue-600">
+                  <Headphones size={24} />
+                </div>
+              </div>
+
+              <p className="mt-4 text-sm font-semibold leading-6 text-slate-600">
+                We usually reply within{" "}
+                <span className="font-black text-slate-950">1 - 3 hours.</span>
+              </p>
+
+              <div className="mt-5 space-y-3">
+                <QuickHelpButton
+                  icon={TicketIcon}
+                  title="Order Problem"
+                  color="text-blue-600 bg-blue-50"
+                />
+
+                <QuickHelpButton
+                  icon={CreditCard}
+                  title="Payment Problem"
+                  color="text-green-600 bg-green-50"
+                />
+
+                <QuickHelpButton
+                  icon={Wallet}
+                  title="Refund Request"
+                  color="text-red-500 bg-red-50"
+                />
+
+                <QuickHelpButton
+                  icon={LifeBuoy}
+                  title="API Help"
+                  color="text-purple-600 bg-purple-50"
+                />
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-4">
+                <h3 className="min-w-0 text-xl font-black text-slate-950">
+                  Before you create a ticket
+                </h3>
+
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-orange-100 text-orange-500">
+                  <AlertTriangle size={22} />
+                </div>
+              </div>
+
+              <div className="mt-5 space-y-4">
+                {[
+                  "Include your Order ID",
+                  "Explain the issue clearly",
+                  "Attach proof if payment related",
+                  "Do not create duplicate tickets",
+                ].map((item) => (
+                  <div
+                    key={item}
+                    className="flex items-center gap-3 text-sm font-bold text-slate-700"
+                  >
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-600">
+                      <CheckCircle2 size={14} />
+                    </span>
+
+                    <span className="min-w-0">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-blue-100 bg-blue-50 p-5 shadow-sm">
+              <h3 className="text-xl font-black text-slate-950">
+                Need urgent help?
+              </h3>
+
+              <p className="mt-4 text-sm font-semibold leading-6 text-slate-600">
+                For urgent issues please contact us on our social media channels.
+              </p>
+
+              <button
+                type="button"
+                className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-white text-sm font-black text-blue-600 shadow-sm transition hover:bg-blue-600 hover:text-white"
+              >
+                Contact Support
+                <ExternalLink size={16} />
+              </button>
+            </div>
+          </aside>
+        </div>
+
+        {showCreateModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/50 p-3 backdrop-blur-sm sm:p-4">
+            <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-5 sm:items-center sm:p-6">
+                <div className="min-w-0">
+                  <h3 className="text-xl font-black text-slate-950 sm:text-2xl">
+                    Create Ticket
+                  </h3>
+
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    Send your issue to our support team.
                   </p>
                 </div>
 
                 <button
-                  onClick={() => setShowCreateModal(true)}
-                  className="flex h-12 items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
                 >
-                  <Plus size={18} />
-                  Create Ticket
+                  <X size={20} />
                 </button>
               </div>
 
-              <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-                <StatCard
-                  icon={MessageSquare}
-                  title="Open Tickets"
-                  value={loadingTickets ? "..." : openTickets.toLocaleString()}
-                  link="View all open"
-                  color="bg-blue-100 text-blue-600"
-                  onClick={() => applyStatusFilter("Open")}
-                />
+              <div className="min-h-0 space-y-5 overflow-y-auto p-5 sm:p-6">
+                <div>
+                  <label className="text-sm font-black text-slate-700">
+                    Subject
+                  </label>
 
-                <StatCard
-                  icon={Clock3}
-                  title="Pending Reply"
-                  value={loadingTickets ? "..." : pendingTickets.toLocaleString()}
-                  link="View pending"
-                  color="bg-orange-100 text-orange-500"
-                  onClick={() => applyStatusFilter("Pending")}
-                />
+                  <input
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                    placeholder="Example: Order not starting"
+                    className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold outline-none transition focus:border-blue-500"
+                  />
+                </div>
 
-                <StatCard
-                  icon={CheckCircle2}
-                  title="Resolved Tickets"
-                  value={loadingTickets ? "..." : resolvedTickets.toLocaleString()}
-                  link="View resolved"
-                  color="bg-green-100 text-green-600"
-                  onClick={() => applyStatusFilter("Closed")}
-                />
+                <div className="grid gap-5 md:grid-cols-2">
+                  <div>
+                    <label className="text-sm font-black text-slate-700">
+                      Category
+                    </label>
 
-                <StatCard
-                  icon={Clock3}
-                  title="Average Response"
-                  value={loadingTickets ? "..." : averageResponse}
-                  link="View statistics"
-                  color="bg-purple-100 text-purple-600"
-                  onClick={resetTicketFilters}
-                />
-              </div>
-
-              <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="grid gap-4 xl:grid-cols-[1fr_190px_220px_190px_54px]">
-                  <div className="relative">
-                    <Search
-                      size={18}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                    />
-
-                    <input
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Search ticket..."
-                      className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-12 pr-4 text-sm font-semibold outline-none transition focus:border-blue-500"
-                    />
+                    <select
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold outline-none transition focus:border-blue-500"
+                    >
+                      {categories.map((item) => (
+                        <option key={item}>{item}</option>
+                      ))}
+                    </select>
                   </div>
 
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 outline-none transition focus:border-blue-500"
-                  >
-                    {statuses.map((status) => (
-                      <option key={status}>{status}</option>
-                    ))}
-                  </select>
+                  <div>
+                    <label className="text-sm font-black text-slate-700">
+                      Priority
+                    </label>
 
-                  <select
-                    value={categoryFilter}
-                    onChange={(e) => setCategoryFilter(e.target.value)}
-                    className="h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 outline-none transition focus:border-blue-500"
-                  >
-                    <option>All Categories</option>
-                    {categories.map((item) => (
-                      <option key={item}>{item}</option>
-                    ))}
-                  </select>
+                    <select
+                      value={priority}
+                      onChange={(e) => setPriority(e.target.value)}
+                      className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold outline-none transition focus:border-blue-500"
+                    >
+                      {priorities.map((item) => (
+                        <option key={item}>{item}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
 
-                  <select
-                    value={priorityFilter}
-                    onChange={(e) => setPriorityFilter(e.target.value)}
-                    className="h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 outline-none transition focus:border-blue-500"
-                  >
-                    <option>All Priority</option>
-                    {priorities.map((item) => (
-                      <option key={item}>{item}</option>
-                    ))}
-                  </select>
+                <div>
+                  <label className="text-sm font-black text-slate-700">
+                    Related Order ID{" "}
+                    <span className="font-semibold text-slate-400">
+                      optional
+                    </span>
+                  </label>
 
-                  <button
-                    type="button"
-                    onClick={resetTicketFilters}
-                    className="flex h-12 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-blue-300 hover:text-blue-600"
-                    title="Reset filters"
-                  >
-                    <Filter size={19} />
-                  </button>
+                  <input
+                    value={relatedOrderId}
+                    onChange={(e) => setRelatedOrderId(e.target.value)}
+                    placeholder="Example: 1024"
+                    className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold outline-none transition focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-black text-slate-700">
+                    Message
+                  </label>
+
+                  <textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Describe your issue clearly..."
+                    rows={6}
+                    className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition focus:border-blue-500"
+                  />
                 </div>
               </div>
 
-              <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[950px] text-sm">
-                    <thead className="bg-slate-50 text-slate-500">
-                      <tr>
-                        <th className="p-5 text-left font-black">Ticket ID</th>
-                        <th className="p-5 text-left font-black">Subject</th>
-                        <th className="p-5 text-left font-black">Category</th>
-                        <th className="p-5 text-left font-black">Priority</th>
-                        <th className="p-5 text-left font-black">Status</th>
-                        <th className="p-5 text-left font-black">Last Update</th>
-                        <th className="p-5 text-left font-black">Action</th>
-                      </tr>
-                    </thead>
+              <div className="flex flex-col-reverse gap-3 border-t border-slate-100 p-5 sm:p-6 md:flex-row md:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="h-12 w-full rounded-xl border border-slate-200 bg-white px-6 text-sm font-black text-slate-600 transition hover:bg-slate-50 md:w-auto"
+                >
+                  Cancel
+                </button>
 
-                    <tbody>
-                      {loadingTickets ? (
-                        <tr>
-                          <td
-                            colSpan={7}
-                            className="p-12 text-center text-sm font-semibold text-slate-500"
-                          >
-                            Loading tickets...
-                          </td>
-                        </tr>
-                      ) : filteredTickets.length <= 0 ? (
-                        <tr>
-                          <td
-                            colSpan={7}
-                            className="p-12 text-center text-sm font-semibold text-slate-500"
-                          >
-                            No tickets found. Create a ticket if you need support.
-                          </td>
-                        </tr>
-                      ) : (
-                        paginatedTickets.map((ticket) => {
-                          const status = normalizeStatus(ticket.status);
-                          const ticketPriority = normalizePriority(ticket.priority);
-                          const displayCode =
-                            ticket.ticket_code || formatTicketId(ticket.id);
-
-                          return (
-                            <tr
-                              key={ticket.id}
-                              className="border-t border-slate-100 transition hover:bg-blue-50/40"
-                            >
-                              <td className="p-5">
-                                <Link
-                                  href={`/dashboard/tickets/${ticket.id}`}
-                                  className="font-black text-blue-600"
-                                >
-                                  {displayCode}
-                                </Link>
-                              </td>
-
-                              <td className="p-5">
-                                <p className="font-black text-slate-800">
-                                  {ticket.subject}
-                                </p>
-                              </td>
-
-                              <td className="p-5">
-                                <div className="flex items-center gap-2 text-sm font-bold text-slate-500">
-                                  <CategoryIcon category={ticket.category || ""} />
-                                  {ticket.category || "General Question"}
-                                </div>
-                              </td>
-
-                              <td className="p-5">
-                                <span
-                                  className={`rounded-lg px-3 py-1 text-xs font-black ${getPriorityStyle(
-                                    ticketPriority,
-                                  )}`}
-                                >
-                                  {ticketPriority}
-                                </span>
-                              </td>
-
-                              <td className="p-5">
-                                <span
-                                  className={`rounded-lg px-3 py-1 text-xs font-black ${getStatusStyle(
-                                    status,
-                                  )}`}
-                                >
-                                  {status}
-                                </span>
-                              </td>
-
-                              <td className="p-5 font-semibold text-slate-600">
-                                {formatRelativeDate(
-                                  ticket.updated_at || ticket.created_at,
-                                )}
-                              </td>
-
-                              <td className="p-5">
-                                <Link
-                                  href={`/dashboard/tickets/${ticket.id}`}
-                                  className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 transition hover:border-blue-300 hover:text-blue-600"
-                                >
-                                  <Eye size={16} />
-                                  View
-                                </Link>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="flex flex-col gap-4 border-t border-slate-100 p-5 md:flex-row md:items-center md:justify-between">
-                  <p className="text-sm font-semibold text-slate-500">
-                    Showing{" "}
-                    <span className="font-black text-slate-700">
-                      {startItem.toLocaleString()} to {endItem.toLocaleString()}
-                    </span>{" "}
-                    of{" "}
-                    <span className="font-black text-slate-700">
-                      {filteredTickets.length.toLocaleString()}
-                    </span>{" "}
-                    tickets
-                  </p>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() =>
-                        setCurrentPage((page) => Math.max(1, page - 1))
-                      }
-                      disabled={currentPage === 1}
-                      className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-blue-300 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      <ChevronLeft size={18} />
-                    </button>
-
-                    <button className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-sm font-black text-white shadow-lg shadow-blue-600/20">
-                      {currentPage}
-                    </button>
-
-                    <button
-                      onClick={() =>
-                        setCurrentPage((page) => Math.min(totalPages, page + 1))
-                      }
-                      disabled={currentPage === totalPages}
-                      className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-blue-300 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      <ChevronRight size={18} />
-                    </button>
-                  </div>
-                </div>
+                <button
+                  type="button"
+                  onClick={createTicket}
+                  disabled={loading}
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 md:w-auto"
+                >
+                  <Send size={17} />
+                  {loading ? "Submitting..." : "Submit Ticket"}
+                </button>
               </div>
             </div>
-
-            <aside className="space-y-6">
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between gap-4">
-                  <h3 className="text-xl font-black text-slate-950">
-                    Support Center
-                  </h3>
-
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-100 text-blue-600">
-                    <Headphones size={24} />
-                  </div>
-                </div>
-
-                <p className="mt-4 text-sm font-semibold leading-6 text-slate-600">
-                  We usually reply within{" "}
-                  <span className="font-black text-slate-950">1 - 3 hours.</span>
-                </p>
-
-                <div className="mt-5 space-y-3">
-                  <QuickHelpButton
-                    icon={TicketIcon}
-                    title="Order Problem"
-                    color="text-blue-600 bg-blue-50"
-                  />
-
-                  <QuickHelpButton
-                    icon={CreditCard}
-                    title="Payment Problem"
-                    color="text-green-600 bg-green-50"
-                  />
-
-                  <QuickHelpButton
-                    icon={Wallet}
-                    title="Refund Request"
-                    color="text-red-500 bg-red-50"
-                  />
-
-                  <QuickHelpButton
-                    icon={LifeBuoy}
-                    title="API Help"
-                    color="text-purple-600 bg-purple-50"
-                  />
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between gap-4">
-                  <h3 className="text-xl font-black text-slate-950">
-                    Before you create a ticket
-                  </h3>
-
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-100 text-orange-500">
-                    <AlertTriangle size={22} />
-                  </div>
-                </div>
-
-                <div className="mt-5 space-y-4">
-                  {[
-                    "Include your Order ID",
-                    "Explain the issue clearly",
-                    "Attach proof if payment related",
-                    "Do not create duplicate tickets",
-                  ].map((item) => (
-                    <div
-                      key={item}
-                      className="flex items-center gap-3 text-sm font-bold text-slate-700"
-                    >
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green-100 text-green-600">
-                        <CheckCircle2 size={14} />
-                      </span>
-                      {item}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-5 shadow-sm">
-                <h3 className="text-xl font-black text-slate-950">
-                  Need urgent help?
-                </h3>
-
-                <p className="mt-4 text-sm font-semibold leading-6 text-slate-600">
-                  For urgent issues please contact us on our social media channels.
-                </p>
-
-                <button className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-white text-sm font-black text-blue-600 shadow-sm transition hover:bg-blue-600 hover:text-white">
-                  Contact Support
-                  <ExternalLink size={16} />
-                </button>
-              </div>
-            </aside>
           </div>
-
-          {showCreateModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
-              <div className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl">
-                <div className="flex items-center justify-between border-b border-slate-100 p-6">
-                  <div>
-                    <h3 className="text-2xl font-black text-slate-950">
-                      Create Ticket
-                    </h3>
-
-                    <p className="mt-1 text-sm font-semibold text-slate-500">
-                      Send your issue to our support team.
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() => setShowCreateModal(false)}
-                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-
-                <div className="space-y-5 p-6">
-                  <div>
-                    <label className="text-sm font-black text-slate-700">
-                      Subject
-                    </label>
-
-                    <input
-                      value={subject}
-                      onChange={(e) => setSubject(e.target.value)}
-                      placeholder="Example: Order not starting"
-                      className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold outline-none transition focus:border-blue-500"
-                    />
-                  </div>
-
-                  <div className="grid gap-5 md:grid-cols-2">
-                    <div>
-                      <label className="text-sm font-black text-slate-700">
-                        Category
-                      </label>
-
-                      <select
-                        value={category}
-                        onChange={(e) => setCategory(e.target.value)}
-                        className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold outline-none transition focus:border-blue-500"
-                      >
-                        {categories.map((item) => (
-                          <option key={item}>{item}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-black text-slate-700">
-                        Priority
-                      </label>
-
-                      <select
-                        value={priority}
-                        onChange={(e) => setPriority(e.target.value)}
-                        className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold outline-none transition focus:border-blue-500"
-                      >
-                        {priorities.map((item) => (
-                          <option key={item}>{item}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-black text-slate-700">
-                      Related Order ID{" "}
-                      <span className="font-semibold text-slate-400">
-                        optional
-                      </span>
-                    </label>
-
-                    <input
-                      value={relatedOrderId}
-                      onChange={(e) => setRelatedOrderId(e.target.value)}
-                      placeholder="Example: 1024"
-                      className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold outline-none transition focus:border-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-black text-slate-700">
-                      Message
-                    </label>
-
-                    <textarea
-                      value={message}
-                      onChange={(e) => setMessage(e.target.value)}
-                      placeholder="Describe your issue clearly..."
-                      rows={6}
-                      className="mt-2 w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex flex-col-reverse gap-3 border-t border-slate-100 p-6 md:flex-row md:justify-end">
-                  <button
-                    onClick={() => setShowCreateModal(false)}
-                    className="h-12 rounded-xl border border-slate-200 bg-white px-6 text-sm font-black text-slate-600 transition hover:bg-slate-50"
-                  >
-                    Cancel
-                  </button>
-
-                  <button
-                    onClick={createTicket}
-                    disabled={loading}
-                    className="flex h-12 items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <Send size={17} />
-                    {loading ? "Submitting..." : "Submit Ticket"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </section>
-      </main>
+        )}
+      </DashboardLayout>
     </DashboardGuard>
   );
 }
@@ -809,17 +904,19 @@ function StatCard({
   onClick: () => void;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-center gap-4">
+    <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex min-w-0 items-center gap-4">
         <div
-          className={`flex h-14 w-14 items-center justify-center rounded-2xl ${color}`}
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl sm:h-14 sm:w-14 ${color}`}
         >
           <Icon size={26} />
         </div>
 
-        <div>
-          <p className="text-sm font-black text-slate-600">{title}</p>
-          <h3 className="mt-2 text-3xl font-black text-slate-950">{value}</h3>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-black text-slate-600">{title}</p>
+          <h3 className="mt-2 truncate text-3xl font-black text-slate-950">
+            {value}
+          </h3>
         </div>
       </div>
 
@@ -844,18 +941,23 @@ function QuickHelpButton({
   color: string;
 }) {
   return (
-    <button className="flex h-14 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-4 text-left transition hover:border-blue-300 hover:bg-blue-50">
-      <div className="flex items-center gap-3">
+    <button
+      type="button"
+      className="flex h-14 w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 text-left transition hover:border-blue-300 hover:bg-blue-50"
+    >
+      <div className="flex min-w-0 items-center gap-3">
         <span
-          className={`flex h-9 w-9 items-center justify-center rounded-xl ${color}`}
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${color}`}
         >
           <Icon size={18} />
         </span>
 
-        <span className="text-sm font-black text-slate-700">{title}</span>
+        <span className="min-w-0 truncate text-sm font-black text-slate-700">
+          {title}
+        </span>
       </div>
 
-      <ArrowRight size={17} className="text-slate-400" />
+      <ArrowRight size={17} className="shrink-0 text-slate-400" />
     </button>
   );
 }
@@ -864,26 +966,26 @@ function CategoryIcon({ category }: { category: string }) {
   const value = category.toLowerCase();
 
   if (value.includes("order")) {
-    return <TicketIcon size={17} className="text-blue-600" />;
+    return <TicketIcon size={17} className="shrink-0 text-blue-600" />;
   }
 
   if (value.includes("payment")) {
-    return <CreditCard size={17} className="text-green-600" />;
+    return <CreditCard size={17} className="shrink-0 text-green-600" />;
   }
 
   if (value.includes("fund")) {
-    return <Wallet size={17} className="text-purple-600" />;
+    return <Wallet size={17} className="shrink-0 text-purple-600" />;
   }
 
   if (value.includes("refund")) {
-    return <Wallet size={17} className="text-red-500" />;
+    return <Wallet size={17} className="shrink-0 text-red-500" />;
   }
 
   if (value.includes("api")) {
-    return <LifeBuoy size={17} className="text-blue-500" />;
+    return <LifeBuoy size={17} className="shrink-0 text-blue-500" />;
   }
 
-  return <HelpCircle size={17} className="text-slate-500" />;
+  return <HelpCircle size={17} className="shrink-0 text-slate-500" />;
 }
 
 function normalizeStatus(status: string) {
