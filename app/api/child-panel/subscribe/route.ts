@@ -107,16 +107,7 @@ export async function POST(request: NextRequest) {
 
     const now = new Date();
 
-    const currentExpiry = profile.child_panel_subscription_expires_at
-      ? new Date(profile.child_panel_subscription_expires_at)
-      : null;
-
-    const baseDate =
-      currentExpiry && currentExpiry.getTime() > now.getTime()
-        ? currentExpiry
-        : now;
-
-    const expiresAt = addOneMonth(baseDate);
+const expiresAt = addOneMonth(now);
     const newBalance = currentBalance - CHILD_PANEL_PRICE;
 
     const { data: subscription, error: subscriptionError } =
