@@ -11,6 +11,7 @@ import {
   Flag,
   Info,
   Lock,
+  RefreshCw,
   ShoppingCart,
   Star,
   Tag,
@@ -126,9 +127,11 @@ export default function ResellerPage() {
   const [loadingAllHistory, setLoadingAllHistory] = useState(false);
   const [converting, setConverting] = useState(false);
   const [subscribingChildPanel, setSubscribingChildPanel] = useState(false);
+  const [childPanelModalOpen, setChildPanelModalOpen] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [pointsInput, setPointsInput] = useState("100");
   const [message, setMessage] = useState("");
+  const [childPanelModalMessage, setChildPanelModalMessage] = useState("");
 
   const { formatAmount } = useDisplayCurrency();
 
@@ -231,33 +234,33 @@ export default function ResellerPage() {
   const nextLevel = getNextLevel(currentLevel.level);
 
   const savedSubscriptionStatus = String(
-  profile?.child_panel_subscription_status || "inactive",
-).toLowerCase();
+    profile?.child_panel_subscription_status || "inactive",
+  ).toLowerCase();
 
-const savedChildPanelType = String(
-  profile?.child_panel_access_type || "locked",
-).toLowerCase();
+  const savedChildPanelType = String(
+    profile?.child_panel_access_type || "locked",
+  ).toLowerCase();
 
-const hasPaidChildPanel =
-  savedSubscriptionStatus === "active" || savedChildPanelType === "paid";
+  const hasPaidChildPanel =
+    savedSubscriptionStatus === "active" || savedChildPanelType === "paid";
 
-const hasManualChildPanel = savedChildPanelType === "manual";
+  const hasManualChildPanel = savedChildPanelType === "manual";
 
-const hasLevelChildPanel = currentLevel.level >= 3 || currentLevel.childPanel;
+  const hasLevelChildPanel = currentLevel.level >= 3 || currentLevel.childPanel;
 
-const childPanelUnlocked =
-  hasLevelChildPanel ||
-  hasPaidChildPanel ||
-  hasManualChildPanel ||
-  Boolean(profile?.child_panel_access);
+  const childPanelUnlocked =
+    hasLevelChildPanel ||
+    hasPaidChildPanel ||
+    hasManualChildPanel ||
+    Boolean(profile?.child_panel_access);
 
-const childPanelAccessLabel = hasLevelChildPanel
-  ? "Free Lifetime"
-  : hasPaidChildPanel
-    ? "Paid Active"
-    : hasManualChildPanel
-      ? "Manual Unlock"
-      : "Locked";
+  const childPanelAccessLabel = hasLevelChildPanel
+    ? "Free Lifetime"
+    : hasPaidChildPanel
+      ? "Paid Active"
+      : hasManualChildPanel
+        ? "Manual Unlock"
+        : "Locked";
 
   const requiredSpend = nextLevel?.requiredSpend || currentLevel.requiredSpend;
   const remainingSpend = nextLevel
@@ -266,14 +269,14 @@ const childPanelAccessLabel = hasLevelChildPanel
 
   const progressPercent = nextLevel
     ? Math.min(
+      100,
+      Math.max(
+        0,
+        ((totalSpend - currentLevel.requiredSpend) /
+          (nextLevel.requiredSpend - currentLevel.requiredSpend)) *
         100,
-        Math.max(
-          0,
-          ((totalSpend - currentLevel.requiredSpend) /
-            (nextLevel.requiredSpend - currentLevel.requiredSpend)) *
-            100,
-        ),
-      )
+      ),
+    )
     : 100;
 
   const pointsToConvert = Math.max(0, Math.floor(Number(pointsInput || 0)));
@@ -367,46 +370,49 @@ const childPanelAccessLabel = hasLevelChildPanel
     setMessage(`Converted ${pointsToConvert} points to ${formatAmount(phpCredit)}.`);
   }
 
-async function subscribeChildPanel() {
-  if (subscribingChildPanel) return;
+  async function subscribeChildPanel() {
+    if (subscribingChildPanel) return;
 
-  setMessage("");
-  setSubscribingChildPanel(true);
+setMessage("");
+setChildPanelModalMessage("");
+setSubscribingChildPanel(true);
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-  if (!session?.access_token) {
-    setMessage("You must be logged in to subscribe.");
-    setSubscribingChildPanel(false);
-    return;
-  }
-
-  try {
-    const response = await fetch("/api/child-panel/subscribe", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
-    });
-
-    const result = await response.json();
-
-    if (!result.success) {
-      setMessage(result.message || "Failed to subscribe to Child Panel.");
+    if (!session?.access_token) {
+      setMessage("You must be logged in to subscribe.");
       setSubscribingChildPanel(false);
       return;
     }
 
-    setMessage(result.message || "Child Panel subscription activated.");
-    await loadData();
-  } catch {
-    setMessage("Failed to subscribe to Child Panel.");
-  }
+    try {
+      const response = await fetch("/api/child-panel/subscribe", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
 
+      const result = await response.json();
+
+if (!result.success) {
+  setChildPanelModalMessage(
+    result.message || "Failed to subscribe to Child Panel.",
+  );
   setSubscribingChildPanel(false);
+  return;
 }
+      setMessage(result.message || "Child Panel subscription activated.");
+      setChildPanelModalOpen(false);
+      await loadData();
+    } catch {
+      setMessage("Failed to subscribe to Child Panel.");
+    }
+
+    setSubscribingChildPanel(false);
+  }
 
   return (
     <DashboardGuard>
@@ -535,12 +541,15 @@ async function subscribeChildPanel() {
               />
 
               <ChildPanelMetric
-  isUnlocked={childPanelUnlocked}
-  accessLabel={childPanelAccessLabel}
-  price={CHILD_PANEL_PRICE}
-  subscribing={subscribingChildPanel}
-  onSubscribe={subscribeChildPanel}
-/>
+                isUnlocked={childPanelUnlocked}
+                accessLabel={childPanelAccessLabel}
+                price={CHILD_PANEL_PRICE}
+                subscribing={subscribingChildPanel}
+                onSubscribe={() => {
+  setChildPanelModalMessage("");
+  setChildPanelModalOpen(true);
+}}
+              />
             </section>
 
             <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_520px]">
@@ -562,26 +571,23 @@ async function subscribeChildPanel() {
                       return (
                         <div key={level.level} className="relative z-10 text-center">
                           <div
-                            className={`mx-auto flex h-10 w-10 items-center justify-center rounded-full border text-sm font-black ${
-                              isCurrent
+                            className={`mx-auto flex h-10 w-10 items-center justify-center rounded-full border text-sm font-black ${isCurrent
                                 ? "border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-600/20"
                                 : "border-slate-200 bg-white text-slate-600"
-                            }`}
+                              }`}
                           >
                             {level.level}
                           </div>
 
                           <div
-                            className={`mt-5 min-h-[162px] rounded-xl border px-3 py-4 ${
-                              isCurrent
+                            className={`mt-5 min-h-[162px] rounded-xl border px-3 py-4 ${isCurrent
                                 ? "border-blue-300 bg-blue-50/60"
                                 : "border-slate-100 bg-white"
-                            }`}
+                              }`}
                           >
                             <p
-                              className={`text-sm font-black ${
-                                isCurrent ? "text-blue-600" : "text-slate-950"
-                              }`}
+                              className={`text-sm font-black ${isCurrent ? "text-blue-600" : "text-slate-950"
+                                }`}
                             >
                               {level.name}
                             </p>
@@ -599,9 +605,8 @@ async function subscribeChildPanel() {
                             </p>
 
                             <p
-                              className={`mt-4 flex items-center justify-center gap-1 text-xs font-black ${
-                                level.childPanel ? "text-green-600" : "text-red-500"
-                              }`}
+                              className={`mt-4 flex items-center justify-center gap-1 text-xs font-black ${level.childPanel ? "text-green-600" : "text-red-500"
+                                }`}
                             >
                               {level.childPanel ? <Unlock size={13} /> : <Lock size={13} />}
                               {level.childPanel ? "Unlocked" : "Locked"}
@@ -839,6 +844,142 @@ async function subscribeChildPanel() {
             </div>
           )}
         </section>
+
+        {childPanelModalOpen && (
+          <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm lg:items-center">
+            <div className="my-8 w-full max-w-2xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
+                <div>
+                  <h3 className="text-2xl font-black text-slate-950">
+                    Subscribe to Child Panel
+                  </h3>
+
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    Unlock your own reseller child panel for ₱{CHILD_PANEL_PRICE}/month.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setChildPanelModalOpen(false)}
+                  disabled={subscribingChildPanel}
+                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950 disabled:opacity-50"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-5 p-6">
+                {childPanelModalMessage && (
+  <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold leading-6 text-red-700">
+    {childPanelModalMessage}
+  </div>
+)}
+                <div className="rounded-3xl border border-blue-100 bg-blue-50 p-5">
+                  <p className="text-sm font-black uppercase tracking-wide text-blue-700">
+                    What is Child Panel?
+                  </p>
+
+                  <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">
+                    Child Panel lets you run your own reseller panel under Ascend Service.
+                    You can give your own users access to services, manage their orders,
+                    and grow your own mini SMM panel while still using Ascend Service as
+                    your main provider system.
+                  </p>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                      Monthly Price
+                    </p>
+                    <p className="mt-2 text-2xl font-black text-blue-600">
+                      ₱{CHILD_PANEL_PRICE}/month
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                      Auto Renew
+                    </p>
+                    <p className="mt-2 text-2xl font-black text-emerald-600">
+                      Enabled
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-slate-200 bg-white p-5">
+                  <p className="text-sm font-black text-slate-950">
+                    Perks and Benefits
+                  </p>
+
+                  <div className="mt-4 space-y-3">
+                    <div className="flex gap-3">
+                      <CheckCircle2 size={19} className="mt-0.5 shrink-0 text-emerald-600" />
+                      <p className="text-sm font-semibold leading-6 text-slate-600">
+                        Create your own reseller panel for your customers.
+                      </p>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <CheckCircle2 size={19} className="mt-0.5 shrink-0 text-emerald-600" />
+                      <p className="text-sm font-semibold leading-6 text-slate-600">
+                        Manage your own clients, orders, and service access.
+                      </p>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <CheckCircle2 size={19} className="mt-0.5 shrink-0 text-emerald-600" />
+                      <p className="text-sm font-semibold leading-6 text-slate-600">
+                        Use Ascend Service as your main provider while growing your own brand.
+                      </p>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <CheckCircle2 size={19} className="mt-0.5 shrink-0 text-emerald-600" />
+                      <p className="text-sm font-semibold leading-6 text-slate-600">
+                        Level 3 and above gets Child Panel free lifetime as a reseller perk.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-orange-100 bg-orange-50 p-4 text-sm font-bold leading-6 text-orange-700">
+By confirming, ₱{CHILD_PANEL_PRICE} will be deducted from your wallet
+balance. If your balance is not enough, the subscription will not proceed.
+Your subscription will auto-renew every month if you have enough balance.
+                </div>
+              </div>
+
+              <div className="flex flex-col justify-end gap-3 border-t border-slate-200 p-5 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={() => setChildPanelModalOpen(false)}
+                  disabled={subscribingChildPanel}
+                  className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={subscribeChildPanel}
+                  disabled={subscribingChildPanel}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {subscribingChildPanel ? (
+                    <RefreshCw size={17} className="animate-spin" />
+                  ) : (
+                    <CheckCircle2 size={17} />
+                  )}
+                  {subscribingChildPanel
+                    ? "Subscribing..."
+                    : `Confirm Subscribe ₱${CHILD_PANEL_PRICE}/mo`}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </DashboardGuard>
   );
@@ -873,9 +1014,8 @@ function ConversionTable({
               <tr>
                 <td
                   colSpan={4}
-                  className={`text-center text-sm font-semibold text-slate-500 ${
-                    compact ? "p-8" : "p-12"
-                  }`}
+                  className={`text-center text-sm font-semibold text-slate-500 ${compact ? "p-8" : "p-12"
+                    }`}
                 >
                   {emptyText}
                 </td>
