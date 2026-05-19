@@ -1,8 +1,7 @@
 "use client";
 
 import DashboardGuard from "@/components/DashboardGuard";
-import DashboardSidebar from "@/components/DashboardSidebar";
-import DashboardTopbar from "@/components/DashboardTopbar";
+import DashboardLayout from "@/components/DashboardLayout";
 import { supabase } from "@/lib/supabase";
 import { useDisplayCurrency } from "@/lib/useDisplayCurrency";
 import {
@@ -587,29 +586,24 @@ export default function ResellerPage() {
 
   return (
     <DashboardGuard>
-      <main className="min-h-screen bg-[#f6f9fc] text-slate-950">
-        <DashboardSidebar />
-
-        <section className="min-h-screen lg:ml-72">
-          <DashboardTopbar />
-
-          <div className="p-4 lg:p-8">
-            <div>
-              <h1 className="text-3xl font-black text-slate-950">Reseller</h1>
+      <DashboardLayout>
+        <div className="min-w-0">
+          <div className="min-w-0">
+            <h1 className="text-3xl font-black text-slate-950">Reseller</h1>
               <p className="mt-2 text-sm font-semibold text-slate-500">
                 Track your progress, convert points, and unlock more benefits as you grow.
               </p>
             </div>
 
-            <section className="mt-6 overflow-hidden rounded-2xl bg-gradient-to-r from-[#1557f6] via-[#3155f5] to-[#7c2df0] p-6 text-white shadow-sm lg:p-8">
-              <div className="grid gap-8 lg:grid-cols-[1.1fr_1.1fr_220px] lg:items-center">
-                <div>
+            <section className="mt-6 min-w-0 overflow-hidden rounded-2xl bg-gradient-to-r from-[#1557f6] via-[#3155f5] to-[#7c2df0] p-5 text-white shadow-sm sm:p-6 lg:p-8">
+              <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.1fr)_220px] lg:items-center">
+                <div className="min-w-0">
                   <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-100">
                     Current Level
                   </p>
 
-                  <div className="mt-3 flex flex-wrap items-center gap-3">
-                    <h2 className="text-3xl font-black lg:text-5xl">
+                  <div className="mt-3 flex min-w-0 flex-wrap items-center gap-3">
+                    <h2 className="min-w-0 break-words text-3xl font-black lg:text-5xl">
                       {loading ? "Loading..." : currentLevel.name}
                     </h2>
 
@@ -625,13 +619,13 @@ export default function ResellerPage() {
                   </p>
                 </div>
 
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-100">
                     Total Spend
                   </p>
 
-                  <div className="mt-3 flex flex-wrap items-end gap-2">
-                    <p className="text-3xl font-black lg:text-4xl">
+                  <div className="mt-3 flex min-w-0 flex-wrap items-end gap-2">
+                    <p className="min-w-0 break-words text-3xl font-black lg:text-4xl">
                       {formatAmount(totalSpend)}
                     </p>
 
@@ -686,7 +680,7 @@ export default function ResellerPage() {
               </div>
             </section>
 
-            <section className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+            <section className="mt-5 grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
               <MetricCard
                 icon={Star}
                 title="Available Points"
@@ -729,8 +723,8 @@ export default function ResellerPage() {
               />
             </section>
 
-            <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_520px]">
-              <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mt-5 grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_520px]">
+              <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex items-center gap-2">
                   <h3 className="text-xl font-black text-slate-950">
                     Reseller Level Path
@@ -765,7 +759,7 @@ export default function ResellerPage() {
                             }`}
                           >
                             <p
-                              className={`text-sm font-black ${
+                              className={`line-clamp-2 text-sm font-black ${
                                 isCurrent ? "text-blue-600" : "text-slate-950"
                               }`}
                             >
@@ -800,7 +794,7 @@ export default function ResellerPage() {
                 </div>
               </section>
 
-              <section className="rounded-2xl bg-[#061c42] p-6 text-white shadow-sm">
+              <section className="min-w-0 rounded-2xl bg-[#061c42] p-5 text-white shadow-sm sm:p-6">
                 <h3 className="text-xl font-black">Reseller Summary</h3>
 
                 <div className="mt-6 space-y-4">
@@ -834,15 +828,15 @@ export default function ResellerPage() {
               </section>
             </div>
 
-            <div className="mt-5 grid gap-5 xl:grid-cols-[0.9fr_0.9fr_1fr]">
-              <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mt-5 grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,0.9fr)_minmax(0,1fr)]">
+              <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex items-start gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
                     <ArrowRightLeft size={20} />
                   </div>
 
-                  <div>
-                    <h3 className="text-xl font-black text-slate-950">
+                  <div className="min-w-0">
+                    <h3 className="min-w-0 truncate text-xl font-black text-slate-950">
                       Convert Points to Balance
                     </h3>
                     <p className="mt-1 text-sm font-semibold text-slate-500">
@@ -875,7 +869,7 @@ export default function ResellerPage() {
                   Points to Convert
                 </label>
 
-                <div className="mt-2 flex overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <div className="mt-2 flex min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
                   <input
                     value={pointsInput}
                     onChange={(e) => setPointsInput(e.target.value)}
@@ -883,7 +877,7 @@ export default function ResellerPage() {
                     min={MIN_CONVERT_POINTS}
                     max={availablePoints}
                     placeholder="Enter points"
-                    className="h-12 flex-1 px-4 text-sm font-semibold outline-none"
+                    className="h-12 min-w-0 flex-1 px-4 text-sm font-semibold outline-none"
                   />
 
                   <div className="flex h-12 items-center border-l border-slate-200 px-4 text-sm font-black text-slate-600">
@@ -891,13 +885,13 @@ export default function ResellerPage() {
                   </div>
                 </div>
 
-                <div className="mt-4 flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
+                <div className="mt-4 flex min-w-0 items-center justify-between gap-4 rounded-xl bg-slate-50 px-4 py-3">
                   <p className="text-sm font-semibold text-slate-500">
                     You will receive
                   </p>
 
                   <div className="text-right">
-                    <p className="text-xl font-black text-slate-950">
+                    <p className="truncate text-xl font-black text-slate-950">
                       {formatAmount(phpCredit)}
                     </p>
                     <p className="text-xs font-bold text-slate-400">
@@ -926,7 +920,7 @@ export default function ResellerPage() {
                 </p>
               </section>
 
-              <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex items-center justify-between gap-4">
                   <h3 className="text-xl font-black text-slate-950">
                     Recent Conversions
@@ -949,8 +943,8 @@ export default function ResellerPage() {
                 />
               </section>
 
-              <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex items-center gap-3">
+              <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex min-w-0 items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-purple-600">
                     <Star size={20} />
                   </div>
@@ -984,14 +978,14 @@ export default function ResellerPage() {
                 </div>
               </section>
             </div>
-          </div>
+        </div>
 
-          {showHistoryModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
-              <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
-                <div className="flex items-center justify-between border-b border-slate-100 p-6">
-                  <div>
-                    <h3 className="text-2xl font-black text-slate-950">
+        {showHistoryModal && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/50 p-3 backdrop-blur-sm sm:p-4">
+            <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-5 sm:items-center sm:p-6">
+                  <div className="min-w-0">
+                    <h3 className="text-xl font-black text-slate-950 sm:text-2xl">
                       All Recent Conversions
                     </h3>
                     <p className="mt-1 text-sm font-semibold text-slate-500">
@@ -1008,7 +1002,7 @@ export default function ResellerPage() {
                   </button>
                 </div>
 
-                <div className="overflow-y-auto p-6">
+                <div className="min-h-0 overflow-y-auto p-5 sm:p-6">
                   {loadingAllHistory ? (
                     <div className="rounded-2xl bg-slate-50 p-10 text-center text-sm font-semibold text-slate-500">
                       Loading conversion history...
@@ -1023,15 +1017,14 @@ export default function ResellerPage() {
                 </div>
               </div>
             </div>
-          )}
-        </section>
+        )}
 
         {childPanelManageModalOpen && (
           <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm lg:items-center">
-            <div className="my-8 w-full max-w-2xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
-              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
-                <div>
-                  <h3 className="text-2xl font-black text-slate-950">
+            <div className="my-4 max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[28px] bg-white shadow-2xl sm:my-8">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 sm:p-6">
+                <div className="min-w-0">
+                  <h3 className="text-xl font-black text-slate-950 sm:text-2xl">
                     Child Panel Subscription
                   </h3>
 
@@ -1050,7 +1043,7 @@ export default function ResellerPage() {
                 </button>
               </div>
 
-              <div className="space-y-5 p-6">
+              <div className="space-y-5 p-5 sm:p-6">
                 <div className="rounded-3xl border border-green-100 bg-green-50 p-5">
                   <div className="flex items-start gap-4">
                     <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-green-100 text-green-600">
@@ -1097,7 +1090,7 @@ export default function ResellerPage() {
 
                 <div className="rounded-3xl border border-slate-200 bg-white p-5">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-sm font-black text-slate-950">
                         Auto Renew
                       </p>
@@ -1171,10 +1164,10 @@ export default function ResellerPage() {
 
         {childPanelModalOpen && (
           <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm lg:items-center">
-            <div className="my-8 w-full max-w-2xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
-              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
-                <div>
-                  <h3 className="text-2xl font-black text-slate-950">
+            <div className="my-4 max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[28px] bg-white shadow-2xl sm:my-8">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 sm:p-6">
+                <div className="min-w-0">
+                  <h3 className="text-xl font-black text-slate-950 sm:text-2xl">
                     Subscribe to Child Panel
                   </h3>
 
@@ -1193,7 +1186,7 @@ export default function ResellerPage() {
                 </button>
               </div>
 
-              <div className="space-y-5 p-6">
+              <div className="space-y-5 p-5 sm:p-6">
                 {childPanelModalMessage && (
                   <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold leading-6 text-red-700">
                     {childPanelModalMessage}
@@ -1282,7 +1275,7 @@ export default function ResellerPage() {
             </div>
           </div>
         )}
-      </main>
+      </DashboardLayout>
     </DashboardGuard>
   );
 }
@@ -1337,19 +1330,19 @@ function ConversionTable({
             ) : (
               records.map((item) => (
                 <tr key={item.id} className="border-t border-slate-100">
-                  <td className="p-4 font-semibold text-slate-600">
+                  <td className="whitespace-nowrap p-4 font-semibold text-slate-600">
                     {formatDate(item.created_at)}
                   </td>
 
-                  <td className="p-4 font-black text-slate-700">
+                  <td className="whitespace-nowrap p-4 font-black text-slate-700">
                     {formatCompact(toNumber(item.points_used ?? item.points))} pts
                   </td>
 
-                  <td className="p-4 font-black text-slate-700">
+                  <td className="whitespace-nowrap p-4 font-black text-slate-700">
                     {formatAmount(toNumber(item.amount_credited ?? item.wallet_credit))}
                   </td>
 
-                  <td className="p-4">
+                  <td className="whitespace-nowrap p-4">
                     <span className="inline-flex items-center gap-1 rounded-lg bg-green-100 px-3 py-1 text-xs font-black text-green-700">
                       <CheckCircle2 size={13} />
                       {formatStatus(item.status)}
@@ -1379,22 +1372,22 @@ function MetricCard({
   color: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-center gap-5">
-        <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${color}`}>
+    <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex min-w-0 items-center gap-4 sm:gap-5">
+        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl sm:h-14 sm:w-14 ${color}`}>
           <Icon size={26} />
         </div>
 
-        <div>
-          <p className="text-xs font-black uppercase tracking-wide text-slate-500">
+        <div className="min-w-0">
+          <p className="truncate text-xs font-black uppercase tracking-wide text-slate-500">
             {title}
           </p>
 
-          <h3 className="mt-2 text-2xl font-black text-slate-950">
+          <h3 className="mt-2 truncate text-2xl font-black text-slate-950">
             {value}
           </h3>
 
-          <p className="mt-1 text-sm font-semibold text-slate-400">
+          <p className="mt-1 line-clamp-2 text-sm font-semibold text-slate-400">
             {subtitle}
           </p>
         </div>
@@ -1432,9 +1425,9 @@ function ChildPanelMetric({
         <button
           type="button"
           onClick={onManageSubscription}
-          className="rounded-2xl border border-green-200 bg-white p-5 text-left shadow-sm transition hover:border-green-400 hover:bg-green-50"
+          className="min-w-0 rounded-2xl border border-green-200 bg-white p-5 text-left shadow-sm transition hover:border-green-400 hover:bg-green-50"
         >
-          <div className="flex items-center gap-5">
+          <div className="flex min-w-0 items-center gap-4 sm:gap-5">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-green-100 text-green-600">
               <Unlock size={26} />
             </div>
@@ -1470,9 +1463,9 @@ function ChildPanelMetric({
     return (
       <Link
         href="/dashboard/child-panel"
-        className="block rounded-2xl border border-green-200 bg-white p-5 shadow-sm transition hover:border-green-400 hover:bg-green-50"
+        className="block min-w-0 rounded-2xl border border-green-200 bg-white p-5 shadow-sm transition hover:border-green-400 hover:bg-green-50"
       >
-        <div className="flex items-center gap-5">
+        <div className="flex min-w-0 items-center gap-4 sm:gap-5">
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-green-100 text-green-600">
             <Unlock size={26} />
           </div>
@@ -1500,19 +1493,19 @@ function ChildPanelMetric({
       type="button"
       onClick={onSubscribe}
       disabled={subscribing}
-      className="rounded-2xl border border-blue-200 bg-white p-5 text-left shadow-sm transition hover:border-blue-400 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+      className="min-w-0 rounded-2xl border border-blue-200 bg-white p-5 text-left shadow-sm transition hover:border-blue-400 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
     >
-      <div className="flex items-center gap-5">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100 text-blue-600">
+      <div className="flex min-w-0 items-center gap-4 sm:gap-5">
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-100 text-blue-600">
           <Lock size={26} />
         </div>
 
-        <div>
-          <p className="text-xs font-black uppercase tracking-wide text-slate-500">
+        <div className="min-w-0">
+          <p className="truncate text-xs font-black uppercase tracking-wide text-slate-500">
             Child Panel Access
           </p>
 
-          <h3 className="mt-2 text-2xl font-black text-blue-600">
+          <h3 className="mt-2 line-clamp-2 text-2xl font-black text-blue-600">
             {subscribing ? "Subscribing..." : `Subscribe ₱${price}/mo`}
           </h3>
 
@@ -1537,13 +1530,13 @@ function SummaryRow({
   badge?: string;
 }) {
   return (
-    <div className="flex items-center gap-4 border-b border-white/10 pb-4 last:border-b-0 last:pb-0">
-      <Icon size={22} className="text-blue-100" />
+    <div className="flex min-w-0 items-center gap-4 border-b border-white/10 pb-4 last:border-b-0 last:pb-0">
+      <Icon size={22} className="shrink-0 text-blue-100" />
 
-      <p className="flex-1 text-base font-semibold text-blue-50">{label}</p>
+      <p className="min-w-0 flex-1 text-base font-semibold text-blue-50">{label}</p>
 
-      <div className="flex items-center gap-3">
-        <p className="text-right text-base font-black text-white">{value}</p>
+      <div className="flex min-w-0 items-center gap-3">
+        <p className="min-w-0 truncate text-right text-base font-black text-white">{value}</p>
 
         {badge && (
           <span className="rounded-lg bg-blue-600 px-3 py-1 text-sm font-black text-white">
@@ -1567,12 +1560,12 @@ function HowToEarnItem({
   color: string;
 }) {
   return (
-    <div className="flex gap-4">
+    <div className="flex min-w-0 gap-4">
       <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${color}`}>
         <Icon size={22} />
       </div>
 
-      <div>
+      <div className="min-w-0">
         <p className="text-sm font-black text-slate-800">{title}</p>
         <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
           {text}
