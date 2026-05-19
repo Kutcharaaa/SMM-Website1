@@ -1,8 +1,7 @@
 "use client";
 
 import DashboardGuard from "@/components/DashboardGuard";
-import DashboardSidebar from "@/components/DashboardSidebar";
-import DashboardTopbar from "@/components/DashboardTopbar";
+import DashboardLayout from "@/components/DashboardLayout";
 import { supabase } from "@/lib/supabase";
 import { useDisplayCurrency } from "@/lib/useDisplayCurrency";
 import {
@@ -730,14 +729,10 @@ export default function DashboardTransactionsPage() {
 
   return (
     <DashboardGuard>
-      <main className="min-h-screen bg-[#f6f9fc] text-slate-950">
-        <DashboardSidebar />
-
-        <section className="lg:ml-72 min-h-screen">
-          <DashboardTopbar />
-
-          <div className="p-5 sm:p-6 lg:p-8">
-            <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+      <DashboardLayout>
+        <div className="min-w-0 bg-[#f6f9fc] text-slate-950">
+          <div className="min-w-0">
+            <div className="mb-6 flex min-w-0 flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
               <div>
                 <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
                   Transactions
@@ -748,11 +743,11 @@ export default function DashboardTransactionsPage() {
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:items-center">
                 <button
                   type="button"
                   onClick={exportTransactionsToPDF}
-                  className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50 sm:w-auto"
                 >
                   <Download size={17} />
                   Export PDF
@@ -761,7 +756,7 @@ export default function DashboardTransactionsPage() {
                 <button
                   type="button"
                   onClick={loadTransactions}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-blue-700"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-blue-700 sm:w-auto"
                 >
                   <RefreshCw size={17} />
                   Refresh
@@ -775,7 +770,7 @@ export default function DashboardTransactionsPage() {
               </div>
             )}
 
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
               <StatCard
                 title="Total Transactions"
                 value={formatNumber(stats.total)}
@@ -809,10 +804,10 @@ export default function DashboardTransactionsPage() {
               />
             </div>
 
-            <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_330px]">
-              <div className="space-y-5">
-                <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-                  <div className="grid gap-4 xl:grid-cols-[1fr_220px_220px_auto]">
+            <div className="mt-6 grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_330px]">
+              <div className="min-w-0 space-y-5">
+                <div className="min-w-0 rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_220px_220px_auto]">
                     <div className="flex h-12 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 shadow-sm">
                       <Search size={18} className="text-slate-400" />
 
@@ -828,7 +823,7 @@ export default function DashboardTransactionsPage() {
                     <select
                       value={typeFilter}
                       onChange={(event) => setTypeFilter(event.target.value as TypeFilter)}
-                      className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
+                      className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
                     >
                       {typeFilters.map((item) => (
                         <option key={item.value} value={item.value}>
@@ -840,7 +835,7 @@ export default function DashboardTransactionsPage() {
                     <select
                       value={statusFilter}
                       onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
-                      className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
+                      className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
                     >
                       {statusFilters.map((item) => (
                         <option key={item.value} value={item.value}>
@@ -856,7 +851,7 @@ export default function DashboardTransactionsPage() {
                         setTypeFilter("all");
                         setStatusFilter("all");
                       }}
-                      className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50"
+                      className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50 xl:w-auto"
                     >
                       <X size={17} />
                       Clear
@@ -864,7 +859,7 @@ export default function DashboardTransactionsPage() {
                   </div>
                 </div>
 
-                <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+                <div className="min-w-0 overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
                   <div className="border-b border-slate-100 px-5 py-4">
                     <h2 className="text-lg font-black text-slate-950">
                       Transaction History
@@ -979,7 +974,7 @@ export default function DashboardTransactionsPage() {
                 </div>
               </div>
 
-              <aside className="space-y-5">
+              <aside className="min-w-0 space-y-5">
                 <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="mb-5 flex items-center gap-2">
                     <ShieldCheck size={18} className="text-blue-600" />
@@ -1061,14 +1056,13 @@ export default function DashboardTransactionsPage() {
               </aside>
             </div>
           </div>
-        </section>
 
-        {selectedTransaction && (
-          <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm lg:items-center">
-            <div className="my-8 w-full max-w-2xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
-              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
+          {selectedTransaction && (
+          <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-3 backdrop-blur-sm sm:p-4 lg:items-center">
+            <div className="my-4 w-full max-w-2xl overflow-hidden rounded-[28px] bg-white shadow-2xl sm:my-8">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 sm:p-6">
                 <div>
-                  <h3 className="text-2xl font-black text-slate-950">
+                  <h3 className="text-xl font-black text-slate-950 sm:text-2xl">
                     Transaction Details
                   </h3>
                   <p className="mt-1 text-sm font-semibold text-slate-500">
@@ -1085,11 +1079,11 @@ export default function DashboardTransactionsPage() {
                 </button>
               </div>
 
-              <div className="space-y-5 p-6">
-                <div className="flex items-center gap-4 rounded-3xl border border-slate-200 bg-slate-50/70 p-5">
+              <div className="space-y-5 p-5 sm:p-6">
+                <div className="flex min-w-0 flex-col gap-4 rounded-3xl border border-slate-200 bg-slate-50/70 p-5 sm:flex-row sm:items-center">
                   <TypeIcon type={selectedTransaction.type} />
                   <div className="min-w-0 flex-1">
-                    <h4 className="text-xl font-black text-slate-950">
+                    <h4 className="line-clamp-2 text-lg font-black text-slate-950 sm:text-xl">
                       {selectedTransaction.title}
                     </h4>
                     <p className="mt-1 text-sm font-semibold text-slate-500">
@@ -1097,7 +1091,7 @@ export default function DashboardTransactionsPage() {
                     </p>
                   </div>
                   <p
-                    className={`text-2xl font-black ${
+                    className={`shrink-0 text-xl font-black sm:text-2xl ${
                       selectedTransaction.amount >= 0 ? "text-emerald-600" : "text-red-600"
                     }`}
                   >
@@ -1131,8 +1125,9 @@ export default function DashboardTransactionsPage() {
               </div>
             </div>
           </div>
-        )}
-      </main>
+          )}
+        </div>
+      </DashboardLayout>
     </DashboardGuard>
   );
 }
