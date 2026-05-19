@@ -1,16 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-const MIN_TRANSFER_AMOUNT = 10;
+const DEFAULT_MIN_TRANSFER_AMOUNT = 10;
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-function toNumber(value: unknown) {
+function toNumber(value: unknown, fallback = 0) {
   const numberValue = Number(value || 0);
-  return Number.isFinite(numberValue) ? numberValue : 0;
+  return Number.isFinite(numberValue) ? numberValue : fallback;
+}
+
+async function getAffiliateMinTransfer() {
+  const { data, error } = await supabaseAdmin
+    .from("platform_settings")
+    .select("value")
+    .eq("key", "affiliate_min_transfer")
+    .maybeSingle();
+
+  if (error) {
+    console.warn("AFFILIATE_MIN_TRANSFER_SETTING_ERROR:", error.message);
+    return DEFAULT_MIN_TRANSFER_AMOUNT;
+  }
+
+  const minimumAmount = toNumber(data?.value, DEFAULT_MIN_TRANSFER_AMOUNT);
+
+  return minimumAmount > 0 ? minimumAmount : DEFAULT_MIN_TRANSFER_AMOUNT;
 }
 
 export async function POST(request: NextRequest) {
@@ -43,14 +60,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const minTransferAmount = await getAffiliateMinTransfer();
+
     const body = await request.json();
     const amount = toNumber(body.amount);
 
-    if (amount < MIN_TRANSFER_AMOUNT) {
+    if (amount < minTransferAmount) {
       return NextResponse.json(
         {
           success: false,
-          message: `Minimum transfer amount is ₱${MIN_TRANSFER_AMOUNT.toFixed(
+          message: `Minimum transfer amount is ₱${minTransferAmount.toFixed(
             2,
           )}.`,
         },
@@ -235,6 +254,7 @@ export async function POST(request: NextRequest) {
       success: true,
       amount,
       newBalance,
+      minTransferAmount,
       transferId: transferRecord.id,
       message: `₱${amount.toFixed(
         2,

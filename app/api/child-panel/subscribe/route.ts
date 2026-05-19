@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-const CHILD_PANEL_PRICE = 349;
+const DEFAULT_CHILD_PANEL_PRICE = 349;
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,6 +12,28 @@ function addOneMonth(date: Date) {
   const next = new Date(date);
   next.setMonth(next.getMonth() + 1);
   return next;
+}
+
+function toNumber(value: unknown, fallback = 0) {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : fallback;
+}
+
+async function getChildPanelPrice() {
+  const { data, error } = await supabaseAdmin
+    .from("platform_settings")
+    .select("value")
+    .eq("key", "child_panel_price")
+    .maybeSingle();
+
+  if (error) {
+    console.warn("CHILD_PANEL_PRICE_SETTING_ERROR:", error.message);
+    return DEFAULT_CHILD_PANEL_PRICE;
+  }
+
+  const price = toNumber(data?.value, DEFAULT_CHILD_PANEL_PRICE);
+
+  return price > 0 ? price : DEFAULT_CHILD_PANEL_PRICE;
 }
 
 export async function POST(request: NextRequest) {
@@ -43,6 +65,8 @@ export async function POST(request: NextRequest) {
         { status: 401 },
       );
     }
+
+    const childPanelPrice = await getChildPanelPrice();
 
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
@@ -93,11 +117,11 @@ export async function POST(request: NextRequest) {
 
     const currentBalance = Number(profile.balance || 0);
 
-    if (currentBalance < CHILD_PANEL_PRICE) {
+    if (currentBalance < childPanelPrice) {
       return NextResponse.json(
         {
           success: false,
-          message: `Insufficient balance. You need ₱${CHILD_PANEL_PRICE.toFixed(
+          message: `Insufficient balance. You need ₱${childPanelPrice.toFixed(
             2,
           )} to subscribe.`,
         },
@@ -106,16 +130,15 @@ export async function POST(request: NextRequest) {
     }
 
     const now = new Date();
-
-const expiresAt = addOneMonth(now);
-    const newBalance = currentBalance - CHILD_PANEL_PRICE;
+    const expiresAt = addOneMonth(now);
+    const newBalance = currentBalance - childPanelPrice;
 
     const { data: subscription, error: subscriptionError } =
       await supabaseAdmin
         .from("child_panel_subscriptions")
         .insert({
           user_id: user.id,
-          price: CHILD_PANEL_PRICE,
+          price: childPanelPrice,
           status: "active",
           auto_renew: true,
           started_at: now.toISOString(),
@@ -156,28 +179,29 @@ const expiresAt = addOneMonth(now);
       );
     }
 
-await supabaseAdmin.from("cash_movements").insert({
-  cash_account_id: null,
-  type: "child_panel_subscription",
-  amount: CHILD_PANEL_PRICE,
-  description: "Child Panel monthly subscription revenue",
-  reference_type: "child_panel_subscription",
-  reference_id: subscription.id,
-});
-await supabaseAdmin.from("wallet_transactions").insert({
-  user_id: user.id,
-  type: "child_panel_subscription",
-  amount: -CHILD_PANEL_PRICE,
-  status: "completed",
-  description: "Child Panel monthly subscription",
-  reference_type: "child_panel_subscription",
-  reference_id: subscription.id,
-});
+    await supabaseAdmin.from("cash_movements").insert({
+      cash_account_id: null,
+      type: "child_panel_subscription",
+      amount: childPanelPrice,
+      description: "Child Panel monthly subscription revenue",
+      reference_type: "child_panel_subscription",
+      reference_id: subscription.id,
+    });
+
+    await supabaseAdmin.from("wallet_transactions").insert({
+      user_id: user.id,
+      type: "child_panel_subscription",
+      amount: -childPanelPrice,
+      status: "completed",
+      description: "Child Panel monthly subscription",
+      reference_type: "child_panel_subscription",
+      reference_id: subscription.id,
+    });
 
     await supabaseAdmin.from("notifications").insert({
       user_id: user.id,
       title: "Child Panel Subscription Activated",
-      message: `Your Child Panel subscription is now active until ${expiresAt.toLocaleDateString()}. ₱${CHILD_PANEL_PRICE.toFixed(
+      message: `Your Child Panel subscription is now active until ${expiresAt.toLocaleDateString()}. ₱${childPanelPrice.toFixed(
         2,
       )} was deducted from your wallet.`,
       type: "child_panel_subscription",
@@ -187,7 +211,7 @@ await supabaseAdmin.from("wallet_transactions").insert({
     return NextResponse.json({
       success: true,
       subscriptionId: subscription.id,
-      price: CHILD_PANEL_PRICE,
+      price: childPanelPrice,
       newBalance,
       expiresAt: expiresAt.toISOString(),
       message: "Child Panel subscription activated successfully.",

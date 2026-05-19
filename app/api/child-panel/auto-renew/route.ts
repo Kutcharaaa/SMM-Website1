@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-const CHILD_PANEL_PRICE = 349;
+const DEFAULT_CHILD_PANEL_PRICE = 349;
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,9 +14,32 @@ function addOneMonth(date: Date) {
   return next;
 }
 
+function toNumber(value: unknown, fallback = 0) {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : fallback;
+}
+
+async function getChildPanelPrice() {
+  const { data, error } = await supabaseAdmin
+    .from("platform_settings")
+    .select("value")
+    .eq("key", "child_panel_price")
+    .maybeSingle();
+
+  if (error) {
+    console.warn("CHILD_PANEL_PRICE_SETTING_ERROR:", error.message);
+    return DEFAULT_CHILD_PANEL_PRICE;
+  }
+
+  const price = toNumber(data?.value, DEFAULT_CHILD_PANEL_PRICE);
+
+  return price > 0 ? price : DEFAULT_CHILD_PANEL_PRICE;
+}
+
 export async function GET() {
   try {
     const now = new Date();
+    const childPanelPrice = await getChildPanelPrice();
 
     const { data: subscriptions, error: subscriptionsError } =
       await supabaseAdmin
@@ -79,8 +102,8 @@ export async function GET() {
 
       const currentBalance = Number(profile.balance || 0);
 
-      if (currentBalance >= CHILD_PANEL_PRICE) {
-        const newBalance = currentBalance - CHILD_PANEL_PRICE;
+      if (currentBalance >= childPanelPrice) {
+        const newBalance = currentBalance - childPanelPrice;
         const newExpiresAt = addOneMonth(now);
 
         const { error: profileUpdateError } = await supabaseAdmin
@@ -104,34 +127,34 @@ export async function GET() {
           .update({
             expires_at: newExpiresAt.toISOString(),
             last_renewed_at: now.toISOString(),
-            price: CHILD_PANEL_PRICE,
+            price: childPanelPrice,
             status: "active",
           })
           .eq("id", subscription.id);
 
-await supabaseAdmin.from("cash_movements").insert({
-  cash_account_id: null,
-  type: "child_panel_auto_renew",
-  amount: CHILD_PANEL_PRICE,
-  description: "Child Panel monthly auto-renewal revenue",
-  reference_type: "child_panel_subscription",
-  reference_id: subscription.id,
-});
+        await supabaseAdmin.from("cash_movements").insert({
+          cash_account_id: null,
+          type: "child_panel_auto_renew",
+          amount: childPanelPrice,
+          description: "Child Panel monthly auto-renewal revenue",
+          reference_type: "child_panel_subscription",
+          reference_id: subscription.id,
+        });
 
-await supabaseAdmin.from("wallet_transactions").insert({
-  user_id: profile.id,
-  type: "child_panel_auto_renew",
-  amount: -CHILD_PANEL_PRICE,
-  status: "completed",
-  description: "Child Panel monthly auto-renewal",
-  reference_type: "child_panel_subscription",
-  reference_id: subscription.id,
-});
+        await supabaseAdmin.from("wallet_transactions").insert({
+          user_id: profile.id,
+          type: "child_panel_auto_renew",
+          amount: -childPanelPrice,
+          status: "completed",
+          description: "Child Panel monthly auto-renewal",
+          reference_type: "child_panel_subscription",
+          reference_id: subscription.id,
+        });
 
         await supabaseAdmin.from("notifications").insert({
           user_id: profile.id,
           title: "Child Panel Subscription Renewed",
-          message: `Your Child Panel subscription has been renewed for ₱${CHILD_PANEL_PRICE.toFixed(
+          message: `Your Child Panel subscription has been renewed for ₱${childPanelPrice.toFixed(
             2,
           )}.`,
           type: "child_panel_auto_renew",
@@ -146,7 +169,6 @@ await supabaseAdmin.from("wallet_transactions").insert({
             child_panel_access: false,
             child_panel_access_type: "locked",
             child_panel_subscription_status: "expired",
-            child_panel_subscription_expires_at: subscription.expires_at,
           })
           .eq("id", profile.id);
 
@@ -154,15 +176,17 @@ await supabaseAdmin.from("wallet_transactions").insert({
           .from("child_panel_subscriptions")
           .update({
             status: "expired",
+            auto_renew: false,
           })
           .eq("id", subscription.id);
 
         await supabaseAdmin.from("notifications").insert({
           user_id: profile.id,
           title: "Child Panel Subscription Expired",
-          message:
-            "Your Child Panel subscription expired because your wallet balance was not enough for auto-renewal.",
-          type: "child_panel_expired",
+          message: `Your Child Panel subscription expired because your wallet balance was not enough for the ₱${childPanelPrice.toFixed(
+            2,
+          )} renewal.`,
+          type: "child_panel_subscription_expired",
           is_read: false,
         });
 
@@ -177,12 +201,13 @@ await supabaseAdmin.from("wallet_transactions").insert({
       expiredCount,
       skippedCount,
       checkedCount: subscriptions?.length || 0,
+      price: childPanelPrice,
     });
   } catch {
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to process Child Panel auto-renewals.",
+        message: "Failed to process child panel auto-renew.",
       },
       { status: 500 },
     );

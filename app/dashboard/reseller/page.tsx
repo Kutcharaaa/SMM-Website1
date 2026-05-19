@@ -116,7 +116,7 @@ const RESELLER_LEVELS: ResellerLevel[] = [
 
 const PHP_PER_USD = 56;
 const MIN_CONVERT_POINTS = 100;
-const CHILD_PANEL_PRICE = 349;
+const DEFAULT_CHILD_PANEL_PRICE = 349;
 
 export default function ResellerPage() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -128,6 +128,7 @@ export default function ResellerPage() {
   const [subscribingChildPanel, setSubscribingChildPanel] = useState(false);
   const [childPanelModalOpen, setChildPanelModalOpen] = useState(false);
   const [childPanelAutoRenew, setChildPanelAutoRenew] = useState(false);
+  const [childPanelPrice, setChildPanelPrice] = useState(DEFAULT_CHILD_PANEL_PRICE);
   const [cancellingAutoRenew, setCancellingAutoRenew] = useState(false);
   const [enablingAutoRenew, setEnablingAutoRenew] = useState(false);
   const [childPanelManageModalOpen, setChildPanelManageModalOpen] = useState(false);
@@ -139,9 +140,31 @@ export default function ResellerPage() {
 
   const { formatAmount } = useDisplayCurrency();
 
+  async function loadChildPanelPrice() {
+    const { data, error } = await supabase
+      .from("platform_settings")
+      .select("value")
+      .eq("key", "child_panel_price")
+      .maybeSingle();
+
+    if (error) {
+      console.warn("childPanelPrice_SETTING_ERROR:", error.message);
+      setChildPanelPrice(DEFAULT_CHILD_PANEL_PRICE);
+      return DEFAULT_CHILD_PANEL_PRICE;
+    }
+
+    const price = Number(data?.value || DEFAULT_CHILD_PANEL_PRICE);
+    const finalPrice =
+      Number.isFinite(price) && price > 0 ? price : DEFAULT_CHILD_PANEL_PRICE;
+
+    setChildPanelPrice(finalPrice);
+    return finalPrice;
+  }
+
   async function loadData() {
     setLoading(true);
     setMessage("");
+    await loadChildPanelPrice();
 
     const {
       data: { user },
@@ -691,7 +714,7 @@ export default function ResellerPage() {
               <ChildPanelMetric
                 isUnlocked={childPanelUnlocked}
                 accessLabel={childPanelAccessLabel}
-                price={CHILD_PANEL_PRICE}
+                price={childPanelPrice}
                 subscribing={subscribingChildPanel}
                 autoRenew={childPanelAutoRenew}
                 cancellingAutoRenew={cancellingAutoRenew}
@@ -1056,7 +1079,7 @@ export default function ResellerPage() {
                       Monthly Price
                     </p>
                     <p className="mt-2 text-2xl font-black text-blue-600">
-                      ₱{CHILD_PANEL_PRICE}/month
+                      ₱{childPanelPrice}/month
                     </p>
                   </div>
 
@@ -1081,7 +1104,7 @@ export default function ResellerPage() {
 
                       <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
                         {childPanelAutoRenew
-                          ? `Your subscription renews automatically for ₱${CHILD_PANEL_PRICE}/month if you have enough balance.`
+                          ? `Your subscription renews automatically for ₱${childPanelPrice}/month if you have enough balance.`
                           : "Auto-renew is off. Your access will stay active until the current expiry date."}
                       </p>
                     </div>
@@ -1156,7 +1179,7 @@ export default function ResellerPage() {
                   </h3>
 
                   <p className="mt-1 text-sm font-semibold text-slate-500">
-                    Unlock your own reseller child panel for ₱{CHILD_PANEL_PRICE}/month.
+                    Unlock your own reseller child panel for ₱{childPanelPrice}/month.
                   </p>
                 </div>
 
@@ -1196,7 +1219,7 @@ export default function ResellerPage() {
                       Monthly Price
                     </p>
                     <p className="mt-2 text-2xl font-black text-blue-600">
-                      ₱{CHILD_PANEL_PRICE}/month
+                      ₱{childPanelPrice}/month
                     </p>
                   </div>
 
@@ -1224,7 +1247,7 @@ export default function ResellerPage() {
                 </div>
 
                 <div className="rounded-2xl border border-orange-100 bg-orange-50 p-4 text-sm font-bold leading-6 text-orange-700">
-                  By confirming, ₱{CHILD_PANEL_PRICE} will be deducted from your wallet
+                  By confirming, ₱{childPanelPrice} will be deducted from your wallet
                   balance. If your balance is not enough, the subscription will not proceed.
                   Your subscription will auto-renew every month if you have enough balance.
                 </div>
@@ -1253,7 +1276,7 @@ export default function ResellerPage() {
                   )}
                   {subscribingChildPanel
                     ? "Subscribing..."
-                    : `Confirm Subscribe ₱${CHILD_PANEL_PRICE}/mo`}
+                    : `Confirm Subscribe ₱${childPanelPrice}/mo`}
                 </button>
               </div>
             </div>
