@@ -1181,13 +1181,16 @@ function ChildPanelMetric({
 
     return (
       <div className="rounded-2xl border border-green-200 bg-white p-5 shadow-sm transition hover:border-green-400 hover:bg-green-50">
-        <Link href="/dashboard/child-panel" className="block">
-          <div className="flex items-center gap-5">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-green-100 text-green-600">
+        <div className="flex items-start gap-4">
+          <Link
+            href="/dashboard/child-panel"
+            className="flex min-w-0 flex-1 items-center gap-4"
+          >
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-green-100 text-green-600">
               <Unlock size={26} />
             </div>
 
-            <div>
+            <div className="min-w-0">
               <p className="text-xs font-black uppercase tracking-wide text-slate-500">
                 Child Panel Access
               </p>
@@ -1200,47 +1203,43 @@ function ChildPanelMetric({
                 {accessLabel}
               </p>
             </div>
-          </div>
-        </Link>
+          </Link>
+
+          {isPaidActive && (
+            <span
+              className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-black uppercase ${
+                autoRenew
+                  ? "bg-green-100 text-green-700"
+                  : "bg-red-100 text-red-700"
+              }`}
+            >
+              {autoRenew ? "Auto" : "Cancelled"}
+            </span>
+          )}
+        </div>
 
         {isPaidActive && (
-          <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-3">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-black uppercase tracking-wide text-slate-500">
-                Auto Renew
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
+            <div className="min-w-0">
+              <p className="text-[11px] font-black uppercase tracking-wide text-slate-500">
+                {autoRenew ? `Renews ₱${price}/mo` : "Auto-renew cancelled"}
               </p>
 
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-black ${
-                  autoRenew
-                    ? "bg-green-100 text-green-700"
-                    : "bg-red-100 text-red-700"
-                }`}
-              >
-                {autoRenew ? "Enabled" : "Cancelled"}
-              </span>
+              {subscriptionExpiresAt && (
+                <p className="mt-0.5 truncate text-[11px] font-semibold text-slate-500">
+                  Expires: {formatDate(subscriptionExpiresAt)}
+                </p>
+              )}
             </div>
-
-            <p className="mt-2 text-xs font-semibold text-slate-500">
-              {autoRenew
-                ? `Renews automatically for ₱${price}/month.`
-                : "Access stays active until your current expiry date."}
-            </p>
-
-            {subscriptionExpiresAt && (
-              <p className="mt-1 text-xs font-semibold text-slate-500">
-                Expires: {formatDate(subscriptionExpiresAt)}
-              </p>
-            )}
 
             {autoRenew && (
               <button
                 type="button"
                 onClick={onCancelAutoRenew}
                 disabled={cancellingAutoRenew}
-                className="mt-3 w-full rounded-xl border border-red-200 bg-white px-4 py-2 text-xs font-black text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                className="shrink-0 rounded-lg border border-red-200 bg-white px-3 py-2 text-[11px] font-black text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {cancellingAutoRenew ? "Cancelling..." : "Cancel Auto Renew"}
+                {cancellingAutoRenew ? "..." : "Cancel"}
               </button>
             )}
           </div>
