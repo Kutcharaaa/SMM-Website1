@@ -36,6 +36,12 @@ type ProfileData = {
   balance?: number | string | null;
   total_spent?: number | string | null;
   reseller_points?: number | string | null;
+
+  reseller_level?: number | string | null;
+  child_panel_access?: boolean | null;
+  child_panel_access_type?: string | null;
+  child_panel_subscription_status?: string | null;
+  child_panel_subscription_expires_at?: string | null;
 };
 
 type ConversionRecord = {
@@ -110,6 +116,7 @@ const RESELLER_LEVELS: ResellerLevel[] = [
 
 const PHP_PER_USD = 56;
 const MIN_CONVERT_POINTS = 100;
+const CHILD_PANEL_PRICE = 349;
 
 export default function ResellerPage() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -118,6 +125,7 @@ export default function ResellerPage() {
   const [loading, setLoading] = useState(true);
   const [loadingAllHistory, setLoadingAllHistory] = useState(false);
   const [converting, setConverting] = useState(false);
+  const [subscribingChildPanel, setSubscribingChildPanel] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [pointsInput, setPointsInput] = useState("100");
   const [message, setMessage] = useState("");
@@ -221,6 +229,35 @@ export default function ResellerPage() {
 
   const currentLevel = getCurrentLevel(totalSpend);
   const nextLevel = getNextLevel(currentLevel.level);
+
+  const savedSubscriptionStatus = String(
+  profile?.child_panel_subscription_status || "inactive",
+).toLowerCase();
+
+const savedChildPanelType = String(
+  profile?.child_panel_access_type || "locked",
+).toLowerCase();
+
+const hasPaidChildPanel =
+  savedSubscriptionStatus === "active" || savedChildPanelType === "paid";
+
+const hasManualChildPanel = savedChildPanelType === "manual";
+
+const hasLevelChildPanel = currentLevel.level >= 3 || currentLevel.childPanel;
+
+const childPanelUnlocked =
+  hasLevelChildPanel ||
+  hasPaidChildPanel ||
+  hasManualChildPanel ||
+  Boolean(profile?.child_panel_access);
+
+const childPanelAccessLabel = hasLevelChildPanel
+  ? "Free Lifetime"
+  : hasPaidChildPanel
+    ? "Paid Active"
+    : hasManualChildPanel
+      ? "Manual Unlock"
+      : "Locked";
 
   const requiredSpend = nextLevel?.requiredSpend || currentLevel.requiredSpend;
   const remainingSpend = nextLevel
@@ -329,6 +366,47 @@ export default function ResellerPage() {
     await loadData();
     setMessage(`Converted ${pointsToConvert} points to ${formatAmount(phpCredit)}.`);
   }
+
+async function subscribeChildPanel() {
+  if (subscribingChildPanel) return;
+
+  setMessage("");
+  setSubscribingChildPanel(true);
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session?.access_token) {
+    setMessage("You must be logged in to subscribe.");
+    setSubscribingChildPanel(false);
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/child-panel/subscribe", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+
+    const result = await response.json();
+
+    if (!result.success) {
+      setMessage(result.message || "Failed to subscribe to Child Panel.");
+      setSubscribingChildPanel(false);
+      return;
+    }
+
+    setMessage(result.message || "Child Panel subscription activated.");
+    await loadData();
+  } catch {
+    setMessage("Failed to subscribe to Child Panel.");
+  }
+
+  setSubscribingChildPanel(false);
+}
 
   return (
     <DashboardGuard>
@@ -456,7 +534,13 @@ export default function ResellerPage() {
                 color="bg-orange-100 text-orange-500"
               />
 
-              <ChildPanelMetric isUnlocked={currentLevel.childPanel} />
+              <ChildPanelMetric
+  isUnlocked={childPanelUnlocked}
+  accessLabel={childPanelAccessLabel}
+  price={CHILD_PANEL_PRICE}
+  subscribing={subscribingChildPanel}
+  onSubscribe={subscribeChildPanel}
+/>
             </section>
 
             <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_520px]">
@@ -865,7 +949,19 @@ function MetricCard({
   );
 }
 
-function ChildPanelMetric({ isUnlocked }: { isUnlocked: boolean }) {
+function ChildPanelMetric({
+  isUnlocked,
+  accessLabel,
+  price,
+  subscribing,
+  onSubscribe,
+}: {
+  isUnlocked: boolean;
+  accessLabel: string;
+  price: number;
+  subscribing: boolean;
+  onSubscribe: () => void;
+}) {
   if (isUnlocked) {
     return (
       <Link
@@ -887,7 +983,7 @@ function ChildPanelMetric({ isUnlocked }: { isUnlocked: boolean }) {
             </h3>
 
             <p className="mt-1 text-sm font-semibold text-slate-400">
-              Click to manage your child panel
+              {accessLabel}
             </p>
           </div>
         </div>
@@ -896,9 +992,14 @@ function ChildPanelMetric({ isUnlocked }: { isUnlocked: boolean }) {
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <button
+      type="button"
+      onClick={onSubscribe}
+      disabled={subscribing}
+      className="rounded-2xl border border-blue-200 bg-white p-5 text-left shadow-sm transition hover:border-blue-400 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+    >
       <div className="flex items-center gap-5">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-100 text-red-500">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100 text-blue-600">
           <Lock size={26} />
         </div>
 
@@ -907,16 +1008,16 @@ function ChildPanelMetric({ isUnlocked }: { isUnlocked: boolean }) {
             Child Panel Access
           </p>
 
-          <h3 className="mt-2 text-2xl font-black text-red-500">
-            Locked
+          <h3 className="mt-2 text-2xl font-black text-blue-600">
+            {subscribing ? "Subscribing..." : `Subscribe ₱${price}/mo`}
           </h3>
 
           <p className="mt-1 text-sm font-semibold text-slate-400">
-            Unlock at Pro Reseller
+            Auto-renew enabled by default
           </p>
         </div>
       </div>
-    </div>
+    </button>
   );
 }
 
