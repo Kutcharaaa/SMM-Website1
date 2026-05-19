@@ -16,7 +16,6 @@ import {
   Landmark,
   LayoutDashboard,
   LogOut,
-  Megaphone,
   Menu,
   MessageCircle,
   Package,
@@ -51,9 +50,17 @@ type MenuGroup = {
   items: MenuItem[];
 };
 
+type AdminSidebarProps = {
+  mobileOpen?: boolean;
+  onClose?: () => void;
+};
+
 const adminRoles = ["admin", "head_admin", "super_admin"];
 
-export default function AdminSidebar() {
+export default function AdminSidebar({
+  mobileOpen = false,
+  onClose,
+}: AdminSidebarProps) {
   const pathname = usePathname();
 
   const [role, setRole] = useState<Role>("admin");
@@ -71,7 +78,6 @@ export default function AdminSidebar() {
 
   const [minimized, setMinimized] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
-  const [mobileOpen, setMobileOpen] = useState(false);
 
   const groups: MenuGroup[] = [
     {
@@ -219,7 +225,7 @@ export default function AdminSidebar() {
         {
           name: "Announcements",
           href: "/admin/announcements",
-          icon: Megaphone,
+          icon: Bell,
           roles: ["head_admin", "super_admin"],
         },
       ],
@@ -377,6 +383,17 @@ export default function AdminSidebar() {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    if (!mobileOpen) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [mobileOpen]);
+
   function toggleSidebar() {
     const next = !minimized;
     setMinimized(next);
@@ -394,7 +411,7 @@ export default function AdminSidebar() {
   }
 
   function closeMobile() {
-    setMobileOpen(false);
+    onClose?.();
   }
 
   function handlePaymentsClick() {
@@ -481,34 +498,29 @@ export default function AdminSidebar() {
 
   return (
     <>
-      <button
-        onClick={() => setMobileOpen(true)}
-        className="fixed left-4 top-4 z-[60] flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-900/40 bg-[#062712] text-white shadow-2xl lg:hidden"
-      >
-        <Menu size={21} />
-      </button>
-
       {mobileOpen && (
-        <div
-          onClick={() => setMobileOpen(false)}
+        <button
+          type="button"
+          aria-label="Close admin sidebar overlay"
+          onClick={closeMobile}
           className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
         />
       )}
 
       <aside
-        className={`fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-emerald-900/40 bg-gradient-to-b from-[#052715] via-[#031d0f] to-[#02140a] text-white shadow-2xl shadow-emerald-950/30 transition-all duration-300 ${
-          minimized ? "w-24" : "w-72"
+        className={`fixed left-0 top-0 z-50 flex h-dvh flex-col border-r border-emerald-900/40 bg-gradient-to-b from-[#052715] via-[#031d0f] to-[#02140a] text-white shadow-2xl shadow-emerald-950/30 transition-all duration-300 ${
+          minimized ? "w-24" : "w-72 max-w-[86vw]"
         } ${
           mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
         <div className="flex items-center justify-between px-5 pb-4 pt-6">
           {!minimized ? (
-            <Link href="/admin" onClick={closeMobile}>
+            <Link href="/admin" onClick={closeMobile} className="min-w-0">
               <img
                 src="/logoadmin.png"
                 alt="Ascend Service"
-                className="h-14 w-auto"
+                className="h-14 w-auto max-w-[190px]"
               />
             </Link>
           ) : (
@@ -524,6 +536,7 @@ export default function AdminSidebar() {
           {!minimized && (
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={toggleSidebar}
                 className="hidden h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-emerald-100 transition hover:bg-white/15 lg:flex"
                 title="Minimize sidebar"
@@ -532,7 +545,8 @@ export default function AdminSidebar() {
               </button>
 
               <button
-                onClick={() => setMobileOpen(false)}
+                type="button"
+                onClick={closeMobile}
                 className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-emerald-100 transition hover:bg-white/15 lg:hidden"
               >
                 <X size={18} />
@@ -544,6 +558,7 @@ export default function AdminSidebar() {
         {minimized && (
           <div className="px-4 pb-4">
             <button
+              type="button"
               onClick={toggleSidebar}
               className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 text-emerald-100 transition hover:bg-white/15"
               title="Maximize sidebar"
@@ -557,16 +572,17 @@ export default function AdminSidebar() {
           <div className="px-4 pb-4">
             <div className="rounded-3xl border border-white/10 bg-white/10 p-4 shadow-lg shadow-black/20 backdrop-blur-xl">
               <div className="flex items-center justify-between">
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs font-semibold text-emerald-100/70">
                     Admin Access
                   </p>
-                  <h2 className="mt-1 text-xl font-black tracking-tight">
+
+                  <h2 className="mt-1 truncate text-xl font-black tracking-tight">
                     Control Panel
                   </h2>
                 </div>
 
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-300">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-300">
                   <ShieldCheck size={23} />
                 </div>
               </div>
@@ -602,6 +618,7 @@ export default function AdminSidebar() {
                 <div key={group.title}>
                   {!minimized && (
                     <button
+                      type="button"
                       onClick={() => toggleGroup(group.title)}
                       className="flex w-full items-center justify-between rounded-2xl px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-emerald-100/50 transition hover:bg-white/5 hover:text-emerald-100"
                     >
@@ -648,7 +665,7 @@ export default function AdminSidebar() {
                             )}
 
                             {!minimized && badge && badge.count > 0 && (
-                              <div className="flex items-center gap-2">
+                              <div className="flex shrink-0 items-center gap-2">
                                 <span
                                   className={`flex h-6 min-w-6 items-center justify-center rounded-full px-2 text-[11px] font-black ${badge.color}`}
                                 >
@@ -685,17 +702,17 @@ export default function AdminSidebar() {
           {!minimized ? (
             <div className="rounded-3xl border border-white/10 bg-white/10 p-4 shadow-lg shadow-black/20 backdrop-blur-xl">
               <div className="flex items-start justify-between gap-3">
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs font-semibold text-emerald-100/70">
                     System Balance
                   </p>
 
-                  <h3 className="mt-2 text-2xl font-black tracking-tight text-white">
+                  <h3 className="mt-2 truncate text-2xl font-black tracking-tight text-white">
                     {formatMoney(systemBalance)}
                   </h3>
                 </div>
 
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-300">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-300">
                   <Wallet size={23} />
                 </div>
               </div>
