@@ -186,8 +186,8 @@ export default function AdminSidebar() {
           roles: adminRoles,
         },
         {
-          name: "Reseller Requests",
-          href: "/admin/reseller-requests",
+          name: "Reseller Management",
+          href: "/admin/reseller-management",
           icon: HandCoins,
           roles: ["head_admin", "super_admin"],
         },
