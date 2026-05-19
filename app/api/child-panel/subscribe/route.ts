@@ -165,14 +165,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await supabaseAdmin.from("cash_movements").insert({
-      cash_account_id: null,
-      type: "child_panel_subscription",
-      amount: -CHILD_PANEL_PRICE,
-      description: "Child Panel monthly subscription",
-      reference_type: "child_panel_subscription",
-      reference_id: subscription.id,
-    });
+await supabaseAdmin.from("cash_movements").insert({
+  cash_account_id: null,
+  type: "child_panel_subscription",
+  amount: CHILD_PANEL_PRICE,
+  description: "Child Panel monthly subscription revenue",
+  reference_type: "child_panel_subscription",
+  reference_id: subscription.id,
+});
 
     await supabaseAdmin.from("notifications").insert({
       user_id: user.id,

@@ -143,8 +143,7 @@ function isOutflow(type?: string | null, amount?: number | string | null) {
   if (
     clean === "expense" ||
     clean === "provider_payment" ||
-    clean === "refund" ||
-    clean === "child_panel_subscription"
+    clean === "refund" 
   ) {
     return true;
   }
