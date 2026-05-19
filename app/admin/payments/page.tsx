@@ -76,6 +76,68 @@ const statusOptions: { label: string; value: StatusFilter }[] = [
   { label: "Rejected", value: "rejected" },
 ];
 
+type AffiliateLevelRule = {
+  level: number;
+  name: string;
+  requiredDeposits: number;
+  commissionRate: number;
+};
+
+const AFFILIATE_LEVEL_RULES: AffiliateLevelRule[] = [
+  {
+    level: 1,
+    name: "Starter Affiliate",
+    requiredDeposits: 0,
+    commissionRate: 1.25,
+  },
+  {
+    level: 2,
+    name: "Active Affiliate",
+    requiredDeposits: 12000,
+    commissionRate: 1.5,
+  },
+  {
+    level: 3,
+    name: "Pro Affiliate",
+    requiredDeposits: 35000,
+    commissionRate: 2,
+  },
+  {
+    level: 4,
+    name: "Elite Affiliate",
+    requiredDeposits: 80000,
+    commissionRate: 2.5,
+  },
+  {
+    level: 5,
+    name: "Ascend Partner",
+    requiredDeposits: 200000,
+    commissionRate: 3,
+  },
+];
+
+function getAffiliateLevelByDeposits(totalReferralDeposits: number) {
+  return AFFILIATE_LEVEL_RULES.reduce((current, level) => {
+    if (totalReferralDeposits >= level.requiredDeposits) {
+      return level;
+    }
+
+    return current;
+  }, AFFILIATE_LEVEL_RULES[0]);
+}
+
+function getReferralName(userId: string, profiles: UserProfile[]) {
+  const profile = profiles.find((item) => item.id === userId);
+
+  if (!profile) return shortUserId(userId);
+
+  if (profile.username) return profile.username;
+
+  const fullName = `${profile.firstname || ""} ${profile.lastname || ""}`.trim();
+
+  return fullName || shortUserId(userId);
+}
+
 function normalizeStatus(status?: string | null) {
   return String(status || "pending").toLowerCase().trim();
 }
@@ -158,7 +220,7 @@ function getReviewedLabel(deposit: Deposit, profiles: UserProfile[]) {
   const reviewer = getReviewerDisplayName(deposit, profiles);
 
   if (status === "approved") {
-    return `${reviewer}`;
+    return `Approved by ${reviewer}`;
   }
 
   if (status === "rejected") {
@@ -460,6 +522,101 @@ useEffect(() => {
     });
   }
 
+  async function createAffiliateCommissionForDeposit(
+    deposit: Deposit,
+    approvedAmount: number,
+  ) {
+    try {
+      if (!deposit.user_id || approvedAmount <= 0) {
+        return "";
+      }
+
+      const { data: referral, error: referralError } = await supabase
+        .from("affiliate_referrals")
+        .select("*")
+        .eq("referred_user_id", deposit.user_id)
+        .maybeSingle();
+
+      if (referralError) {
+        console.error("AFFILIATE_REFERRAL_LOOKUP_ERROR:", referralError.message);
+        return ` Deposit approved, but affiliate lookup failed: ${referralError.message}`;
+      }
+
+      if (!referral?.referrer_id) {
+        return "";
+      }
+
+      if (referral.referrer_id === deposit.user_id) {
+        return "";
+      }
+
+      const totalDepositsBefore = Number(referral.total_deposits || 0);
+      const totalCommissionBefore = Number(referral.total_commission || 0);
+      const totalDepositsAfter = totalDepositsBefore + approvedAmount;
+      const affiliateLevel = getAffiliateLevelByDeposits(totalDepositsAfter);
+      const commissionAmount = Number(
+        ((approvedAmount * affiliateLevel.commissionRate) / 100).toFixed(2),
+      );
+
+      if (commissionAmount <= 0) {
+        return "";
+      }
+
+      const referredUsername = getReferralName(deposit.user_id, profiles);
+
+      const { error: commissionError } = await supabase
+        .from("affiliate_commissions")
+        .insert({
+          referrer_id: referral.referrer_id,
+          referred_user_id: deposit.user_id,
+          referred_username: referredUsername,
+          deposit_amount: approvedAmount,
+          commission_rate: affiliateLevel.commissionRate,
+          commission_amount: commissionAmount,
+          used_amount: 0,
+          status: "available",
+        });
+
+      if (commissionError) {
+        console.error("AFFILIATE_COMMISSION_INSERT_ERROR:", commissionError.message);
+        return ` Deposit approved, but affiliate commission failed: ${commissionError.message}`;
+      }
+
+      const { error: referralUpdateError } = await supabase
+        .from("affiliate_referrals")
+        .update({
+          total_deposits: totalDepositsAfter,
+          total_commission: totalCommissionBefore + commissionAmount,
+          commission_rate: affiliateLevel.commissionRate,
+          is_qualified: true,
+          status: "qualified",
+        })
+        .eq("id", referral.id);
+
+      if (referralUpdateError) {
+        console.error("AFFILIATE_REFERRAL_UPDATE_ERROR:", referralUpdateError.message);
+        return ` Deposit approved, commission created, but referral totals failed: ${referralUpdateError.message}`;
+      }
+
+      await supabase.from("notifications").insert({
+        user_id: referral.referrer_id,
+        title: "Affiliate Commission Earned",
+        message: `You earned ${formatMoney(
+          commissionAmount,
+        )} affiliate commission from an approved deposit by ${referredUsername}.`,
+        type: "affiliate_commission",
+        is_read: false,
+      });
+
+      return ` Affiliate commission created: ${formatMoney(
+        commissionAmount,
+      )} at ${affiliateLevel.commissionRate}% (${affiliateLevel.name}).`;
+    } catch (error) {
+      console.error("AFFILIATE_COMMISSION_CREATE_ERROR:", error);
+      return " Deposit approved, but affiliate commission could not be created.";
+    }
+  }
+
   async function approveDeposit(deposit: Deposit) {
     if (approving || rejecting) return;
 
@@ -591,6 +748,11 @@ useEffect(() => {
         return;
       }
 
+      const affiliateMessage = await createAffiliateCommissionForDeposit(
+        deposit,
+        creditAmount,
+      );
+
       await supabase.from("notifications").insert({
         user_id: deposit.user_id,
         title: "Deposit Approved",
@@ -603,7 +765,7 @@ useEffect(() => {
 
       await sendDepositEmail(deposit.id, "approved");
 
-      setMessage("Deposit approved and reviewer recorded.");
+      setMessage(`Deposit approved and reviewer recorded.${affiliateMessage || ""}`);
       setSelectedDeposit(null);
       setShowRejectBox(false);
       setRejectReason("");
