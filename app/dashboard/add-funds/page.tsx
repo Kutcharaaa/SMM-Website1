@@ -10,11 +10,9 @@ import {
   CheckCircle2,
   Copy,
   CreditCard,
-  FileImage,
   Info,
   Lock,
   Pencil,
-  ShieldCheck,
   Upload,
   Wallet,
   X,
@@ -47,13 +45,8 @@ type CurrencyRate = {
   is_enabled: boolean;
 };
 
-const DEFAULT_MINIMUM_ADD_FUNDS_PHP = 50;
 const quickAmounts = [100, 300, 500, 1000, 2000, 5000, 10000];
-
-function toNumber(value: number | string | null | undefined, fallback = 0) {
-  const numberValue = Number(value || fallback);
-  return Number.isFinite(numberValue) ? numberValue : fallback;
-}
+const DEFAULT_MINIMUM_ADD_FUNDS_PHP = 50;
 
 export default function AddFundsPage() {
   const { showToast } = useToast();
@@ -108,7 +101,7 @@ export default function AddFundsPage() {
       return;
     }
 
-    const rows = (data || []) as PaymentMethod[];
+    const rows = data || [];
     setPaymentMethods(rows);
 
     if (!methodId && rows.length > 0) {
@@ -128,23 +121,7 @@ export default function AddFundsPage() {
       return;
     }
 
-    const rows = (data || []) as CurrencyRate[];
-    const hasPhp = rows.some((item) => item.currency_code === "PHP");
-
-    setCurrencies(
-      hasPhp
-        ? rows
-        : [
-            {
-              id: "php-default",
-              currency_code: "PHP",
-              currency_name: "Philippine Peso",
-              panel_rate: 1,
-              is_enabled: true,
-            },
-            ...rows,
-          ],
-    );
+    setCurrencies(data || []);
   }
 
   useEffect(() => {
@@ -185,19 +162,20 @@ export default function AddFundsPage() {
     selectedMethod?.image_url ||
     "";
 
+  const canSubmit =
+    Number(amount || 0) >= minimumAmount &&
+    Boolean(selectedMethod) &&
+    Boolean(reference) &&
+    Boolean(proofFile) &&
+    !submittingDeposit;
+
   const selectedAmountIsPreset = quickAmounts.includes(Number(amount || 0));
+
   const processingLabel = selectedMethod?.processing_time || "Manual Review";
 
   const instructions =
     selectedMethod?.instructions ||
     "Send the exact amount to the selected payment account, enter the reference number, and upload your payment proof. Your balance will be added after admin approval.";
-
-  const canSubmit =
-    Number(amount || 0) >= minimumAmount &&
-    Boolean(selectedMethod) &&
-    Boolean(reference.trim()) &&
-    Boolean(proofFile) &&
-    !submittingDeposit;
 
   function formatCurrencyValue(value: number, code = currency) {
     const symbols: Record<string, string> = {
@@ -214,7 +192,6 @@ export default function AddFundsPage() {
     };
 
     const symbol = symbols[code] || `${code} `;
-
     return `${symbol}${Number(value || 0).toLocaleString(undefined, {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
@@ -223,13 +200,12 @@ export default function AddFundsPage() {
 
   async function copyText(text?: string | null) {
     if (!text) return;
-
     await navigator.clipboard.writeText(text);
     showToast("Copied to clipboard.", "success");
   }
 
   function resetForm() {
-    setAmount(String(Math.max(100, minimumAddFundsPhp)));
+    setAmount("100");
     setCurrency("PHP");
     setReference("");
     setProofFile(null);
@@ -248,7 +224,7 @@ export default function AddFundsPage() {
 
     setSubmittingDeposit(true);
 
-    if (!amount || !currency || !selectedMethod || !reference.trim() || !proofFile) {
+    if (!amount || !currency || !selectedMethod || !reference || !proofFile) {
       showToast("Please complete all fields and upload proof.", "warning");
       setSubmittingDeposit(false);
       return;
@@ -256,9 +232,7 @@ export default function AddFundsPage() {
 
     if (Number(amount) < minimumAmount) {
       showToast(
-        `Minimum deposit is ${formatCurrencyValue(
-          minimumAmount,
-        )} (₱${baseMinimumPhp.toFixed(2)} PHP).`,
+        `Minimum deposit is ${formatCurrencyValue(minimumAmount)} (₱${baseMinimumPhp.toFixed(2)} PHP).`,
         "warning",
       );
       setSubmittingDeposit(false);
@@ -297,7 +271,7 @@ export default function AddFundsPage() {
       conversion_rate: conversionRate,
       wallet_credit: walletCredit,
       method: selectedMethod.name,
-      reference_number: reference.trim(),
+      reference_number: reference,
       proof_url: publicUrlData.publicUrl,
       status: "pending",
     });
@@ -317,11 +291,11 @@ export default function AddFundsPage() {
         amount: Number(amount),
         currency,
         method: selectedMethod.name,
-        reference: reference.trim(),
+        reference,
         proofUrl: publicUrlData.publicUrl,
         userId: authData.user.id,
       }),
-    }).catch(() => null);
+    });
 
     const { data: admins } = await supabase
       .from("profiles")
@@ -333,539 +307,517 @@ export default function AddFundsPage() {
         admins.map((admin) => ({
           user_id: admin.id,
           title: "New Deposit Request",
-          message: `${authData.user?.email || "A user"} submitted a ${formatCurrencyValue(
-            Number(amount),
-            currency,
-          )} deposit via ${selectedMethod.name}.`,
-          type: "deposit_request",
+          message: `New ${currency} ${Number(amount).toFixed(2)} deposit request via ${selectedMethod.name}.`,
+          type: "new_deposit",
           is_read: false,
         })),
       );
     }
 
-    showToast("Deposit submitted successfully. Please wait for admin approval.", "success");
     resetForm();
+    showToast("Deposit request submitted successfully!", "success");
     setSubmittingDeposit(false);
   }
+
+  const amountPreviewText = useMemo(() => {
+    if (!amount) return "₱0.00";
+    return `₱${walletCredit.toFixed(2)}`;
+  }, [amount, walletCredit]);
 
   return (
     <DashboardGuard>
       <DashboardLayout>
-        <div className="space-y-6">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-            <div>
-              <h1 className="text-3xl font-black tracking-tight text-slate-950">
-                Add Funds
-              </h1>
-              <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
-                Choose a payment method, upload your proof, and your wallet will be credited after admin approval.
-              </p>
-            </div>
+        <div className="-m-8 min-h-screen bg-[#f6f9fc] p-6 lg:p-8">
+          <div className="mb-7">
+            <h1 className="text-3xl font-black text-slate-950">Add Funds</h1>
 
-            <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-black text-blue-700">
-              Minimum Add Funds: ₱{baseMinimumPhp.toFixed(2)}
-            </div>
+            <p className="mt-2 text-sm font-semibold text-slate-500">
+              Top up your wallet balance to place orders and enjoy our services.
+            </p>
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-[1fr_390px]">
-            <section className="space-y-6">
-              <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="mb-5 flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-                    <Wallet size={22} />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-black text-slate-950">
-                      Deposit Amount
-                    </h2>
-                    <p className="text-sm font-semibold text-slate-500">
-                      Minimum is based on ₱{baseMinimumPhp.toFixed(2)} PHP equivalent.
-                    </p>
-                  </div>
-                </div>
+          <div className="grid gap-7 xl:grid-cols-[1fr_360px]">
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <section className="border-b border-slate-100 p-5 lg:p-6">
+                <StepHeader number="1" title="Choose Payment Method" />
 
-                <div className="grid gap-4 md:grid-cols-[1fr_180px]">
-                  <label>
-                    <span className="text-sm font-black text-slate-700">
-                      Amount
-                    </span>
-                    <input
-                      value={amount}
-                      onChange={(event) => setAmount(event.target.value)}
-                      type="number"
-                      min={minimumAmount}
-                      step="0.01"
-                      placeholder="Enter amount"
-                      className="mt-2 h-14 w-full rounded-2xl border border-slate-200 bg-white px-4 text-lg font-black text-slate-950 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-50"
-                    />
-                  </label>
-
-                  <label>
-                    <span className="text-sm font-black text-slate-700">
-                      Currency
-                    </span>
-                    <select
-                      value={currency}
-                      onChange={(event) => setCurrency(event.target.value)}
-                      className="mt-2 h-14 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-50"
-                    >
-                      {currencies.map((item) => (
-                        <option key={item.currency_code} value={item.currency_code}>
-                          {item.currency_code} - {item.currency_name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-
-                <div className="mt-4 grid gap-3 sm:grid-cols-4 xl:grid-cols-7">
-                  {quickAmounts.map((value) => (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => {
-                        setAmount(String(value));
-                        setCurrency("PHP");
-                      }}
-                      className={`rounded-2xl border px-4 py-3 text-sm font-black transition ${
-                        selectedAmountIsPreset && Number(amount) === value && currency === "PHP"
-                          ? "border-blue-500 bg-blue-50 text-blue-700"
-                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                      }`}
-                    >
-                      ₱{value.toLocaleString()}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="mt-5 grid gap-4 md:grid-cols-3">
-                  <SummaryBox
-                    label="Minimum Required"
-                    value={`${formatCurrencyValue(minimumAmount)} (${formatCurrencyValue(
-                      baseMinimumPhp,
-                      "PHP",
-                    )})`}
-                  />
-                  <SummaryBox
-                    label="Conversion Rate"
-                    value={`1 ${currency} = ₱${conversionRate.toFixed(4)}`}
-                  />
-                  <SummaryBox
-                    label="Wallet Credit"
-                    value={formatCurrencyValue(walletCredit, "PHP")}
-                    positive
-                  />
-                </div>
-              </div>
-
-              <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="mb-5 flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-green-50 text-green-600">
-                    <CreditCard size={22} />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-black text-slate-950">
-                      Payment Method
-                    </h2>
-                    <p className="text-sm font-semibold text-slate-500">
-                      Select where you will send your payment.
-                    </p>
-                  </div>
-                </div>
-
-                {paymentMethods.length <= 0 ? (
-                  <div className="rounded-2xl border border-orange-100 bg-orange-50 p-5 text-sm font-bold text-orange-700">
-                    No active payment methods yet. Please contact support.
-                  </div>
-                ) : (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {paymentMethods.map((method) => {
-                      const active = method.id === methodId;
+                <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                  {paymentMethods.length <= 0 ? (
+                    <div className="col-span-full rounded-2xl border border-slate-200 p-8 text-center text-sm font-semibold text-slate-500">
+                      No active payment methods yet.
+                    </div>
+                  ) : (
+                    paymentMethods.map((method) => {
+                      const isSelected = method.id === methodId;
                       const methodIcon =
-                        method.icon_url || method.icon || method.image_url || "";
+                        method.icon_url ||
+                        method.icon ||
+                        method.image_url ||
+                        "";
 
                       return (
                         <button
                           key={method.id}
-                          type="button"
-                          onClick={() => setMethodId(method.id)}
-                          className={`rounded-3xl border p-5 text-left transition ${
-                            active
-                              ? "border-blue-500 bg-blue-50 ring-4 ring-blue-50"
-                              : "border-slate-200 bg-white hover:border-blue-200 hover:bg-slate-50"
+                          onClick={() => {
+                            setMethodId(method.id);
+                            setShowQrDetails(false);
+                            setQrPreviewOpen(false);
+                          }}
+                          className={`relative flex min-h-[138px] flex-col items-center justify-center rounded-2xl border p-5 text-center transition ${
+                            isSelected
+                              ? "border-blue-500 bg-blue-50/40 shadow-sm"
+                              : "border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/20"
                           }`}
                         >
-                          <div className="flex items-center gap-4">
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white text-blue-600 ring-1 ring-slate-200">
-                              {methodIcon ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                  src={methodIcon}
-                                  alt={method.name}
-                                  className="h-full w-full object-cover"
-                                />
-                              ) : (
-                                <CreditCard size={22} />
-                              )}
-                            </div>
+                          {isSelected && (
+                            <span className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-600/30">
+                              <Check size={16} strokeWidth={3} />
+                            </span>
+                          )}
 
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-base font-black text-slate-950">
-                                {method.name}
-                              </p>
-                              <p className="mt-1 text-xs font-semibold text-slate-500">
-                                {method.processing_time || "Manual Review"}
-                              </p>
-                            </div>
+                          <PaymentIcon src={methodIcon} name={method.name} />
 
-                            {active && (
-                              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-600 text-white">
-                                <Check size={17} />
-                              </div>
-                            )}
-                          </div>
+                          <h3 className="mt-3 text-sm font-black text-slate-950">
+                            {method.name}
+                          </h3>
+
+                          <span
+                            className={`mt-2 rounded-full px-3 py-1 text-[11px] font-black ${
+                              processingLabelFor(method) === "Instant"
+                                ? "bg-green-50 text-green-600"
+                                : "bg-slate-100 text-slate-500"
+                            }`}
+                          >
+                            {processingLabelFor(method)}
+                          </span>
                         </button>
                       );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="mb-5 flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-50 text-purple-600">
-                    <Pencil size={22} />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-black text-slate-950">
-                      Payment Details
-                    </h2>
-                    <p className="text-sm font-semibold text-slate-500">
-                      Enter your reference number and upload proof.
-                    </p>
-                  </div>
-                </div>
-
-                <label className="block">
-                  <span className="text-sm font-black text-slate-700">
-                    Reference Number / Transaction ID
-                  </span>
-                  <input
-                    value={reference}
-                    onChange={(event) => setReference(event.target.value)}
-                    placeholder="Enter payment reference number"
-                    className="mt-2 h-13 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-50"
-                  />
-                </label>
-
-                <div className="mt-5">
-                  <span className="text-sm font-black text-slate-700">
-                    Payment Proof
-                  </span>
-
-                  <label className="mt-2 flex cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center transition hover:border-blue-300 hover:bg-blue-50">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(event) =>
-                        setProofFile(event.target.files?.[0] || null)
-                      }
-                    />
-
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-blue-600 shadow-sm">
-                      <Upload size={26} />
-                    </div>
-
-                    <p className="mt-4 text-sm font-black text-slate-800">
-                      {proofFile ? proofFile.name : "Click to upload payment proof"}
-                    </p>
-                    <p className="mt-1 text-xs font-semibold text-slate-500">
-                      PNG, JPG, WEBP accepted
-                    </p>
-                  </label>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleSubmit}
-                  disabled={!canSubmit}
-                  className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-4 text-sm font-black text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {submittingDeposit ? (
-                    "Submitting..."
-                  ) : (
-                    <>
-                      Submit Deposit Request
-                      <ArrowRight size={17} />
-                    </>
+                    })
                   )}
-                </button>
-              </div>
-            </section>
-
-            <aside className="space-y-6">
-              <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-                    <Info size={22} />
-                  </div>
-
-                  <div>
-                    <h3 className="text-lg font-black text-slate-950">
-                      Payment Account
-                    </h3>
-                    <p className="text-sm font-semibold text-slate-500">
-                      Send payment to this account.
-                    </p>
-                  </div>
                 </div>
 
-                {selectedMethod ? (
-                  <div className="mt-5 space-y-4">
-                    {iconUrl && (
-                      <div className="flex justify-center">
-                        <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 p-3">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={iconUrl}
-                            alt={selectedMethod.name}
-                            className="h-20 w-20 rounded-2xl object-cover"
-                          />
-                        </div>
-                      </div>
-                    )}
+                <div className="mt-5 flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-semibold text-slate-600">
+                  <Info size={18} className="mt-0.5 shrink-0 text-blue-600" />
+                  <p>
+                    Payments are reviewed securely. Your funds will be added
+                    after successful verification.
+                  </p>
+                </div>
+              </section>
 
-                    <InfoRow
-                      label="Method"
-                      value={selectedMethod.name}
-                      onCopy={() => copyText(selectedMethod.name)}
+              <section className="border-b border-slate-100 p-5 lg:p-6">
+                <StepHeader number="2" title="Select Amount" />
+
+                <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                  {quickAmounts.map((value) => {
+                    const selected = Number(amount || 0) === value;
+
+                    return (
+                      <button
+                        key={value}
+                        onClick={() => setAmount(String(value))}
+                        className={`relative rounded-2xl border p-5 text-center transition ${
+                          selected
+                            ? "border-blue-500 bg-blue-50/50 shadow-sm"
+                            : "border-slate-200 bg-white hover:border-blue-300"
+                        }`}
+                      >
+                        {selected && (
+                          <span className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg shadow-blue-600/30">
+                            <Check size={16} strokeWidth={3} />
+                          </span>
+                        )}
+
+                        <h3 className="text-2xl font-black text-slate-950">
+                          {formatCurrencyValue(value)}
+                        </h3>
+
+                        <p className="mt-2 text-sm font-semibold text-slate-500">
+                          You pay {formatCurrencyValue(value)}
+                        </p>
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    onClick={() => {
+                      if (selectedAmountIsPreset) setAmount("");
+                    }}
+                    className={`rounded-2xl border p-5 text-center transition ${
+                      !selectedAmountIsPreset
+                        ? "border-blue-500 bg-blue-50/50 shadow-sm"
+                        : "border-slate-200 bg-white hover:border-blue-300"
+                    }`}
+                  >
+                    <Pencil size={18} className="mx-auto text-slate-500" />
+                    <h3 className="mt-2 text-base font-black text-slate-700">
+                      Custom Amount
+                    </h3>
+                    <p className="mt-2 text-sm font-semibold text-slate-500">
+                      Enter any amount
+                    </p>
+                  </button>
+                </div>
+
+                <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
+                  <label className="text-sm font-bold text-slate-600">
+                    Or enter custom amount
+                  </label>
+
+                  <div className="mt-3 flex overflow-hidden rounded-xl border border-slate-200">
+                    <input
+                      type="number"
+                      placeholder="Enter amount"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      className="h-12 flex-1 px-4 text-sm font-semibold text-slate-900 outline-none"
                     />
 
-                    <InfoRow
-                      label="Account Name"
-                      value={selectedMethod.account_name || "—"}
-                      onCopy={() => copyText(selectedMethod.account_name)}
-                    />
+                    <select
+                      value={currency}
+                      onChange={(e) => setCurrency(e.target.value)}
+                      className="border-l border-slate-200 bg-slate-50 px-4 text-sm font-black text-slate-700 outline-none"
+                    >
+                      {currencies.map((item) => (
+                        <option key={item.id} value={item.currency_code}>
+                          {item.currency_code}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                    <InfoRow
-                      label="Account Number"
-                      value={selectedMethod.account_number || "—"}
-                      onCopy={() => copyText(selectedMethod.account_number)}
-                    />
+                  <p className="mt-2 text-xs font-semibold text-slate-500">
+                    Minimum amount: {formatCurrencyValue(minimumAmount)} (₱
+                    {baseMinimumPhp.toFixed(2)} PHP)
+                  </p>
+                </div>
+              </section>
 
-                    <InfoRow label="Processing" value={processingLabel} />
+              <section className="border-b border-slate-100 p-5 lg:p-6">
+                <StepHeader number="3" title="Payment Details" />
 
-                    {selectedMethod.qr_url && (
-                      <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-black text-slate-700">
-                            QR Code
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => setQrPreviewOpen(true)}
-                            className="inline-flex items-center gap-1 text-xs font-black text-blue-600"
-                          >
-                            <ZoomIn size={14} />
-                            Enlarge
-                          </button>
-                        </div>
+                <div className="mt-5 grid gap-5 lg:grid-cols-[280px_1fr]">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                    <h3 className="text-sm font-black text-slate-900">
+                      QR Code
+                    </h3>
 
-                        <button
-                          type="button"
-                          onClick={() => setQrPreviewOpen(true)}
-                          className="mt-3 block w-full overflow-hidden rounded-2xl bg-white p-3 ring-1 ring-slate-200"
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={selectedMethod.qr_url}
-                            alt="Payment QR"
-                            className="mx-auto max-h-64 rounded-xl object-contain"
-                          />
-                        </button>
+                    {selectedMethod?.qr_url ? (
+                      <button
+                        type="button"
+                        onClick={() => setQrPreviewOpen(true)}
+                        className="group relative mt-4 block h-56 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white p-3"
+                      >
+                        <img
+                          src={selectedMethod.qr_url}
+                          alt={`${selectedMethod.name} QR Code`}
+                          className="h-full w-full object-contain"
+                        />
+
+                        <span className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition group-hover:bg-black/20 group-hover:opacity-100">
+                          <span className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-black text-slate-800 shadow-lg">
+                            <ZoomIn size={16} />
+                            Enlarge QR
+                          </span>
+                        </span>
+                      </button>
+                    ) : (
+                      <div className="mt-4 flex h-56 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white text-sm font-semibold text-slate-400">
+                        No QR uploaded
                       </div>
                     )}
 
                     <button
                       type="button"
                       onClick={() => setShowQrDetails(!showQrDetails)}
-                      className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50"
+                      className="mt-4 w-full rounded-xl border border-slate-200 bg-white py-3 text-sm font-black text-blue-600 transition hover:border-blue-300"
                     >
-                      {showQrDetails ? "Hide" : "Show"} Instructions
+                      {showQrDetails
+                        ? "Hide Account Details"
+                        : "Show Account Details"}
                     </button>
+                  </div>
 
-                    {showQrDetails && (
-                      <div className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold leading-6 text-slate-600">
-                        {instructions}
+                  <div className="space-y-4">
+                    {showQrDetails && selectedMethod && (
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <AccountBox
+                          label="Account Name"
+                          value={selectedMethod.account_name || "N/A"}
+                          onCopy={() => copyText(selectedMethod.account_name)}
+                        />
+
+                        <AccountBox
+                          label="Account Number"
+                          value={selectedMethod.account_number || "N/A"}
+                          onCopy={() => copyText(selectedMethod.account_number)}
+                        />
                       </div>
                     )}
+
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                      <label className="text-sm font-bold text-slate-600">
+                        Reference Number
+                      </label>
+
+                      <input
+                        type="text"
+                        placeholder="Enter transaction reference"
+                        value={reference}
+                        onChange={(e) => setReference(e.target.value)}
+                        className="mt-3 h-12 w-full rounded-xl border border-slate-200 px-4 text-sm font-semibold outline-none transition focus:border-blue-500"
+                      />
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                      <label className="text-sm font-bold text-slate-600">
+                        Upload Payment Proof
+                      </label>
+
+                      <label className="mt-3 flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center transition hover:border-blue-400 hover:bg-blue-50/40">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              setProofFile(e.target.files[0]);
+                            }
+                          }}
+                        />
+
+                        <Upload size={26} className="text-blue-600" />
+
+                        <p className="mt-3 text-sm font-black text-slate-800">
+                          {proofFile ? proofFile.name : "Click to upload proof"}
+                        </p>
+
+                        <p className="mt-1 text-xs font-semibold text-slate-500">
+                          PNG, JPG, WEBP screenshots are accepted.
+                        </p>
+                      </label>
+                    </div>
                   </div>
-                ) : (
-                  <div className="mt-5 rounded-2xl bg-slate-50 p-5 text-sm font-semibold text-slate-500">
-                    Select a payment method first.
+                </div>
+              </section>
+
+              <section className="p-5 lg:p-6">
+                <StepHeader number="4" title="Review & Submit" />
+
+                <button
+                  onClick={handleSubmit}
+                  disabled={!canSubmit}
+                  className="mt-5 flex w-full items-center justify-center gap-3 rounded-xl bg-blue-600 py-4 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {submittingDeposit
+                    ? "Submitting..."
+                    : "Submit Deposit Request"}
+                  <ArrowRight size={18} />
+                </button>
+
+                <div className="mt-4 flex items-center justify-center gap-2 text-xs font-semibold text-slate-500">
+                  <Lock size={14} />
+                  Secure payment review by Ascend Service
+                </div>
+              </section>
+            </div>
+
+            <aside className="space-y-5">
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-black text-slate-950">
+                    Payment Summary
+                  </h3>
+
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
+                    <Wallet size={22} />
                   </div>
-                )}
-              </div>
-
-              <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="mb-4 flex items-center gap-2">
-                  <ShieldCheck size={18} className="text-green-600" />
-                  <h3 className="text-lg font-black text-slate-950">
-                    Before You Submit
-                  </h3>
                 </div>
 
-                <div className="space-y-3">
-                  <CheckItem text="Send the exact payment amount to avoid delays." />
-                  <CheckItem text="Use the correct payment method and account details." />
-                  <CheckItem text="Upload a clear screenshot or proof of payment." />
-                  <CheckItem text="Your balance is credited only after admin approval." />
-                </div>
-              </div>
-
-              <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="mb-4 flex items-center gap-2">
-                  <Lock size={18} className="text-blue-600" />
-                  <h3 className="text-lg font-black text-slate-950">
-                    Request Summary
-                  </h3>
-                </div>
-
-                <div className="space-y-3">
-                  <SummaryLine label="Amount" value={formatCurrencyValue(Number(amount || 0))} />
-                  <SummaryLine label="Currency" value={currency} />
-                  <SummaryLine
-                    label="Wallet Credit"
-                    value={formatCurrencyValue(walletCredit, "PHP")}
-                    positive
-                  />
-                  <SummaryLine
-                    label="Minimum"
-                    value={`${formatCurrencyValue(minimumAmount)} / ₱${baseMinimumPhp.toFixed(2)}`}
-                  />
-                  <SummaryLine
-                    label="Method"
+                <div className="mt-6 space-y-5">
+                  <SummaryRow
+                    label="Payment Method"
                     value={selectedMethod?.name || "Not selected"}
                   />
+
+                  <SummaryRow label="Processing Time" value={processingLabel} />
+
+                  <SummaryRow
+                    label="Amount"
+                    value={`${currency} ${Number(amount || 0).toFixed(2)}`}
+                  />
+
+                  <div className="border-t border-slate-100 pt-5">
+                    <SummaryRow
+                      label="Total to Add"
+                      value={amountPreviewText}
+                      valueClassName="text-2xl text-blue-600"
+                    />
+                  </div>
+
+                  <SummaryRow
+                    label="Status"
+                    value="Pending Review"
+                    valueClassName="text-orange-500"
+                  />
+
+                  <div className="rounded-2xl bg-green-50 p-4 text-sm font-semibold text-green-700">
+                    Your deposit will be reviewed after proof submission.
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 className="text-lg font-black text-slate-950">
+                  Payment Instructions
+                </h3>
+
+                <div className="mt-4 whitespace-pre-line text-sm font-medium leading-relaxed text-slate-600">
+                  {instructions}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 className="text-lg font-black text-slate-950">
+                  Secure & Trusted
+                </h3>
+
+                <div className="mt-4 space-y-3">
+                  <TrustItem text="Manual verification for safety" />
+                  <TrustItem text="Secure proof upload" />
+                  <TrustItem text="Admin reviewed deposits" />
+                  <TrustItem text="24/7 support available" />
                 </div>
               </div>
             </aside>
           </div>
-        </div>
 
-        {qrPreviewOpen && selectedMethod?.qr_url && (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-            <div className="relative w-full max-w-xl rounded-[28px] bg-white p-5 shadow-2xl">
-              <button
-                type="button"
-                onClick={() => setQrPreviewOpen(false)}
-                className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
-              >
-                <X size={20} />
-              </button>
+          {qrPreviewOpen && selectedMethod?.qr_url && (
+            <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+              <div className="relative w-full max-w-2xl rounded-3xl bg-white p-5 shadow-2xl">
+                <button
+                  type="button"
+                  onClick={() => setQrPreviewOpen(false)}
+                  className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200"
+                >
+                  <X size={20} />
+                </button>
 
-              <h3 className="pr-12 text-xl font-black text-slate-950">
-                {selectedMethod.name} QR Code
-              </h3>
+                <div className="pr-12">
+                  <h3 className="text-2xl font-black text-slate-950">
+                    {selectedMethod.name} QR Code
+                  </h3>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    Scan this QR code to send your payment.
+                  </p>
+                </div>
 
-              <div className="mt-5 rounded-3xl bg-slate-50 p-4">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={selectedMethod.qr_url}
-                  alt="Payment QR Code"
-                  className="mx-auto max-h-[70vh] rounded-2xl object-contain"
-                />
+                <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <img
+                    src={selectedMethod.qr_url}
+                    alt={`${selectedMethod.name} QR Code`}
+                    className="max-h-[70vh] w-full object-contain"
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </DashboardLayout>
     </DashboardGuard>
   );
 }
 
-function SummaryBox({
-  label,
-  value,
-  positive = false,
-}: {
-  label: string;
-  value: string;
-  positive?: boolean;
-}) {
+function processingLabelFor(method: PaymentMethod) {
+  return method.processing_time || "Manual Review";
+}
+
+function StepHeader({ number, title }: { number: string; title: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-      <p className="text-xs font-black uppercase tracking-wide text-slate-400">
-        {label}
-      </p>
-      <p className={`mt-2 text-sm font-black ${positive ? "text-green-600" : "text-slate-900"}`}>
-        {value}
-      </p>
+    <div className="flex items-center gap-3">
+      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-sm font-black text-white">
+        {number}
+      </span>
+
+      <h2 className="text-lg font-black text-slate-950">{title}</h2>
     </div>
   );
 }
 
-function SummaryLine({
-  label,
-  value,
-  positive = false,
-}: {
-  label: string;
-  value: string;
-  positive?: boolean;
-}) {
+function PaymentIcon({ src, name }: { src?: string; name: string }) {
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={`${name} icon`}
+        className="h-12 w-12 rounded-xl object-contain"
+      />
+    );
+  }
+
   return (
-    <div className="flex items-center justify-between gap-4 rounded-2xl bg-slate-50 px-4 py-3">
-      <p className="text-sm font-bold text-slate-500">{label}</p>
-      <p className={`text-right text-sm font-black ${positive ? "text-green-600" : "text-slate-900"}`}>
-        {value}
-      </p>
+    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+      <CreditCard size={26} />
     </div>
   );
 }
 
-function InfoRow({
+function AccountBox({
   label,
   value,
   onCopy,
 }: {
   label: string;
   value: string;
-  onCopy?: () => void;
+  onCopy: () => void;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-      <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
         {label}
       </p>
 
-      <div className="mt-2 flex items-center gap-3">
-        <p className="min-w-0 flex-1 break-words text-sm font-black text-slate-900">
-          {value}
-        </p>
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <p className="break-all text-sm font-black text-slate-900">{value}</p>
 
-        {onCopy && value !== "—" && (
-          <button
-            type="button"
-            onClick={onCopy}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-slate-500 ring-1 ring-slate-200 transition hover:text-blue-600"
-          >
-            <Copy size={15} />
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={onCopy}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-blue-50 hover:text-blue-600"
+        >
+          <Copy size={16} />
+        </button>
       </div>
     </div>
   );
 }
 
-function CheckItem({ text }: { text: string }) {
+function SummaryRow({
+  label,
+  value,
+  valueClassName = "",
+}: {
+  label: string;
+  value: string;
+  valueClassName?: string;
+}) {
   return (
-    <div className="flex items-start gap-3">
-      <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-600">
-        <CheckCircle2 size={14} />
-      </div>
-      <p className="text-sm font-semibold leading-6 text-slate-600">{text}</p>
+    <div className="flex items-center justify-between gap-4">
+      <p className="text-sm font-bold text-slate-500">{label}</p>
+      <p
+        className={`text-right text-sm font-black text-slate-950 ${valueClassName}`}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function TrustItem({ text }: { text: string }) {
+  return (
+    <div className="flex items-center gap-3 text-sm font-semibold text-slate-600">
+      <CheckCircle2 size={17} className="text-blue-600" />
+      {text}
     </div>
   );
 }
