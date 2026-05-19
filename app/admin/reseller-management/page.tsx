@@ -57,8 +57,8 @@ type ModalMode = "view" | "manage" | null;
 const resellerLevels = [
   {
     level: 1,
-    name: "Starter Reseller",
-    badge: "Starter",
+    name: "New Reseller",
+    badge: "New",
     discount: 0,
     conversion: "$1 = 100 pts",
     pointValue: 1,
@@ -97,8 +97,8 @@ const resellerLevels = [
   },
   {
     level: 5,
-    name: "Ascend Partner",
-    badge: "Partner",
+    name: "Master Reseller",
+    badge: "Master",
     discount: 4,
     conversion: "$1.75 = 100 pts",
     pointValue: 1.75,
@@ -107,8 +107,8 @@ const resellerLevels = [
   },
   {
     level: 6,
-    name: "Ascend VIP / Ascend Master",
-    badge: "VIP",
+    name: "Ascend VIP / Ascend Partner",
+    badge: "Partner",
     discount: 5,
     conversion: "$2 = 100 pts",
     pointValue: 2,
