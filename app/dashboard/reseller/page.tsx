@@ -135,6 +135,7 @@ export default function ResellerPage() {
   const [pointsInput, setPointsInput] = useState("100");
   const [message, setMessage] = useState("");
   const [childPanelModalMessage, setChildPanelModalMessage] = useState("");
+  const [childPanelManageMessage, setChildPanelManageMessage] = useState("");
 
   const { formatAmount } = useDisplayCurrency();
 
@@ -289,14 +290,14 @@ export default function ResellerPage() {
 
   const progressPercent = nextLevel
     ? Math.min(
+      100,
+      Math.max(
+        0,
+        ((totalSpend - currentLevel.requiredSpend) /
+          (nextLevel.requiredSpend - currentLevel.requiredSpend)) *
         100,
-        Math.max(
-          0,
-          ((totalSpend - currentLevel.requiredSpend) /
-            (nextLevel.requiredSpend - currentLevel.requiredSpend)) *
-            100,
-        ),
-      )
+      ),
+    )
     : 100;
 
   const pointsToConvert = Math.max(0, Math.floor(Number(pointsInput || 0)));
@@ -473,7 +474,10 @@ export default function ResellerPage() {
         return;
       }
 
-      setMessage(result.message || "Auto-renew cancelled successfully.");
+      setChildPanelAutoRenew(false);
+      setChildPanelManageMessage(
+        result.message || "Auto-renew cancelled successfully.",
+      );
       await loadData();
     } catch {
       setMessage("Failed to cancel auto-renew.");
@@ -486,6 +490,7 @@ export default function ResellerPage() {
     if (enablingAutoRenew) return;
 
     setMessage("");
+    setChildPanelManageMessage("");
     setEnablingAutoRenew(true);
 
     const {
@@ -493,7 +498,7 @@ export default function ResellerPage() {
     } = await supabase.auth.getSession();
 
     if (!session?.access_token) {
-      setMessage("You must be logged in to enable auto-renew.");
+      setChildPanelManageMessage("You must be logged in to enable auto-renew.");
       setEnablingAutoRenew(false);
       return;
     }
@@ -508,16 +513,22 @@ export default function ResellerPage() {
 
       const result = await response.json();
 
-      if (!result.success) {
-        setMessage(result.message || "Failed to enable auto-renew.");
+      if (!response.ok || !result.success) {
+        setChildPanelManageMessage(
+          result.message || "Failed to enable auto-renew.",
+        );
         setEnablingAutoRenew(false);
         return;
       }
 
-      setMessage(result.message || "Auto-renew enabled successfully.");
+      setChildPanelAutoRenew(true);
+      setChildPanelManageMessage(
+        result.message || "Auto-renew enabled successfully.",
+      );
+
       await loadData();
     } catch {
-      setMessage("Failed to enable auto-renew.");
+      setChildPanelManageMessage("Failed to enable auto-renew.");
     }
 
     setEnablingAutoRenew(false);
@@ -663,7 +674,10 @@ export default function ResellerPage() {
                   setChildPanelModalMessage("");
                   setChildPanelModalOpen(true);
                 }}
-                onManageSubscription={() => setChildPanelManageModalOpen(true)}
+                onManageSubscription={() => {
+                  setChildPanelManageMessage("");
+                  setChildPanelManageModalOpen(true);
+                }}
               />
             </section>
 
@@ -686,26 +700,23 @@ export default function ResellerPage() {
                       return (
                         <div key={level.level} className="relative z-10 text-center">
                           <div
-                            className={`mx-auto flex h-10 w-10 items-center justify-center rounded-full border text-sm font-black ${
-                              isCurrent
+                            className={`mx-auto flex h-10 w-10 items-center justify-center rounded-full border text-sm font-black ${isCurrent
                                 ? "border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-600/20"
                                 : "border-slate-200 bg-white text-slate-600"
-                            }`}
+                              }`}
                           >
                             {level.level}
                           </div>
 
                           <div
-                            className={`mt-5 min-h-[162px] rounded-xl border px-3 py-4 ${
-                              isCurrent
+                            className={`mt-5 min-h-[162px] rounded-xl border px-3 py-4 ${isCurrent
                                 ? "border-blue-300 bg-blue-50/60"
                                 : "border-slate-100 bg-white"
-                            }`}
+                              }`}
                           >
                             <p
-                              className={`text-sm font-black ${
-                                isCurrent ? "text-blue-600" : "text-slate-950"
-                              }`}
+                              className={`text-sm font-black ${isCurrent ? "text-blue-600" : "text-slate-950"
+                                }`}
                             >
                               {level.name}
                             </p>
@@ -723,9 +734,8 @@ export default function ResellerPage() {
                             </p>
 
                             <p
-                              className={`mt-4 flex items-center justify-center gap-1 text-xs font-black ${
-                                level.childPanel ? "text-green-600" : "text-red-500"
-                              }`}
+                              className={`mt-4 flex items-center justify-center gap-1 text-xs font-black ${level.childPanel ? "text-green-600" : "text-red-500"
+                                }`}
                             >
                               {level.childPanel ? <Unlock size={13} /> : <Lock size={13} />}
                               {level.childPanel ? "Unlocked" : "Locked"}
@@ -989,6 +999,19 @@ export default function ResellerPage() {
               </div>
 
               <div className="space-y-5 p-6">
+                {childPanelManageMessage && (
+                  <div
+                    className={`rounded-2xl px-4 py-3 text-sm font-bold leading-6 ${childPanelManageMessage.toLowerCase().includes("failed") ||
+                        childPanelManageMessage.toLowerCase().includes("expired") ||
+                        childPanelManageMessage.toLowerCase().includes("no active") ||
+                        childPanelManageMessage.toLowerCase().includes("unauthorized")
+                        ? "border border-red-100 bg-red-50 text-red-700"
+                        : "border border-green-100 bg-green-50 text-green-700"
+                      }`}
+                  >
+                    {childPanelManageMessage}
+                  </div>
+                )}
                 <div className="rounded-3xl border border-green-100 bg-green-50 p-5">
                   <div className="flex items-start gap-4">
                     <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-green-100 text-green-600">
@@ -1048,11 +1071,10 @@ export default function ResellerPage() {
                     </div>
 
                     <span
-                      className={`shrink-0 rounded-full px-4 py-2 text-xs font-black uppercase ${
-                        childPanelAutoRenew
+                      className={`shrink-0 rounded-full px-4 py-2 text-xs font-black uppercase ${childPanelAutoRenew
                           ? "bg-green-100 text-green-700"
                           : "bg-red-100 text-red-700"
-                      }`}
+                        }`}
                     >
                       {childPanelAutoRenew ? "Enabled" : "Off"}
                     </span>
@@ -1265,9 +1287,8 @@ function ConversionTable({
               <tr>
                 <td
                   colSpan={4}
-                  className={`text-center text-sm font-semibold text-slate-500 ${
-                    compact ? "p-8" : "p-12"
-                  }`}
+                  className={`text-center text-sm font-semibold text-slate-500 ${compact ? "p-8" : "p-12"
+                    }`}
                 >
                   {emptyText}
                 </td>
@@ -1392,11 +1413,10 @@ function ChildPanelMetric({
             </div>
 
             <span
-              className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-black uppercase ${
-                autoRenew
+              className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-black uppercase ${autoRenew
                   ? "bg-green-100 text-green-700"
                   : "bg-red-100 text-red-700"
-              }`}
+                }`}
             >
               {autoRenew ? "Auto" : "Off"}
             </span>

@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     const { data: subscription, error: subscriptionError } =
       await supabaseAdmin
         .from("child_panel_subscriptions")
-        .select("id, status, expires_at")
+        .select("id, expires_at")
         .eq("user_id", user.id)
         .eq("status", "active")
         .order("created_at", { ascending: false })
@@ -74,7 +74,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "Your subscription is already expired. Please renew your Child Panel subscription.",
+          message:
+            "Your subscription is already expired. Please renew your Child Panel subscription.",
         },
         { status: 400 },
       );
