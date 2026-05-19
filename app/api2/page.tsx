@@ -174,19 +174,19 @@ export default function ApiPage() {
         <div className="absolute -left-28 top-24 h-[420px] w-[420px] rounded-full bg-blue-200/35 blur-3xl" />
         <div className="absolute right-0 top-0 h-[560px] w-[560px] rounded-full bg-cyan-200/30 blur-3xl" />
 
-        <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-12 px-5 py-16 lg:grid-cols-[0.95fr_1.05fr] lg:px-8 lg:py-20">
-          <div>
+        <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-10 px-4 py-12 sm:px-5 sm:py-14 lg:grid-cols-[0.95fr_1.05fr] lg:px-8 lg:py-20">
+          <div className="min-w-0">
             <div className="inline-flex items-center gap-2 rounded-2xl border border-blue-100 bg-white px-4 py-2 text-sm font-black uppercase tracking-wide text-blue-600 shadow-sm">
               <Code2 size={17} />
               Developer API
             </div>
 
-            <h1 className="mt-8 max-w-3xl text-5xl font-black leading-[1.08] tracking-tight text-slate-950 md:text-6xl">
+            <h1 className="mt-8 max-w-3xl text-4xl font-black leading-[1.08] tracking-tight text-slate-950 sm:text-5xl md:text-6xl">
               Powerful SMM API for{" "}
               <span className="text-blue-600">Resellers & Developers</span>
             </h1>
 
-            <p className="mt-6 max-w-2xl text-lg font-medium leading-8 text-slate-600">
+            <p className="mt-6 max-w-2xl text-base font-medium leading-8 text-slate-600 sm:text-lg">
               Connect your website, reseller panel, mobile app, or automation
               tool to Ascend Service and manage orders faster with our API.
             </p>
@@ -194,7 +194,7 @@ export default function ApiPage() {
             <div className="mt-8 flex flex-col gap-4 sm:flex-row">
               <Link
                 href={primaryHref}
-                className="inline-flex items-center justify-center gap-3 rounded-2xl bg-blue-600 px-8 py-4 text-base font-black text-white shadow-xl shadow-blue-600/20 transition hover:bg-blue-700"
+                className="inline-flex w-full items-center justify-center gap-3 rounded-2xl bg-blue-600 px-6 py-4 text-base font-black text-white shadow-xl shadow-blue-600/20 transition hover:bg-blue-700 sm:w-auto sm:px-8"
               >
                 <Rocket size={20} />
                 {checkingSession ? "Loading..." : primaryLabel}
@@ -203,21 +203,21 @@ export default function ApiPage() {
 
               <Link
                 href={dashboardHref}
-                className="inline-flex items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-8 py-4 text-base font-black text-slate-900 shadow-sm transition hover:border-blue-300 hover:text-blue-600"
+                className="inline-flex w-full items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white px-6 py-4 text-base font-black text-slate-900 shadow-sm transition hover:border-blue-300 hover:text-blue-600 sm:w-auto sm:px-8"
               >
                 <TerminalSquare size={20} />
                 {checkingSession ? "Loading..." : dashboardLabel}
               </Link>
             </div>
 
-            <div className="mt-10 grid max-w-2xl gap-5 sm:grid-cols-3">
+            <div className="mt-10 grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-5">
               <MiniBenefit icon={Zap} title="Fast API" text="Quick responses" />
               <MiniBenefit icon={ShieldCheck} title="Secure Access" text="API key protected" />
               <MiniBenefit icon={Headphones} title="24/7 Support" text="Help when needed" />
             </div>
           </div>
 
-          <div className="relative mx-auto w-full max-w-[620px]">
+          <div className="relative mx-auto w-full max-w-[620px] min-w-0">
             <div className="absolute -right-6 top-7 hidden rounded-3xl bg-blue-600 p-5 text-white shadow-2xl shadow-blue-600/30 lg:block">
               <Code2 size={38} />
             </div>
@@ -226,23 +226,23 @@ export default function ApiPage() {
               <Server size={38} />
             </div>
 
-            <div className="rounded-[2rem] border border-slate-200 bg-white/95 p-6 shadow-2xl shadow-blue-950/10 backdrop-blur-xl">
+            <div className="rounded-[2rem] border border-slate-200 bg-white/95 p-3 shadow-2xl shadow-blue-950/10 backdrop-blur-xl sm:p-6">
               <div className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-950 text-white">
-                <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+                <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-4 sm:px-5">
                   <div className="flex items-center gap-2">
                     <span className="h-3 w-3 rounded-full bg-red-400" />
                     <span className="h-3 w-3 rounded-full bg-yellow-400" />
                     <span className="h-3 w-3 rounded-full bg-green-400" />
                   </div>
 
-                  <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-black text-blue-100">
+                  <span className="truncate rounded-full bg-white/10 px-3 py-1 text-xs font-black text-blue-100">
                     API Request Preview
                   </span>
                 </div>
 
-                <div className="p-5">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-black text-blue-300">
+                <div className="p-4 sm:p-5">
+                  <div className="flex min-w-0 items-center justify-between gap-3">
+                    <p className="min-w-0 truncate text-sm font-black text-blue-300">
                       Create New Order
                     </p>
 
@@ -255,11 +255,11 @@ export default function ApiPage() {
                     </button>
                   </div>
 
-                  <pre className="mt-4 overflow-x-auto rounded-2xl bg-black/40 p-5 text-xs font-semibold leading-6 text-slate-200">
+                  <pre className="mt-4 max-w-full overflow-x-auto rounded-2xl bg-black/40 p-4 text-[11px] font-semibold leading-6 text-slate-200 sm:p-5 sm:text-xs">
                     <code>{codeExample}</code>
                   </pre>
 
-                  <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <PreviewCard title="Response" value="Success" />
                     <PreviewCard title="Order ID" value="#ASD10293" />
                     <PreviewCard title="Status" value="Processing" />
@@ -268,17 +268,17 @@ export default function ApiPage() {
               </div>
 
               <div className="mt-5 rounded-3xl border border-slate-200 bg-slate-50 p-5">
-                <div className="flex items-center gap-3">
+                <div className="flex min-w-0 items-center gap-3">
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
                     <KeyRound size={24} />
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <h3 className="font-black text-slate-950">
                       API Key Access
                     </h3>
 
-                    <p className="text-sm font-semibold text-slate-500">
+                    <p className="truncate text-sm font-semibold text-slate-500">
                       Manage your API key inside your dashboard.
                     </p>
                   </div>
@@ -290,14 +290,14 @@ export default function ApiPage() {
       </section>
 
       {/* Benefits */}
-      <section className="bg-white px-5 py-16 lg:px-8">
+      <section className="bg-white px-4 py-14 sm:px-5 sm:py-16 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="text-center">
             <p className="text-xs font-black uppercase tracking-[0.22em] text-blue-600">
               API Benefits
             </p>
 
-            <h2 className="mt-3 text-4xl font-black text-slate-950">
+            <h2 className="mt-3 text-3xl font-black text-slate-950 sm:text-4xl">
               Built for Automation
             </h2>
 
@@ -306,14 +306,14 @@ export default function ApiPage() {
             </p>
           </div>
 
-          <div className="mt-10 grid gap-5 md:grid-cols-4">
+          <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {apiBenefits.map((benefit) => {
               const Icon = benefit.icon;
 
               return (
                 <div
                   key={benefit.title}
-                  className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm transition hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-950/5"
+                  className="min-w-0 rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-sm transition hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-950/5 sm:p-8"
                 >
                   <div
                     className={`mx-auto flex h-20 w-20 items-center justify-center rounded-full ${benefit.color}`}
@@ -336,14 +336,14 @@ export default function ApiPage() {
       </section>
 
       {/* API Actions */}
-      <section className="border-y border-slate-200 bg-[#f8fbff] px-5 py-16 lg:px-8">
+      <section className="border-y border-slate-200 bg-[#f8fbff] px-4 py-14 sm:px-5 sm:py-16 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="text-center">
             <p className="text-xs font-black uppercase tracking-[0.22em] text-blue-600">
               API Actions
             </p>
 
-            <h2 className="mt-3 text-4xl font-black text-slate-950">
+            <h2 className="mt-3 text-3xl font-black text-slate-950 sm:text-4xl">
               What You Can Do
             </h2>
 
@@ -352,14 +352,14 @@ export default function ApiPage() {
             </p>
           </div>
 
-          <div className="mt-10 grid gap-5 md:grid-cols-4">
+          <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {apiActions.map((action) => {
               const Icon = action.icon;
 
               return (
                 <div
                   key={action.title}
-                  className="rounded-3xl border border-slate-200 bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-950/5"
+                  className="min-w-0 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-950/5 sm:p-7"
                 >
                   <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-blue-50 text-blue-600">
                     <Icon size={31} />
@@ -369,7 +369,7 @@ export default function ApiPage() {
                     {action.title}
                   </h3>
 
-                  <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 font-mono text-xs font-black text-blue-600">
+                  <p className="mt-3 overflow-x-auto rounded-xl bg-slate-50 px-3 py-2 font-mono text-xs font-black text-blue-600">
                     {action.endpoint}
                   </p>
 
@@ -384,14 +384,14 @@ export default function ApiPage() {
       </section>
 
       {/* How to connect */}
-      <section className="bg-white px-5 py-16 lg:px-8">
+      <section className="bg-white px-4 py-14 sm:px-5 sm:py-16 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <div className="text-center">
             <p className="text-xs font-black uppercase tracking-[0.22em] text-blue-600">
               How to Connect
             </p>
 
-            <h2 className="mt-3 text-4xl font-black text-slate-950">
+            <h2 className="mt-3 text-3xl font-black text-slate-950 sm:text-4xl">
               Start Using the API in Minutes
             </h2>
 
@@ -400,7 +400,7 @@ export default function ApiPage() {
             </p>
           </div>
 
-          <div className="mt-10 grid gap-5 lg:grid-cols-4">
+          <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {steps.map((step, index) => {
               const Icon = step.icon;
 
@@ -412,7 +412,7 @@ export default function ApiPage() {
                     </div>
                   )}
 
-                  <div className="h-full rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm transition hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-950/5">
+                  <div className="h-full rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-sm transition hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-950/5 sm:p-8">
                     <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-blue-50 text-blue-600">
                       <Icon size={34} />
                     </div>
@@ -434,14 +434,14 @@ export default function ApiPage() {
             })}
           </div>
 
-          <div className="mt-12 overflow-hidden rounded-[2rem] bg-gradient-to-r from-blue-600 to-blue-700 p-8 text-white shadow-2xl shadow-blue-600/20 lg:p-10">
-            <div className="grid items-center gap-8 lg:grid-cols-[1fr_360px]">
-              <div>
+          <div className="mt-12 overflow-hidden rounded-[2rem] bg-gradient-to-r from-blue-600 to-blue-700 p-5 text-white shadow-2xl shadow-blue-600/20 sm:p-8 lg:p-10">
+            <div className="grid min-w-0 items-center gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
+              <div className="min-w-0">
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-blue-100">
                   API Access
                 </p>
 
-                <h2 className="mt-3 max-w-2xl text-4xl font-black tracking-tight md:text-5xl">
+                <h2 className="mt-3 max-w-2xl text-3xl font-black tracking-tight sm:text-4xl md:text-5xl">
                   Ready to automate your SMM orders?
                 </h2>
 
@@ -453,7 +453,7 @@ export default function ApiPage() {
                 <div className="mt-7 flex flex-col gap-4 sm:flex-row">
                   <Link
                     href={primaryHref}
-                    className="inline-flex items-center justify-center gap-3 rounded-2xl bg-white px-7 py-4 text-sm font-black text-blue-600 transition hover:bg-blue-50"
+                    className="inline-flex w-full items-center justify-center gap-3 rounded-2xl bg-white px-7 py-4 text-sm font-black text-blue-600 transition hover:bg-blue-50 sm:w-auto"
                   >
                     <Rocket size={18} />
                     {checkingSession ? "Loading..." : primaryLabel}
@@ -461,7 +461,7 @@ export default function ApiPage() {
 
                   <Link
                     href="/dashboard/tickets"
-                    className="inline-flex items-center justify-center gap-3 rounded-2xl border border-white/20 bg-white/10 px-7 py-4 text-sm font-black text-white transition hover:bg-white/15"
+                    className="inline-flex w-full items-center justify-center gap-3 rounded-2xl border border-white/20 bg-white/10 px-7 py-4 text-sm font-black text-white transition hover:bg-white/15 sm:w-auto"
                   >
                     Need Help?
                     <ArrowRight size={18} />
@@ -519,18 +519,18 @@ export default function ApiPage() {
               return (
                 <div
                   key={stat.label}
-                  className="flex items-center gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+                  className="flex min-w-0 items-center gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
                 >
                   <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
                     <Icon size={26} />
                   </div>
 
-                  <div>
-                    <h3 className="text-2xl font-black text-slate-950">
+                  <div className="min-w-0">
+                    <h3 className="truncate text-2xl font-black text-slate-950">
                       {stat.value}
                     </h3>
 
-                    <p className="text-sm font-semibold text-slate-500">
+                    <p className="truncate text-sm font-semibold text-slate-500">
                       {stat.label}
                     </p>
                   </div>
@@ -541,9 +541,9 @@ export default function ApiPage() {
         </div>
       </section>
 
-      <footer className="border-t border-slate-800 bg-slate-950 px-5 py-12 text-white lg:px-8">
-        <div className="mx-auto grid max-w-7xl gap-10 md:grid-cols-[1.4fr_1fr_1fr_1fr_1fr]">
-          <div>
+      <footer className="border-t border-slate-800 bg-slate-950 px-4 py-12 text-white sm:px-5 lg:px-8">
+        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1fr]">
+          <div className="min-w-0">
             <img
               src="/logo.png"
               alt="Ascend Service"
@@ -622,14 +622,14 @@ function MiniBenefit({
   text: string;
 }) {
   return (
-    <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm backdrop-blur-xl">
+    <div className="flex min-w-0 items-center gap-4 rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm backdrop-blur-xl">
       <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
         <Icon size={24} />
       </div>
 
-      <div>
-        <h3 className="text-sm font-black text-slate-950">{title}</h3>
-        <p className="mt-1 text-xs font-semibold text-slate-500">{text}</p>
+      <div className="min-w-0">
+        <h3 className="truncate text-sm font-black text-slate-950">{title}</h3>
+        <p className="mt-1 truncate text-xs font-semibold text-slate-500">{text}</p>
       </div>
     </div>
   );
@@ -637,9 +637,9 @@ function MiniBenefit({
 
 function PreviewCard({ title, value }: { title: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-white/10 p-4">
-      <p className="text-xs font-black text-slate-400">{title}</p>
-      <h3 className="mt-2 text-lg font-black text-white">{value}</h3>
+    <div className="min-w-0 rounded-2xl bg-white/10 p-4">
+      <p className="truncate text-xs font-black text-slate-400">{title}</p>
+      <h3 className="mt-2 truncate text-lg font-black text-white">{value}</h3>
     </div>
   );
 }
