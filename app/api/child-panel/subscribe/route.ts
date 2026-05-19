@@ -46,9 +46,7 @@ export async function POST(request: NextRequest) {
 
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
-      .select(
-        "id, balance, reseller_level, child_panel_subscription_expires_at",
-      )
+      .select("id, balance, reseller_level, child_panel_subscription_expires_at")
       .eq("id", user.id)
       .single();
 
@@ -88,7 +86,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         accessType: "level_perk",
-        message: "Child Panel is already unlocked free lifetime for your reseller level.",
+        message:
+          "Child Panel is already unlocked free lifetime for your reseller level.",
       });
     }
 
@@ -118,7 +117,6 @@ export async function POST(request: NextRequest) {
         : now;
 
     const expiresAt = addOneMonth(baseDate);
-
     const newBalance = currentBalance - CHILD_PANEL_PRICE;
 
     const { data: subscription, error: subscriptionError } =
@@ -167,6 +165,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    await supabaseAdmin.from("cash_movements").insert({
+      cash_account_id: null,
+      type: "child_panel_subscription",
+      amount: -CHILD_PANEL_PRICE,
+      description: "Child Panel monthly subscription",
+      reference_type: "child_panel_subscription",
+      reference_id: subscription.id,
+    });
+
     await supabaseAdmin.from("notifications").insert({
       user_id: user.id,
       title: "Child Panel Subscription Activated",
@@ -185,7 +192,7 @@ export async function POST(request: NextRequest) {
       expiresAt: expiresAt.toISOString(),
       message: "Child Panel subscription activated successfully.",
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       {
         success: false,

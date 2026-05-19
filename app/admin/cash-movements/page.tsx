@@ -57,6 +57,7 @@ type TypeFilter =
   | "provider_payment"
   | "refund"
   | "manual_adjustment"
+  | "child_panel_subscription"
   | "other";
 
 const typeFilters: { label: string; value: TypeFilter }[] = [
@@ -66,6 +67,7 @@ const typeFilters: { label: string; value: TypeFilter }[] = [
   { label: "Provider Payments", value: "provider_payment" },
   { label: "Refunds", value: "refund" },
   { label: "Manual Adjustments", value: "manual_adjustment" },
+  { label: "Child Panel", value: "child_panel_subscription" },
   { label: "Other", value: "other" },
 ];
 
@@ -96,6 +98,21 @@ function normalizeMovementType(type?: string | null) {
     return "manual_adjustment";
   }
 
+  if (
+    [
+      "child_panel_subscription",
+      "child panel subscription",
+      "child-panel-subscription",
+      "child_panel_auto_renew",
+      "child panel auto renew",
+      "child-panel-auto-renew",
+      "child panel renewal",
+      "child_panel_renewal",
+    ].includes(clean)
+  ) {
+    return "child_panel_subscription";
+  }
+
   return clean || "other";
 }
 
@@ -104,6 +121,7 @@ function getTypeLabel(type?: string | null) {
 
   if (clean === "provider_payment") return "Provider Payment";
   if (clean === "manual_adjustment") return "Manual Adjustment";
+  if (clean === "child_panel_subscription") return "Child Panel";
 
   return clean.replaceAll("_", " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
@@ -122,7 +140,14 @@ function isOutflow(type?: string | null, amount?: number | string | null) {
   const clean = normalizeMovementType(type);
   const numericAmount = Number(amount || 0);
 
-  if (clean === "expense" || clean === "provider_payment" || clean === "refund") return true;
+  if (
+    clean === "expense" ||
+    clean === "provider_payment" ||
+    clean === "refund" ||
+    clean === "child_panel_subscription"
+  ) {
+    return true;
+  }
 
   return numericAmount < 0;
 }
@@ -243,7 +268,9 @@ function TypeBadge({ type }: { type?: string | null }) {
           ? "bg-orange-50 text-orange-700 ring-orange-100"
           : clean === "manual_adjustment"
             ? "bg-blue-50 text-blue-700 ring-blue-100"
-            : "bg-slate-100 text-slate-700 ring-slate-200";
+            : clean === "child_panel_subscription"
+              ? "bg-purple-50 text-purple-700 ring-purple-100"
+              : "bg-slate-100 text-slate-700 ring-slate-200";
 
   return (
     <span className={`inline-flex rounded-full px-3 py-1 text-xs font-black ring-1 ${className}`}>
@@ -341,29 +368,49 @@ export default function AdminCashMovementsPage() {
   const [cashAccountFilter, setCashAccountFilter] = useState("all");
 
   async function loadMovements() {
-    const { data, error } = await supabase
-      .from("cash_movements")
-      .select(
-        `
-        *,
-        cash_accounts (
-          id,
-          name,
-          balance,
-          type,
-          icon_url
-        )
-      `,
-      )
-      .order("created_at", { ascending: false });
+    setLoading(true);
 
-    if (error) {
-      setMessage(error.message);
-      setLoading(false);
-      return;
+    let allMovements: CashMovement[] = [];
+    let from = 0;
+    const batchSize = 1000;
+
+    while (true) {
+      const to = from + batchSize - 1;
+
+      const { data, error } = await supabase
+        .from("cash_movements")
+        .select(
+          `
+          *,
+          cash_accounts (
+            id,
+            name,
+            balance,
+            type,
+            icon_url
+          )
+        `,
+        )
+        .order("created_at", { ascending: false })
+        .range(from, to);
+
+      if (error) {
+        setMessage(error.message);
+        setLoading(false);
+        return;
+      }
+
+      const batch = (data || []) as CashMovement[];
+      allMovements = [...allMovements, ...batch];
+
+      if (batch.length < batchSize) {
+        break;
+      }
+
+      from += batchSize;
     }
 
-    setMovements((data || []) as CashMovement[]);
+    setMovements(allMovements);
     setLoading(false);
   }
 
@@ -467,7 +514,14 @@ export default function AdminCashMovementsPage() {
         typeFilter === "all"
           ? true
           : typeFilter === "other"
-            ? !["deposit", "expense", "provider_payment", "refund", "manual_adjustment"].includes(movementType)
+            ? ![
+                "deposit",
+                "expense",
+                "provider_payment",
+                "refund",
+                "manual_adjustment",
+                "child_panel_subscription",
+              ].includes(movementType)
             : movementType === typeFilter;
 
       const matchesAccount =
