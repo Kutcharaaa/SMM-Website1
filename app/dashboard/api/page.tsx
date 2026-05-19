@@ -1,8 +1,7 @@
 "use client";
 
 import DashboardGuard from "@/components/DashboardGuard";
-import DashboardSidebar from "@/components/DashboardSidebar";
-import DashboardTopbar from "@/components/DashboardTopbar";
+import DashboardLayout from "@/components/DashboardLayout";
 import { supabase } from "@/lib/supabase";
 import {
   AlertCircle,
@@ -239,13 +238,8 @@ export default function ApiPage() {
 
   return (
     <DashboardGuard>
-      <main className="min-h-screen bg-[#f6f9fc] text-slate-950">
-        <DashboardSidebar />
-
-        <section className="min-h-screen lg:ml-72">
-          <DashboardTopbar />
-
-          <div className="p-4 lg:p-8">
+      <DashboardLayout>
+        <div className="min-w-0 text-slate-950">
             <div>
               <h1 className="text-3xl font-black text-slate-950">API</h1>
               <p className="mt-1 text-sm font-semibold text-slate-400">
@@ -253,15 +247,15 @@ export default function ApiPage() {
               </p>
             </div>
 
-            <section className="mt-6 grid gap-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:grid-cols-[1fr_360px]">
+            <section className="mt-6 grid min-w-0 grid-cols-1 gap-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:grid-cols-[minmax(0,1fr)_360px]">
               <div>
-                <div className="flex items-start gap-4">
+                <div className="flex min-w-0 items-start gap-4">
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
                     <KeyRound size={22} />
                   </div>
 
-                  <div>
-                    <h2 className="text-xl font-black text-slate-950">
+                  <div className="min-w-0">
+                    <h2 className="truncate text-xl font-black text-slate-950">
                       Your API Key
                     </h2>
                     <p className="mt-1 text-sm font-semibold text-slate-500">
@@ -270,11 +264,11 @@ export default function ApiPage() {
                   </div>
                 </div>
 
-                <div className="mt-5 flex overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                <div className="mt-5 flex min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
                   <input
                     readOnly
                     value={maskedApiKey}
-                    className="h-14 flex-1 bg-transparent px-4 font-mono text-sm font-black text-slate-800 outline-none"
+                    className="h-14 min-w-0 flex-1 bg-transparent px-4 font-mono text-sm font-black text-slate-800 outline-none"
                   />
 
                   <button
@@ -323,7 +317,7 @@ export default function ApiPage() {
                 <button
                   type="button"
                   onClick={generateApiKey}
-                  className="mt-5 flex h-12 items-center justify-center gap-2 rounded-xl bg-red-600 px-5 text-sm font-black text-white shadow-lg shadow-red-600/20 transition hover:bg-red-700"
+                  className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-5 text-sm font-black text-white shadow-lg shadow-red-600/20 transition hover:bg-red-700 sm:w-fit"
                 >
                   <RefreshCcw size={17} />
                   Reset API Key
@@ -331,7 +325,7 @@ export default function ApiPage() {
               </div>
             </section>
 
-            <section className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+            <section className="mt-5 grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
               <StatCard
                 icon={Database}
                 title="API Balance"
@@ -365,12 +359,12 @@ export default function ApiPage() {
               />
             </section>
 
-            <section className="mt-5 grid gap-5 xl:grid-cols-[0.8fr_1.2fr]">
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex items-center gap-3">
+            <section className="mt-5 grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-[0.8fr_1.2fr]">
+              <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex min-w-0 items-center gap-3">
                   <Rocket size={24} className="text-blue-600" />
                   <div>
-                    <h3 className="text-xl font-black text-slate-950">
+                    <h3 className="truncate text-xl font-black text-slate-950">
                       Quick Start
                     </h3>
                     <p className="mt-1 text-sm font-semibold text-slate-500">
@@ -400,11 +394,11 @@ export default function ApiPage() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex items-center gap-3">
+              <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex min-w-0 items-center gap-3">
                   <Globe2 size={24} className="text-blue-600" />
                   <div>
-                    <h3 className="text-xl font-black text-slate-950">
+                    <h3 className="truncate text-xl font-black text-slate-950">
                       Base URL
                     </h3>
                     <p className="mt-1 text-sm font-semibold text-slate-500">
@@ -413,11 +407,11 @@ export default function ApiPage() {
                   </div>
                 </div>
 
-                <div className="mt-5 flex overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                <div className="mt-5 flex min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
                   <input
                     readOnly
                     value={baseUrl}
-                    className="h-14 flex-1 bg-transparent px-4 font-mono text-sm font-black text-blue-600 outline-none"
+                    className="h-14 min-w-0 flex-1 bg-transparent px-4 font-mono text-sm font-black text-blue-600 outline-none"
                   />
 
                   <button
@@ -498,12 +492,12 @@ export default function ApiPage() {
               </div>
             </section>
 
-            <section className="mt-5 grid gap-5 xl:grid-cols-2">
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex items-center gap-3">
+            <section className="mt-5 grid min-w-0 grid-cols-1 gap-5 xl:grid-cols-2">
+              <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex min-w-0 items-center gap-3">
                   <Code2 size={24} className="text-blue-600" />
                   <div>
-                    <h3 className="text-xl font-black text-slate-950">
+                    <h3 className="truncate text-xl font-black text-slate-950">
                       Example Request
                     </h3>
                     <p className="mt-1 text-sm font-semibold text-slate-500">
@@ -512,13 +506,13 @@ export default function ApiPage() {
                   </div>
                 </div>
 
-                <div className="mt-5 flex flex-wrap gap-2">
+                <div className="mt-5 flex gap-2 overflow-x-auto pb-1 sm:flex-wrap">
                   {(["add", "status", "balance", "services"] as const).map((tab) => (
                     <button
                       key={tab}
                       type="button"
                       onClick={() => setActiveActionTab(tab)}
-                      className={`rounded-xl px-4 py-2 text-sm font-black capitalize transition ${
+                      className={`shrink-0 rounded-xl px-4 py-2 text-sm font-black capitalize transition ${
                         activeActionTab === tab
                           ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
                           : "bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-600"
@@ -536,7 +530,7 @@ export default function ApiPage() {
                         key={tab}
                         type="button"
                         onClick={() => setActiveCodeTab(tab)}
-                        className={`border-b-2 px-5 py-3 text-sm font-black capitalize transition ${
+                        className={`shrink-0 border-b-2 px-5 py-3 text-sm font-black capitalize transition ${
                           activeCodeTab === tab
                             ? "border-blue-600 text-blue-600"
                             : "border-transparent text-slate-500 hover:text-blue-600"
@@ -557,7 +551,7 @@ export default function ApiPage() {
                     <Copy size={17} />
                   </button>
 
-                  <pre className="max-h-[360px] overflow-auto p-5 pr-16 text-sm font-semibold leading-7 text-blue-100">
+                  <pre className="max-h-[360px] overflow-auto p-5 pr-16 text-xs font-semibold leading-6 text-blue-100 sm:text-sm sm:leading-7">
                     <code>{exampleCode}</code>
                   </pre>
                 </div>
@@ -569,11 +563,11 @@ export default function ApiPage() {
                 )}
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex items-center gap-3">
+              <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex min-w-0 items-center gap-3">
                   <Server size={24} className="text-blue-600" />
                   <div>
-                    <h3 className="text-xl font-black text-slate-950">
+                    <h3 className="truncate text-xl font-black text-slate-950">
                       Example Response
                     </h3>
                     <p className="mt-1 text-sm font-semibold text-slate-500">
@@ -591,7 +585,7 @@ export default function ApiPage() {
                     <Copy size={17} />
                   </button>
 
-                  <pre className="max-h-[360px] overflow-auto p-5 pr-16 text-sm font-semibold leading-7 text-green-200">
+                  <pre className="max-h-[360px] overflow-auto p-5 pr-16 text-xs font-semibold leading-6 text-green-200 sm:text-sm sm:leading-7">
                     <code>{exampleResponse}</code>
                   </pre>
                 </div>
@@ -648,9 +642,8 @@ export default function ApiPage() {
                 />
               </div>
             </section>
-          </div>
-        </section>
-      </main>
+        </div>
+      </DashboardLayout>
     </DashboardGuard>
   );
 }
@@ -669,18 +662,18 @@ function StatCard({
   color: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-center gap-5">
+    <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex min-w-0 items-center gap-4 sm:gap-5">
         <div
-          className={`flex h-14 w-14 items-center justify-center rounded-2xl ${color}`}
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl sm:h-14 sm:w-14 ${color}`}
         >
           <Icon size={26} />
         </div>
 
-        <div>
-          <p className="text-sm font-black text-slate-600">{title}</p>
-          <h3 className="mt-2 text-2xl font-black text-slate-950">{value}</h3>
-          <p className="mt-1 text-sm font-semibold text-slate-400">{subtitle}</p>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-black text-slate-600">{title}</p>
+          <h3 className="mt-2 truncate text-2xl font-black text-slate-950">{value}</h3>
+          <p className="mt-1 truncate text-sm font-semibold text-slate-400">{subtitle}</p>
         </div>
       </div>
     </div>
@@ -699,15 +692,15 @@ function NoteCard({
   color: string;
 }) {
   return (
-    <div className="flex gap-4 rounded-2xl bg-slate-50 p-4">
+    <div className="flex min-w-0 gap-4 rounded-2xl bg-slate-50 p-4">
       <div
         className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${color}`}
       >
         <Icon size={21} />
       </div>
 
-      <div>
-        <p className="text-sm font-black text-slate-800">{title}</p>
+      <div className="min-w-0">
+        <p className="truncate text-sm font-black text-slate-800">{title}</p>
         <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
           {text}
         </p>
