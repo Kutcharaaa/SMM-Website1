@@ -36,6 +36,8 @@ type Deposit = {
   proof_url: string;
   status: string;
   reject_reason?: string | null;
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
   created_at: string;
 };
 
@@ -135,6 +137,35 @@ function getUserDisplayName(userId: string, profiles: UserProfile[]) {
   const fullName = `${profile.firstname || ""} ${profile.lastname || ""}`.trim();
 
   return fullName || shortUserId(userId);
+}
+
+
+function getReviewerDisplayName(deposit: Deposit, profiles: UserProfile[]) {
+  if (!deposit.reviewed_by) {
+    return "Not reviewed yet";
+  }
+
+  return getUserDisplayName(deposit.reviewed_by, profiles);
+}
+
+function getReviewedLabel(deposit: Deposit, profiles: UserProfile[]) {
+  const status = normalizeStatus(deposit.status);
+
+  if (!deposit.reviewed_by || status === "pending") {
+    return "Not reviewed yet";
+  }
+
+  const reviewer = getReviewerDisplayName(deposit, profiles);
+
+  if (status === "approved") {
+    return `Approved by ${reviewer}`;
+  }
+
+  if (status === "rejected") {
+    return `Rejected by ${reviewer}`;
+  }
+
+  return reviewer;
 }
 
 function isToday(dateValue?: string | null) {
@@ -350,13 +381,33 @@ export default function AdminPaymentsPage() {
   }
 
 async function loadProfiles() {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, username, firstname, lastname");
+  let allProfiles: UserProfile[] = [];
+  let from = 0;
+  const batchSize = 1000;
 
-  if (!error) {
-    setProfiles((data || []) as UserProfile[]);
+  while (true) {
+    const to = from + batchSize - 1;
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, username, firstname, lastname")
+      .range(from, to);
+
+    if (error) {
+      return;
+    }
+
+    const batch = (data || []) as UserProfile[];
+    allProfiles = [...allProfiles, ...batch];
+
+    if (batch.length < batchSize) {
+      break;
+    }
+
+    from += batchSize;
   }
+
+  setProfiles(allProfiles);
 }
 
 useEffect(() => {
@@ -434,6 +485,15 @@ useEffect(() => {
     setMessage("Approving deposit...");
 
     try {
+      const { data: authData } = await supabase.auth.getUser();
+      const reviewerId = authData.user?.id || null;
+
+      if (!reviewerId) {
+        setMessage("Admin user not authenticated.");
+        setApproving(false);
+        return;
+      }
+
       const localPaymentMethod = getPaymentMethod(deposit.method);
 
       let paymentMethod: PaymentMethod | null = localPaymentMethod;
@@ -520,6 +580,8 @@ useEffect(() => {
           status: "approved",
           reject_reason: null,
           cash_account_id: cashAccountId,
+          reviewed_by: reviewerId,
+          reviewed_at: new Date().toISOString(),
         })
         .eq("id", deposit.id);
 
@@ -541,7 +603,7 @@ useEffect(() => {
 
       await sendDepositEmail(deposit.id, "approved");
 
-      setMessage("Deposit approved and cash account updated.");
+      setMessage("Deposit approved and reviewer recorded.");
       setSelectedDeposit(null);
       setShowRejectBox(false);
       setRejectReason("");
@@ -572,11 +634,22 @@ useEffect(() => {
     setMessage("Rejecting deposit...");
 
     try {
+      const { data: authData } = await supabase.auth.getUser();
+      const reviewerId = authData.user?.id || null;
+
+      if (!reviewerId) {
+        setMessage("Admin user not authenticated.");
+        setRejecting(false);
+        return;
+      }
+
       const { error: depositError } = await supabase
         .from("deposits")
         .update({
           status: "rejected",
           reject_reason: rejectReason,
+          reviewed_by: reviewerId,
+          reviewed_at: new Date().toISOString(),
         })
         .eq("id", selectedDeposit.id);
 
@@ -596,7 +669,7 @@ useEffect(() => {
 
       await sendDepositEmail(selectedDeposit.id, "rejected");
 
-      setMessage("Deposit rejected successfully.");
+      setMessage("Deposit rejected and reviewer recorded.");
       setSelectedDeposit(null);
       setShowRejectBox(false);
       setRejectReason("");
@@ -706,6 +779,8 @@ function exportDepositsToPDF() {
           <td>${deposit.method || "Manual Payment"}</td>
           <td>${deposit.reference_number || "—"}</td>
           <td>${normalizeStatus(deposit.status)}</td>
+          <td>${getReviewedLabel(deposit, profiles)}</td>
+          <td>${deposit.reviewed_at ? `${formatDate(deposit.reviewed_at)} ${formatTime(deposit.reviewed_at)}` : "—"}</td>
           <td>${formatDate(deposit.created_at)} ${formatTime(deposit.created_at)}</td>
         </tr>
       `;
@@ -895,6 +970,8 @@ function exportDepositsToPDF() {
               <th>Method</th>
               <th>Reference</th>
               <th>Status</th>
+              <th>Reviewed By</th>
+              <th>Reviewed At</th>
               <th>Date</th>
             </tr>
           </thead>
@@ -903,7 +980,7 @@ function exportDepositsToPDF() {
             ${
               rowsHtml ||
               `<tr>
-                <td colspan="8" style="text-align:center; padding: 32px;">
+                <td colspan="10" style="text-align:center; padding: 32px;">
                   No deposit records found.
                 </td>
               </tr>`
@@ -1059,7 +1136,7 @@ function exportDepositsToPDF() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1120px] text-sm">
+              <table className="w-full min-w-[1320px] text-sm">
                 <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                   <tr>
                     <th className="px-5 py-4 text-left">Deposit ID</th>
@@ -1070,6 +1147,7 @@ function exportDepositsToPDF() {
                     <th className="px-5 py-4 text-left">Reference</th>
                     <th className="px-5 py-4 text-left">Proof</th>
                     <th className="px-5 py-4 text-left">Status</th>
+                    <th className="px-5 py-4 text-left">Reviewed By</th>
                     <th className="px-5 py-4 text-left">Date</th>
                     <th className="px-5 py-4 text-left">Actions</th>
                   </tr>
@@ -1139,6 +1217,17 @@ function exportDepositsToPDF() {
                         </td>
 
                         <td className="px-5 py-5 align-top">
+                          <p className="max-w-[170px] truncate font-black text-slate-700">
+                            {getReviewedLabel(deposit, profiles)}
+                          </p>
+                          <p className="mt-1 text-xs font-semibold text-slate-400">
+                            {deposit.reviewed_at
+                              ? `${formatDate(deposit.reviewed_at)} · ${formatTime(deposit.reviewed_at)}`
+                              : "Awaiting review"}
+                          </p>
+                        </td>
+
+                        <td className="px-5 py-5 align-top">
                           <p className="font-black text-slate-700">{formatDate(deposit.created_at)}</p>
                           <p className="mt-1 text-xs font-semibold text-slate-400">{formatTime(deposit.created_at)}</p>
                         </td>
@@ -1187,7 +1276,7 @@ function exportDepositsToPDF() {
 
                   {filteredDeposits.length <= 0 && (
                     <tr>
-                      <td colSpan={10} className="px-5 py-16 text-center">
+                      <td colSpan={11} className="px-5 py-16 text-center">
                         <div className="mx-auto flex max-w-sm flex-col items-center">
                           <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-slate-50 text-slate-400 ring-1 ring-slate-100">
                             <Wallet size={26} />
@@ -1396,6 +1485,18 @@ function exportDepositsToPDF() {
                     ).toFixed(2)}`}
                   />
                   <InfoBlock label="Status" value={<StatusBadge status={selectedDeposit.status} />} />
+                  <InfoBlock
+                    label="Reviewed By"
+                    value={getReviewedLabel(selectedDeposit, profiles)}
+                  />
+                  <InfoBlock
+                    label="Reviewed At"
+                    value={
+                      selectedDeposit.reviewed_at
+                        ? `${formatDate(selectedDeposit.reviewed_at)} · ${formatTime(selectedDeposit.reviewed_at)}`
+                        : "Not reviewed yet"
+                    }
+                  />
                 </div>
 
                 <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
