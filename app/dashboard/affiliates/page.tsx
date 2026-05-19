@@ -1040,35 +1040,45 @@ function StatCard({
 }) {
   return (
     <div className="min-w-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex min-w-0 items-start gap-4">
-        <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${color}`}>
-          <Icon size={26} />
+      <div
+        className={`flex min-w-0 gap-4 ${
+          buttonLabel && onButtonClick
+            ? "flex-col sm:flex-row sm:items-center sm:justify-between"
+            : "items-start"
+        }`}
+      >
+        <div className="flex min-w-0 items-start gap-4">
+          <div
+            className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${color}`}
+          >
+            <Icon size={26} />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-black uppercase tracking-wide text-slate-500">
+              {title}
+            </p>
+
+            <h3 className="mt-2 min-w-0 break-words text-2xl font-black text-slate-950">
+              {value}
+            </h3>
+
+            <p className="mt-1 line-clamp-2 text-sm font-semibold text-slate-400">
+              {subtitle}
+            </p>
+          </div>
         </div>
 
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-xs font-black uppercase tracking-wide text-slate-500">
-            {title}
-          </p>
-
-          <h3 className="mt-2 min-w-0 break-words text-2xl font-black text-slate-950">
-            {value}
-          </h3>
-
-          <p className="mt-1 line-clamp-2 text-sm font-semibold text-slate-400">
-            {subtitle}
-          </p>
-
-          {buttonLabel && onButtonClick && (
-            <button
-              type="button"
-              onClick={onButtonClick}
-              className="mt-4 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-black text-white transition hover:bg-blue-700"
-            >
-              {buttonLabel}
-              <ArrowRight size={15} />
-            </button>
-          )}
-        </div>
+        {buttonLabel && onButtonClick && (
+          <button
+            type="button"
+            onClick={onButtonClick}
+            className="flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-black text-white transition hover:bg-blue-700 sm:w-auto"
+          >
+            {buttonLabel}
+            <ArrowRight size={15} />
+          </button>
+        )}
       </div>
     </div>
   );
