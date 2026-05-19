@@ -118,6 +118,16 @@ await supabaseAdmin.from("cash_movements").insert({
   reference_id: subscription.id,
 });
 
+await supabaseAdmin.from("wallet_transactions").insert({
+  user_id: profile.id,
+  type: "child_panel_auto_renew",
+  amount: -CHILD_PANEL_PRICE,
+  status: "completed",
+  description: "Child Panel monthly auto-renewal",
+  reference_type: "child_panel_subscription",
+  reference_id: subscription.id,
+});
+
         await supabaseAdmin.from("notifications").insert({
           user_id: profile.id,
           title: "Child Panel Subscription Renewed",

@@ -173,6 +173,15 @@ await supabaseAdmin.from("cash_movements").insert({
   reference_type: "child_panel_subscription",
   reference_id: subscription.id,
 });
+await supabaseAdmin.from("wallet_transactions").insert({
+  user_id: user.id,
+  type: "child_panel_subscription",
+  amount: -CHILD_PANEL_PRICE,
+  status: "completed",
+  description: "Child Panel monthly subscription",
+  reference_type: "child_panel_subscription",
+  reference_id: subscription.id,
+});
 
     await supabaseAdmin.from("notifications").insert({
       user_id: user.id,
