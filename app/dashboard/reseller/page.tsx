@@ -129,6 +129,8 @@ export default function ResellerPage() {
   const [childPanelModalOpen, setChildPanelModalOpen] = useState(false);
   const [childPanelAutoRenew, setChildPanelAutoRenew] = useState(false);
   const [cancellingAutoRenew, setCancellingAutoRenew] = useState(false);
+  const [enablingAutoRenew, setEnablingAutoRenew] = useState(false);
+  const [childPanelManageModalOpen, setChildPanelManageModalOpen] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [pointsInput, setPointsInput] = useState("100");
   const [message, setMessage] = useState("");
@@ -480,6 +482,47 @@ export default function ResellerPage() {
     setCancellingAutoRenew(false);
   }
 
+  async function enableChildPanelAutoRenew() {
+    if (enablingAutoRenew) return;
+
+    setMessage("");
+    setEnablingAutoRenew(true);
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      setMessage("You must be logged in to enable auto-renew.");
+      setEnablingAutoRenew(false);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/child-panel/enable-auto-renew", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        setMessage(result.message || "Failed to enable auto-renew.");
+        setEnablingAutoRenew(false);
+        return;
+      }
+
+      setMessage(result.message || "Auto-renew enabled successfully.");
+      await loadData();
+    } catch {
+      setMessage("Failed to enable auto-renew.");
+    }
+
+    setEnablingAutoRenew(false);
+  }
+
   return (
     <DashboardGuard>
       <main className="min-h-screen bg-[#f6f9fc] text-slate-950">
@@ -620,7 +663,7 @@ export default function ResellerPage() {
                   setChildPanelModalMessage("");
                   setChildPanelModalOpen(true);
                 }}
-                onCancelAutoRenew={cancelChildPanelAutoRenew}
+                onManageSubscription={() => setChildPanelManageModalOpen(true)}
               />
             </section>
 
@@ -921,6 +964,149 @@ export default function ResellerPage() {
           )}
         </section>
 
+        {childPanelManageModalOpen && (
+          <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm lg:items-center">
+            <div className="my-8 w-full max-w-2xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
+                <div>
+                  <h3 className="text-2xl font-black text-slate-950">
+                    Child Panel Subscription
+                  </h3>
+
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    Manage your paid Child Panel access and auto-renew settings.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setChildPanelManageModalOpen(false)}
+                  disabled={cancellingAutoRenew || enablingAutoRenew}
+                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950 disabled:opacity-50"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-5 p-6">
+                <div className="rounded-3xl border border-green-100 bg-green-50 p-5">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-green-100 text-green-600">
+                      <Unlock size={26} />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-black uppercase tracking-wide text-green-700">
+                        Paid Active
+                      </p>
+
+                      <h4 className="mt-2 text-2xl font-black text-slate-950">
+                        Child Panel is unlocked
+                      </h4>
+
+                      <p className="mt-1 text-sm font-semibold leading-6 text-slate-600">
+                        You can open your Child Panel anytime while your subscription is active.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                      Monthly Price
+                    </p>
+                    <p className="mt-2 text-2xl font-black text-blue-600">
+                      ₱{CHILD_PANEL_PRICE}/month
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                      Expires At
+                    </p>
+                    <p className="mt-2 text-lg font-black text-slate-950">
+                      {profile?.child_panel_subscription_expires_at
+                        ? formatDate(profile.child_panel_subscription_expires_at)
+                        : "No expiry date"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-slate-200 bg-white p-5">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-black text-slate-950">
+                        Auto Renew
+                      </p>
+
+                      <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
+                        {childPanelAutoRenew
+                          ? `Your subscription renews automatically for ₱${CHILD_PANEL_PRICE}/month if you have enough balance.`
+                          : "Auto-renew is off. Your access will stay active until the current expiry date."}
+                      </p>
+                    </div>
+
+                    <span
+                      className={`shrink-0 rounded-full px-4 py-2 text-xs font-black uppercase ${
+                        childPanelAutoRenew
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-700"
+                      }`}
+                    >
+                      {childPanelAutoRenew ? "Enabled" : "Off"}
+                    </span>
+                  </div>
+
+                  <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                    {childPanelAutoRenew ? (
+                      <button
+                        type="button"
+                        onClick={cancelChildPanelAutoRenew}
+                        disabled={cancellingAutoRenew || enablingAutoRenew}
+                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-red-200 bg-white px-5 py-3 text-sm font-black text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {cancellingAutoRenew ? (
+                          <RefreshCw size={17} className="animate-spin" />
+                        ) : (
+                          <X size={17} />
+                        )}
+                        {cancellingAutoRenew ? "Cancelling..." : "Turn Off Auto Renew"}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={enableChildPanelAutoRenew}
+                        disabled={cancellingAutoRenew || enablingAutoRenew}
+                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-green-600 px-5 py-3 text-sm font-black text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {enablingAutoRenew ? (
+                          <RefreshCw size={17} className="animate-spin" />
+                        ) : (
+                          <CheckCircle2 size={17} />
+                        )}
+                        {enablingAutoRenew ? "Enabling..." : "Turn On Auto Renew"}
+                      </button>
+                    )}
+
+                    <Link
+                      href="/dashboard/child-panel"
+                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700"
+                    >
+                      <Unlock size={17} />
+                      Open Child Panel
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm font-bold leading-6 text-blue-700">
+                  Turning off auto-renew will not remove your current access. Your Child Panel stays active until the current expiry date.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {childPanelModalOpen && (
           <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm lg:items-center">
             <div className="my-8 w-full max-w-2xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
@@ -1164,7 +1350,7 @@ function ChildPanelMetric({
   cancellingAutoRenew,
   subscriptionExpiresAt,
   onSubscribe,
-  onCancelAutoRenew,
+  onManageSubscription,
 }: {
   isUnlocked: boolean;
   accessLabel: string;
@@ -1174,23 +1360,24 @@ function ChildPanelMetric({
   cancellingAutoRenew: boolean;
   subscriptionExpiresAt?: string | null;
   onSubscribe: () => void;
-  onCancelAutoRenew: () => void;
+  onManageSubscription: () => void;
 }) {
   if (isUnlocked) {
     const isPaidActive = accessLabel === "Paid Active";
 
-    return (
-      <div className="rounded-2xl border border-green-200 bg-white p-5 shadow-sm transition hover:border-green-400 hover:bg-green-50">
-        <div className="flex items-start gap-4">
-          <Link
-            href="/dashboard/child-panel"
-            className="flex min-w-0 flex-1 items-center gap-4"
-          >
+    if (isPaidActive) {
+      return (
+        <button
+          type="button"
+          onClick={onManageSubscription}
+          className="rounded-2xl border border-green-200 bg-white p-5 text-left shadow-sm transition hover:border-green-400 hover:bg-green-50"
+        >
+          <div className="flex items-center gap-5">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-green-100 text-green-600">
               <Unlock size={26} />
             </div>
 
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-xs font-black uppercase tracking-wide text-slate-500">
                 Child Panel Access
               </p>
@@ -1200,12 +1387,10 @@ function ChildPanelMetric({
               </h3>
 
               <p className="mt-1 text-sm font-semibold text-slate-400">
-                {accessLabel}
+                Paid Active · Manage
               </p>
             </div>
-          </Link>
 
-          {isPaidActive && (
             <span
               className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-black uppercase ${
                 autoRenew
@@ -1213,38 +1398,38 @@ function ChildPanelMetric({
                   : "bg-red-100 text-red-700"
               }`}
             >
-              {autoRenew ? "Auto" : "Cancelled"}
+              {autoRenew ? "Auto" : "Off"}
             </span>
-          )}
-        </div>
-
-        {isPaidActive && (
-          <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
-            <div className="min-w-0">
-              <p className="text-[11px] font-black uppercase tracking-wide text-slate-500">
-                {autoRenew ? `Renews ₱${price}/mo` : "Auto-renew cancelled"}
-              </p>
-
-              {subscriptionExpiresAt && (
-                <p className="mt-0.5 truncate text-[11px] font-semibold text-slate-500">
-                  Expires: {formatDate(subscriptionExpiresAt)}
-                </p>
-              )}
-            </div>
-
-            {autoRenew && (
-              <button
-                type="button"
-                onClick={onCancelAutoRenew}
-                disabled={cancellingAutoRenew}
-                className="shrink-0 rounded-lg border border-red-200 bg-white px-3 py-2 text-[11px] font-black text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {cancellingAutoRenew ? "..." : "Cancel"}
-              </button>
-            )}
           </div>
-        )}
-      </div>
+        </button>
+      );
+    }
+
+    return (
+      <Link
+        href="/dashboard/child-panel"
+        className="block rounded-2xl border border-green-200 bg-white p-5 shadow-sm transition hover:border-green-400 hover:bg-green-50"
+      >
+        <div className="flex items-center gap-5">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-green-100 text-green-600">
+            <Unlock size={26} />
+          </div>
+
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-wide text-slate-500">
+              Child Panel Access
+            </p>
+
+            <h3 className="mt-2 text-2xl font-black text-green-600">
+              Open Panel
+            </h3>
+
+            <p className="mt-1 text-sm font-semibold text-slate-400">
+              {accessLabel}
+            </p>
+          </div>
+        </div>
+      </Link>
     );
   }
 
