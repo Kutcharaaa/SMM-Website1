@@ -21,7 +21,7 @@ type Conversation = {
   last_message: string | null;
   last_sender_role: string | null;
   created_at: string;
-  updated_at: string;
+  updated_at: string | null;
 };
 
 type ChatMessage = {
@@ -47,6 +47,7 @@ export default function LiveChatWidget() {
   const [messageText, setMessageText] = useState("");
   const [loadingChat, setLoadingChat] = useState(false);
   const [sending, setSending] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -67,6 +68,11 @@ export default function LiveChatWidget() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUserId(session?.user?.id || null);
       setCheckingUser(false);
+
+      if (!session?.user?.id) {
+        setConversation(null);
+        setMessages([]);
+      }
     });
 
     return () => {
@@ -78,29 +84,36 @@ export default function LiveChatWidget() {
     if (!open || !userId) return;
 
     loadOrCreateConversation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, userId]);
 
   useEffect(() => {
     if (!conversation?.id) return;
 
     const channel = supabase
-      .channel(`live-chat-${conversation.id}`)
+      .channel(`live-chat-widget-${conversation.id}`)
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*",
           schema: "public",
           table: "support_messages",
           filter: `conversation_id=eq.${conversation.id}`,
         },
+        () => {
+          loadMessages(conversation.id);
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "support_conversations",
+          filter: `id=eq.${conversation.id}`,
+        },
         (payload) => {
-          const newMessage = payload.new as ChatMessage;
-
-          setMessages((current) => {
-            const exists = current.some((item) => item.id === newMessage.id);
-            if (exists) return current;
-            return [...current, newMessage];
-          });
+          setConversation(payload.new as Conversation);
         },
       )
       .subscribe();
@@ -108,16 +121,50 @@ export default function LiveChatWidget() {
     return () => {
       supabase.removeChannel(channel);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversation?.id]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, open]);
+  }, [messages.length, open, minimized]);
+
+  async function loadMessages(conversationId: string) {
+    const { data: messageData, error: messageError } = await supabase
+      .from("support_messages")
+      .select("*")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: true });
+
+    if (messageError) {
+      console.warn("LIVE_CHAT_MESSAGES_LOAD_ERROR:", messageError.message);
+      setErrorMessage(messageError.message);
+      setMessages([]);
+      return;
+    }
+
+    setMessages((messageData || []) as ChatMessage[]);
+
+    const adminUnreadIds = (messageData || [])
+      .filter(
+        (item) =>
+          String(item.sender_role || "").toLowerCase() === "admin" &&
+          item.is_read === false,
+      )
+      .map((item) => item.id);
+
+    if (adminUnreadIds.length > 0) {
+      await supabase
+        .from("support_messages")
+        .update({ is_read: true })
+        .in("id", adminUnreadIds);
+    }
+  }
 
   async function loadOrCreateConversation() {
     if (!userId) return;
 
     setLoadingChat(true);
+    setErrorMessage("");
 
     const { data: existingConversation, error: existingError } = await supabase
       .from("support_conversations")
@@ -130,11 +177,14 @@ export default function LiveChatWidget() {
 
     if (existingError) {
       console.warn("LIVE_CHAT_CONVERSATION_LOAD_ERROR:", existingError.message);
+      setErrorMessage(existingError.message);
     }
 
     let activeConversation = existingConversation as Conversation | null;
 
     if (!activeConversation) {
+      const now = new Date().toISOString();
+
       const { data: createdConversation, error: createError } = await supabase
         .from("support_conversations")
         .insert({
@@ -143,12 +193,15 @@ export default function LiveChatWidget() {
           status: "open",
           last_message: "Conversation started",
           last_sender_role: "user",
+          created_at: now,
+          updated_at: now,
         })
         .select("*")
         .single();
 
       if (createError) {
         console.warn("LIVE_CHAT_CONVERSATION_CREATE_ERROR:", createError.message);
+        setErrorMessage(createError.message);
         setLoadingChat(false);
         return;
       }
@@ -157,19 +210,7 @@ export default function LiveChatWidget() {
     }
 
     setConversation(activeConversation);
-
-    const { data: messageData, error: messageError } = await supabase
-      .from("support_messages")
-      .select("*")
-      .eq("conversation_id", activeConversation.id)
-      .order("created_at", { ascending: true });
-
-    if (messageError) {
-      console.warn("LIVE_CHAT_MESSAGES_LOAD_ERROR:", messageError.message);
-      setMessages([]);
-    } else {
-      setMessages((messageData || []) as ChatMessage[]);
-    }
+    await loadMessages(activeConversation.id);
 
     setLoadingChat(false);
   }
@@ -180,19 +221,57 @@ export default function LiveChatWidget() {
     if (!cleanMessage || !conversation?.id || !userId || sending) return;
 
     setSending(true);
+    setErrorMessage("");
     setMessageText("");
 
-    const { error } = await supabase.from("support_messages").insert({
-      conversation_id: conversation.id,
-      sender_id: userId,
-      sender_role: "user",
-      message: cleanMessage,
-      is_read: false,
+    const now = new Date().toISOString();
+
+    const { data: newMessage, error: messageError } = await supabase
+      .from("support_messages")
+      .insert({
+        conversation_id: conversation.id,
+        sender_id: userId,
+        sender_role: "user",
+        message: cleanMessage,
+        is_read: false,
+        created_at: now,
+      })
+      .select("*")
+      .single();
+
+    if (messageError) {
+      console.warn("LIVE_CHAT_SEND_ERROR:", messageError.message);
+      setErrorMessage(messageError.message);
+      setMessageText(cleanMessage);
+      setSending(false);
+      return;
+    }
+
+    setMessages((current) => {
+      const exists = current.some((item) => item.id === newMessage.id);
+      if (exists) return current;
+      return [...current, newMessage as ChatMessage];
     });
 
-    if (error) {
-      console.warn("LIVE_CHAT_SEND_ERROR:", error.message);
-      setMessageText(cleanMessage);
+    const { data: updatedConversation, error: conversationError } = await supabase
+      .from("support_conversations")
+      .update({
+        status: "open",
+        last_message: cleanMessage,
+        last_sender_role: "user",
+        updated_at: now,
+      })
+      .eq("id", conversation.id)
+      .select("*")
+      .single();
+
+    if (conversationError) {
+      console.warn(
+        "LIVE_CHAT_CONVERSATION_UPDATE_ERROR:",
+        conversationError.message,
+      );
+    } else if (updatedConversation) {
+      setConversation(updatedConversation as Conversation);
     }
 
     setSending(false);
@@ -211,6 +290,7 @@ export default function LiveChatWidget() {
     <>
       {!open && (
         <button
+          type="button"
           onClick={() => {
             setOpen(true);
             setMinimized(false);
@@ -239,6 +319,7 @@ export default function LiveChatWidget() {
 
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={() => setMinimized(!minimized)}
                 className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 transition hover:bg-white/20"
               >
@@ -246,6 +327,7 @@ export default function LiveChatWidget() {
               </button>
 
               <button
+                type="button"
                 onClick={() => setOpen(false)}
                 className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 transition hover:bg-white/20"
               >
@@ -307,6 +389,30 @@ export default function LiveChatWidget() {
                       </p>
                     </div>
                   </div>
+                ) : errorMessage ? (
+                  <div className="flex h-full items-center justify-center">
+                    <div className="rounded-3xl border border-red-100 bg-white p-6 text-center shadow-sm">
+                      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-600">
+                        <X size={26} />
+                      </div>
+
+                      <h4 className="mt-4 text-lg font-black text-slate-950">
+                        Live chat error
+                      </h4>
+
+                      <p className="mt-2 text-sm font-semibold leading-6 text-red-600">
+                        {errorMessage}
+                      </p>
+
+                      <button
+                        type="button"
+                        onClick={loadOrCreateConversation}
+                        className="mt-5 rounded-xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700"
+                      >
+                        Try Again
+                      </button>
+                    </div>
+                  </div>
                 ) : messages.length <= 0 ? (
                   <div className="flex h-full items-center justify-center">
                     <div className="rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-sm">
@@ -326,7 +432,8 @@ export default function LiveChatWidget() {
                 ) : (
                   <div className="space-y-3">
                     {messages.map((item) => {
-                      const isUser = item.sender_role === "user";
+                      const isUser =
+                        String(item.sender_role || "").toLowerCase() === "user";
 
                       return (
                         <div
@@ -340,7 +447,7 @@ export default function LiveChatWidget() {
                                 : "rounded-bl-md border border-slate-200 bg-white text-slate-700"
                             }`}
                           >
-                            <p>{item.message}</p>
+                            <p className="whitespace-pre-wrap">{item.message}</p>
 
                             <p
                               className={`mt-1 text-[10px] font-bold ${
@@ -381,6 +488,7 @@ export default function LiveChatWidget() {
                     />
 
                     <button
+                      type="button"
                       onClick={sendMessage}
                       disabled={sending || !messageText.trim()}
                       className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
