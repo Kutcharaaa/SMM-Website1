@@ -158,7 +158,7 @@ function getReviewedLabel(deposit: Deposit, profiles: UserProfile[]) {
   const reviewer = getReviewerDisplayName(deposit, profiles);
 
   if (status === "approved") {
-    return `Approved by ${reviewer}`;
+    return `${reviewer}`;
   }
 
   if (status === "rejected") {
