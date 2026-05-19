@@ -1,7 +1,5 @@
 "use client";
 
-import DashboardSidebar from "@/components/DashboardSidebar";
-import DashboardTopbar from "@/components/DashboardTopbar";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -12,10 +10,8 @@ export default function DashboardAuthGuard({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-
   const [checking, setChecking] = useState(true);
   const [allowed, setAllowed] = useState(false);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -73,22 +69,5 @@ export default function DashboardAuthGuard({
 
   if (!allowed) return null;
 
-  return (
-    <div className="min-h-screen bg-[#f6f9fc]">
-      <DashboardSidebar
-        mobileOpen={mobileSidebarOpen}
-        onClose={() => setMobileSidebarOpen(false)}
-      />
-
-      <div className="min-h-screen min-w-0 lg:pl-[260px]">
-        <DashboardTopbar onMenuClick={() => setMobileSidebarOpen(true)} />
-
-        <main className="min-w-0 overflow-x-hidden">
-          <div className="w-full min-w-0 px-4 py-4 sm:px-5 sm:py-5 lg:px-8 lg:py-8">
-            {children}
-          </div>
-        </main>
-      </div>
-    </div>
-  );
+  return <>{children}</>;
 }
