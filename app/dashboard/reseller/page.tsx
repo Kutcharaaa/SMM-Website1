@@ -486,53 +486,68 @@ export default function ResellerPage() {
     setCancellingAutoRenew(false);
   }
 
-  async function enableChildPanelAutoRenew() {
-    if (enablingAutoRenew) return;
+async function enableChildPanelAutoRenew() {
+  if (enablingAutoRenew) return;
 
-    setMessage("");
-    setChildPanelManageMessage("");
-    setEnablingAutoRenew(true);
+  setMessage("");
+  setChildPanelManageMessage("");
+  setEnablingAutoRenew(true);
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
-    if (!session?.access_token) {
-      setChildPanelManageMessage("You must be logged in to enable auto-renew.");
+  if (!session?.access_token) {
+    setChildPanelManageMessage("You must be logged in to enable auto-renew.");
+    setEnablingAutoRenew(false);
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/child-panel/enable-auto-renew", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+
+    const text = await response.text();
+
+    let result: {
+      success?: boolean;
+      message?: string;
+    } = {};
+
+    try {
+      result = JSON.parse(text);
+    } catch {
+      result = {
+        success: false,
+        message:
+          "Enable Auto Renew API route was not found or returned an invalid response. Please check the route.ts file path.",
+      };
+    }
+
+    if (!response.ok || !result.success) {
+      setChildPanelManageMessage(
+        result.message || "Failed to enable auto-renew",
+      );
       setEnablingAutoRenew(false);
       return;
     }
 
-    try {
-      const response = await fetch("/api/child-panel/enable-auto-renew", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
+    setChildPanelAutoRenew(true);
+    setChildPanelManageMessage(
+      result.message || "Auto-renew enabled successfully.",
+    );
 
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        setChildPanelManageMessage(
-          result.message || "Failed to enable auto-renew.",
-        );
-        setEnablingAutoRenew(false);
-        return;
-      }
-
-      setChildPanelAutoRenew(true);
-      setChildPanelManageMessage(
-        result.message || "Auto-renew enabled successfully.",
-      );
-
-      await loadData();
-    } catch {
-      setChildPanelManageMessage("Failed to enable auto-renew.");
-    }
-
-    setEnablingAutoRenew(false);
+    await loadData();
+  } catch {
+    setChildPanelManageMessage("Failed to enable auto-renew.");
   }
+
+  setEnablingAutoRenew(false);
+}
 
   return (
     <DashboardGuard>
