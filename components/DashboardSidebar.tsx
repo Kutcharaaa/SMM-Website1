@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 
 import {
   LayoutDashboard,
+  PlusCircle,
   ShoppingCart,
   Layers3,
   Wallet,
@@ -21,13 +22,18 @@ import {
   Receipt,
 } from "lucide-react";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const menu = [
   {
     name: "Dashboard",
     href: "/dashboard",
     icon: LayoutDashboard,
+  },
+  {
+    name: "New Order",
+    href: "/dashboard/new-order",
+    icon: PlusCircle,
   },
   {
     name: "Orders",
@@ -44,7 +50,7 @@ const menu = [
     href: "/dashboard/add-funds",
     icon: Wallet,
   },
-    {
+  {
     name: "Transactions",
     href: "/dashboard/transactions",
     icon: Receipt,
@@ -92,6 +98,17 @@ export default function DashboardSidebar({
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
+  useEffect(() => {
+    if (!mobileOpen) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [mobileOpen]);
+
   function isActive(href: string) {
     if (href === "/dashboard") {
       return pathname === "/dashboard";
@@ -117,32 +134,36 @@ export default function DashboardSidebar({
   return (
     <>
       {mobileOpen && (
-        <div
+        <button
+          type="button"
+          aria-label="Close sidebar overlay"
           onClick={onClose}
           className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
         />
       )}
 
       <aside
-        className={`fixed left-0 top-0 z-50 flex h-screen w-[260px] flex-col border-r border-blue-200 bg-gradient-to-b from-[#0d3d9b] via-[#0a2d75] to-[#071a45] text-white transition-transform duration-300 ${
+        className={`fixed left-0 top-0 z-50 flex h-dvh w-[260px] max-w-[85vw] flex-col border-r border-blue-200 bg-gradient-to-b from-[#0d3d9b] via-[#0a2d75] to-[#071a45] text-white shadow-2xl shadow-slate-950/20 transition-transform duration-300 ease-in-out lg:h-screen lg:max-w-none lg:shadow-none ${
           mobileOpen
             ? "translate-x-0"
             : "-translate-x-full lg:translate-x-0"
         }`}
       >
         <div className="px-6 pb-5 pt-7">
-          <div className="flex items-center justify-between">
-            <Link href="/dashboard" onClick={onClose}>
+          <div className="flex items-center justify-between gap-3">
+            <Link href="/dashboard" onClick={onClose} className="min-w-0">
               <img
                 src="/logo.png"
                 alt="Ascend Service"
-                className="h-12 w-auto"
+                className="h-12 w-auto max-w-[180px]"
               />
             </Link>
 
             <button
+              type="button"
+              aria-label="Close sidebar"
               onClick={onClose}
-              className="rounded-xl bg-white/10 p-2 transition hover:bg-white/20 lg:hidden"
+              className="shrink-0 rounded-xl bg-white/10 p-2 transition hover:bg-white/20 lg:hidden"
             >
               <X size={18} />
             </button>
@@ -151,7 +172,7 @@ export default function DashboardSidebar({
 
         <nav
           className="
-            flex-1 overflow-y-auto px-4
+            flex-1 overflow-y-auto px-4 pb-2
             [&::-webkit-scrollbar]:w-1.5
             [&::-webkit-scrollbar-track]:bg-transparent
             [&::-webkit-scrollbar-thumb]:rounded-full
@@ -174,13 +195,13 @@ export default function DashboardSidebar({
                       : "text-blue-100 hover:bg-white/10 hover:text-white"
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <Icon size={18} strokeWidth={2.2} />
-                    <span>{item.name}</span>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Icon size={18} strokeWidth={2.2} className="shrink-0" />
+                    <span className="truncate">{item.name}</span>
                   </div>
 
                   {item.badge && (
-                    <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">
+                    <span className="ml-2 shrink-0 rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">
                       {item.badge}
                     </span>
                   )}
@@ -196,9 +217,9 @@ export default function DashboardSidebar({
               }}
               className="flex w-full items-center justify-between rounded-2xl px-4 py-3 text-sm font-semibold text-blue-100 transition hover:bg-white/10 hover:text-white"
             >
-              <div className="flex items-center gap-3">
-                <LogOut size={18} strokeWidth={2.2} />
-                <span>Logout</span>
+              <div className="flex min-w-0 items-center gap-3">
+                <LogOut size={18} strokeWidth={2.2} className="shrink-0" />
+                <span className="truncate">Logout</span>
               </div>
             </button>
           </div>
@@ -228,13 +249,13 @@ export default function DashboardSidebar({
       {logoutModalOpen && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
-            <div className="p-6">
+            <div className="p-5 sm:p-6">
               <div className="flex items-start gap-4">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-50 text-red-600">
                   <AlertTriangle size={24} />
                 </div>
 
-                <div>
+                <div className="min-w-0">
                   <h3 className="text-xl font-black text-slate-950">
                     Confirm Logout
                   </h3>
@@ -251,7 +272,7 @@ export default function DashboardSidebar({
                   type="button"
                   onClick={() => setLogoutModalOpen(false)}
                   disabled={loggingOut}
-                  className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="w-full rounded-2xl border border-slate-200 px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                 >
                   Cancel
                 </button>
@@ -260,7 +281,7 @@ export default function DashboardSidebar({
                   type="button"
                   onClick={handleLogout}
                   disabled={loggingOut}
-                  className="rounded-2xl bg-red-600 px-5 py-3 text-sm font-black text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="w-full rounded-2xl bg-red-600 px-5 py-3 text-sm font-black text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                 >
                   {loggingOut ? "Logging out..." : "Yes, Logout"}
                 </button>
