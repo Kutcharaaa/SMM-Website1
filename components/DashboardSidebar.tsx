@@ -18,6 +18,7 @@ import {
   LogOut,
   X,
   AlertTriangle,
+  Receipt,
 } from "lucide-react";
 
 import { useState } from "react";
@@ -42,6 +43,11 @@ const menu = [
     name: "Add Funds",
     href: "/dashboard/add-funds",
     icon: Wallet,
+  },
+    {
+    name: "Transactions",
+    href: "/dashboard/transactions",
+    icon: Receipt,
   },
   {
     name: "Tickets",
