@@ -1,8 +1,7 @@
 "use client";
 
 import DashboardGuard from "@/components/DashboardGuard";
-import DashboardSidebar from "@/components/DashboardSidebar";
-import DashboardTopbar from "@/components/DashboardTopbar";
+import DashboardLayout from "@/components/DashboardLayout";
 import { supabase } from "@/lib/supabase";
 import { useDisplayCurrency } from "@/lib/useDisplayCurrency";
 import {
@@ -24,7 +23,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 type ProfileData = {
   id: string;
@@ -577,51 +576,40 @@ export default function AffiliatesPage() {
   if (loading) {
     return (
       <DashboardGuard>
-        <main className="min-h-screen bg-slate-50 text-slate-950">
-          <DashboardSidebar />
-
-          <section className="min-h-screen lg:ml-[260px]">
-            <DashboardTopbar />
-
-            <div className="p-4 lg:p-8">
-              <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-sm">
-                <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
-                <p className="mt-4 text-sm font-black text-slate-500">
-                  Loading affiliate dashboard...
-                </p>
-              </div>
+        <DashboardLayout>
+          <div className="min-w-0">
+            <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm sm:p-10">
+              <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
+              <p className="mt-4 text-sm font-black text-slate-500">
+                Loading affiliate dashboard...
+              </p>
             </div>
-          </section>
-        </main>
+          </div>
+        </DashboardLayout>
       </DashboardGuard>
     );
   }
 
   return (
     <DashboardGuard>
-      <main className="min-h-screen bg-slate-50 text-slate-950">
-        <DashboardSidebar />
-
-        <section className="min-h-screen lg:ml-[260px]">
-          <DashboardTopbar />
-
-          <div className="p-4 lg:p-8">
-            <div>
-              <h1 className="text-3xl font-black text-slate-950">Affiliates</h1>
-              <p className="mt-2 text-sm font-semibold text-slate-500">
-                Invite friends and earn commission from every approved deposit made by your referrals.
-              </p>
+      <DashboardLayout>
+        <div className="min-w-0">
+          <div className="min-w-0">
+            <h1 className="text-3xl font-black text-slate-950">Affiliates</h1>
+              <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
+              Invite friends and earn commission from every approved deposit made by your referrals.
+            </p>
             </div>
 
-            <section className="mt-6 overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-6 text-white shadow-sm lg:p-8">
-              <div className="grid gap-8 lg:grid-cols-[1.15fr_1.05fr_220px] lg:items-center">
+          <section className="mt-6 min-w-0 overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-5 text-white shadow-sm sm:p-6 lg:p-8">
+            <div className="grid min-w-0 gap-6 lg:grid-cols-[1.15fr_1.05fr_220px] lg:items-center lg:gap-8">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-100">
                     Affiliate Level
                   </p>
 
                   <div className="mt-3 flex flex-wrap items-center gap-3">
-                    <h2 className="text-3xl font-black lg:text-5xl">
+                    <h2 className="min-w-0 break-words text-2xl font-black sm:text-3xl lg:text-5xl">
                       {currentLevel.name}
                     </h2>
 
@@ -641,7 +629,7 @@ export default function AffiliatesPage() {
                   </p>
 
                   <div className="mt-3 flex flex-wrap items-end gap-2">
-                    <p className="text-3xl font-black lg:text-4xl">
+                    <p className="min-w-0 break-words text-2xl font-black sm:text-3xl lg:text-4xl">
                       {formatAmount(totalReferralDeposits)}
                     </p>
 
@@ -678,7 +666,7 @@ export default function AffiliatesPage() {
                 </div>
 
                 <div className="flex justify-center lg:justify-end">
-                  <div className="relative flex h-40 w-40 items-center justify-center rounded-full border-4 border-white/70 bg-white/10 shadow-2xl backdrop-blur">
+                  <div className="relative flex h-32 w-32 items-center justify-center rounded-full border-4 border-white/70 bg-white/10 shadow-2xl backdrop-blur sm:h-40 sm:w-40">
                     {profile?.avatar_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -688,7 +676,7 @@ export default function AffiliatesPage() {
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center rounded-full bg-white/10">
-                        <User size={72} className="text-white" />
+                        <User size={64} className="text-white sm:size-[72px]" />
                       </div>
                     )}
                   </div>
@@ -696,7 +684,7 @@ export default function AffiliatesPage() {
               </div>
             </section>
 
-            <section className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <section className="mt-5 grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
               <StatCard
                 icon={Users}
                 title="Total Referrals"
@@ -732,17 +720,17 @@ export default function AffiliatesPage() {
               />
             </section>
 
-            <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_420px]">
-              <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mt-5 grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+            <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-xl font-black text-slate-950">
+                  <h3 className="min-w-0 text-xl font-black text-slate-950">
                     Affiliate Level Path
                   </h3>
                   <Info size={16} className="text-slate-400" />
                 </div>
 
-                <div className="mt-7">
-                  <div className="relative grid gap-4 md:grid-cols-5">
+                <div className="mt-7 overflow-x-auto pb-2">
+                  <div className="relative grid min-w-[900px] gap-4 md:min-w-0 md:grid-cols-5">
                     {AFFILIATE_LEVELS.map((level) => {
                       const Icon = level.icon;
                       const isCurrent = level.level === currentLevel.level;
@@ -788,7 +776,7 @@ export default function AffiliatesPage() {
                 </div>
               </section>
 
-              <section className="rounded-3xl bg-[#061c42] p-6 text-white shadow-sm">
+            <section className="min-w-0 rounded-3xl bg-[#061c42] p-5 text-white shadow-sm sm:p-6">
                 <h3 className="text-xl font-black">Affiliate Summary</h3>
 
                 <div className="mt-6 space-y-4">
@@ -817,15 +805,15 @@ export default function AffiliatesPage() {
               </section>
             </div>
 
-            <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_1fr]">
-              <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mt-5 grid min-w-0 gap-5 xl:grid-cols-2">
+            <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex items-start gap-3">
                   <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-100 text-blue-600">
                     <Link2 size={21} />
                   </div>
 
                   <div>
-                    <h3 className="text-xl font-black text-slate-950">
+                    <h3 className="min-w-0 text-xl font-black text-slate-950">
                       Referral Link
                     </h3>
                     <p className="mt-1 text-sm font-semibold text-slate-500">
@@ -834,28 +822,28 @@ export default function AffiliatesPage() {
                   </div>
                 </div>
 
-                <div className="mt-5 flex overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                <div className="mt-5 flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 sm:flex-row">
                   <input
                     readOnly
                     value={referralLink}
-                    className="h-12 flex-1 bg-transparent px-4 text-sm font-bold text-slate-600 outline-none"
+                    className="h-12 min-w-0 flex-1 bg-transparent px-4 text-sm font-bold text-slate-600 outline-none"
                   />
 
                   <button
                     type="button"
                     onClick={copyReferralLink}
-                    className="flex h-12 items-center gap-2 border-l border-slate-200 bg-white px-4 text-sm font-black text-blue-600 transition hover:bg-blue-50"
+                    className="flex h-12 w-full items-center justify-center gap-2 border-t border-slate-200 bg-white px-4 text-sm font-black text-blue-600 transition hover:bg-blue-50 sm:w-auto sm:border-l sm:border-t-0"
                   >
                     <Copy size={16} />
                     {copied ? "Copied" : "Copy"}
                   </button>
                 </div>
 
-                <div className="mt-4 flex flex-wrap gap-3">
+                <div className="mt-4 grid gap-3 sm:flex sm:flex-wrap">
                   <button
                     type="button"
                     onClick={shareReferralLink}
-                    className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700 sm:w-auto"
                   >
                     <Share2 size={17} />
                     Share Referral Link
@@ -864,7 +852,7 @@ export default function AffiliatesPage() {
                   <button
                     type="button"
                     onClick={openReferralsModal}
-                    className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 sm:w-auto"
                   >
                     <Users size={17} />
                     View All Referrals
@@ -872,9 +860,9 @@ export default function AffiliatesPage() {
                 </div>
               </section>
 
-              <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <h3 className="text-xl font-black text-slate-950">
+            <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex min-w-0 items-center justify-between gap-3">
+                  <h3 className="min-w-0 text-xl font-black text-slate-950">
                     Commission History
                   </h3>
 
@@ -895,10 +883,10 @@ export default function AffiliatesPage() {
               </section>
             </div>
 
-            <div className="mt-5 grid gap-5 xl:grid-cols-[1fr_1fr]">
-              <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <h3 className="text-xl font-black text-slate-950">
+          <div className="mt-5 grid min-w-0 gap-5 xl:grid-cols-2">
+            <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex min-w-0 items-center justify-between gap-3">
+                  <h3 className="min-w-0 text-xl font-black text-slate-950">
                     Recent Referrals
                   </h3>
 
@@ -918,8 +906,8 @@ export default function AffiliatesPage() {
                 />
               </section>
 
-              <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 className="text-xl font-black text-slate-950">
+            <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 className="min-w-0 text-xl font-black text-slate-950">
                   Transfer History
                 </h3>
 
@@ -930,7 +918,6 @@ export default function AffiliatesPage() {
                 />
               </section>
             </div>
-          </div>
 
           {showCommissionModal && (
             <Modal
@@ -1028,8 +1015,8 @@ export default function AffiliatesPage() {
               )}
             </Modal>
           )}
-        </section>
-      </main>
+        </div>
+      </DashboardLayout>
     </DashboardGuard>
   );
 }
@@ -1052,22 +1039,22 @@ function StatCard({
   onButtonClick?: () => void;
 }) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-start gap-4">
+    <div className="min-w-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex min-w-0 items-start gap-4">
         <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${color}`}>
           <Icon size={26} />
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-black uppercase tracking-wide text-slate-500">
+          <p className="truncate text-xs font-black uppercase tracking-wide text-slate-500">
             {title}
           </p>
 
-          <h3 className="mt-2 break-words text-2xl font-black text-slate-950">
+          <h3 className="mt-2 min-w-0 break-words text-2xl font-black text-slate-950">
             {value}
           </h3>
 
-          <p className="mt-1 text-sm font-semibold text-slate-400">
+          <p className="mt-1 line-clamp-2 text-sm font-semibold text-slate-400">
             {subtitle}
           </p>
 
@@ -1089,9 +1076,9 @@ function StatCard({
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center gap-4 border-b border-white/10 pb-4 last:border-b-0 last:pb-0">
-      <p className="flex-1 text-base font-semibold text-blue-50">{label}</p>
-      <p className="text-right text-base font-black text-white">{value}</p>
+    <div className="flex min-w-0 items-center gap-4 border-b border-white/10 pb-4 last:border-b-0 last:pb-0">
+      <p className="min-w-0 flex-1 text-base font-semibold text-blue-50">{label}</p>
+      <p className="min-w-0 max-w-[55%] break-words text-right text-base font-black text-white">{value}</p>
     </div>
   );
 }
@@ -1108,7 +1095,7 @@ function ReferralList({
   large?: boolean;
 }) {
   return (
-    <div className={`mt-5 overflow-hidden rounded-2xl border border-slate-100 ${large ? "" : ""}`}>
+    <div className={`mt-5 min-w-0 overflow-hidden rounded-2xl border border-slate-100 ${large ? "" : ""}`}>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[680px] text-sm">
           <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -1134,15 +1121,15 @@ function ReferralList({
 
                 return (
                   <tr key={item.id} className="border-t border-slate-100">
-                    <td className="p-4 font-black text-slate-800">
+                    <td className="max-w-[220px] truncate p-4 font-black text-slate-800">
                       {item.referred_username || "Referral User"}
                     </td>
 
-                    <td className="p-4 font-black text-slate-700">
+                    <td className="whitespace-nowrap p-4 font-black text-slate-700">
                       {formatAmount(item.total_deposits)}
                     </td>
 
-                    <td className="p-4 font-black text-green-600">
+                    <td className="whitespace-nowrap p-4 font-black text-green-600">
                       {formatAmount(item.total_commission)}
                     </td>
 
@@ -1158,7 +1145,7 @@ function ReferralList({
                       </span>
                     </td>
 
-                    <td className="p-4 font-semibold text-slate-500">
+                    <td className="whitespace-nowrap p-4 font-semibold text-slate-500">
                       {formatDate(item.created_at)}
                     </td>
                   </tr>
@@ -1184,7 +1171,7 @@ function CommissionList({
   large?: boolean;
 }) {
   return (
-    <div className={`mt-5 overflow-hidden rounded-2xl border border-slate-100 ${large ? "" : ""}`}>
+    <div className={`mt-5 min-w-0 overflow-hidden rounded-2xl border border-slate-100 ${large ? "" : ""}`}>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[760px] text-sm">
           <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -1209,23 +1196,23 @@ function CommissionList({
             ) : (
               items.map((item) => (
                 <tr key={item.id} className="border-t border-slate-100">
-                  <td className="p-4 font-black text-slate-800">
+                  <td className="max-w-[220px] truncate p-4 font-black text-slate-800">
                     {item.referred_username || "Referral User"}
                   </td>
 
-                  <td className="p-4 font-black text-slate-700">
+                  <td className="whitespace-nowrap p-4 font-black text-slate-700">
                     {formatAmount(item.deposit_amount)}
                   </td>
 
-                  <td className="p-4 font-black text-blue-600">
+                  <td className="whitespace-nowrap p-4 font-black text-blue-600">
                     {formatPercent(item.commission_rate)}
                   </td>
 
-                  <td className="p-4 font-black text-green-600">
+                  <td className="whitespace-nowrap p-4 font-black text-green-600">
                     {formatAmount(item.commission_amount)}
                   </td>
 
-                  <td className="p-4 font-black text-orange-600">
+                  <td className="whitespace-nowrap p-4 font-black text-orange-600">
                     {formatAmount(item.used_amount)}
                   </td>
 
@@ -1239,7 +1226,7 @@ function CommissionList({
                     </span>
                   </td>
 
-                  <td className="p-4 font-semibold text-slate-500">
+                  <td className="whitespace-nowrap p-4 font-semibold text-slate-500">
                     {formatDate(item.created_at)}
                   </td>
                 </tr>
@@ -1283,7 +1270,7 @@ function TransferList({
             ) : (
               items.map((item) => (
                 <tr key={item.id} className="border-t border-slate-100">
-                  <td className="p-4 font-black text-green-600">
+                  <td className="whitespace-nowrap p-4 font-black text-green-600">
                     {formatAmount(item.amount)}
                   </td>
 
@@ -1297,7 +1284,7 @@ function TransferList({
                     </span>
                   </td>
 
-                  <td className="p-4 font-semibold text-slate-500">
+                  <td className="whitespace-nowrap p-4 font-semibold text-slate-500">
                     {formatDateTime(item.created_at)}
                   </td>
                 </tr>
@@ -1316,14 +1303,14 @@ function Modal({
   onClose,
 }: {
   title: string;
-  children: React.ReactNode;
+  children: ReactNode;
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm lg:items-center">
-      <div className="my-8 w-full max-w-5xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-100 p-6">
-          <h3 className="text-2xl font-black text-slate-950">{title}</h3>
+    <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-3 backdrop-blur-sm sm:p-4 lg:items-center">
+      <div className="my-4 flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl sm:my-8">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-5 sm:items-center sm:p-6">
+          <h3 className="min-w-0 text-xl font-black text-slate-950 sm:text-2xl">{title}</h3>
 
           <button
             type="button"
@@ -1334,7 +1321,7 @@ function Modal({
           </button>
         </div>
 
-        <div className="max-h-[75vh] overflow-y-auto p-6">{children}</div>
+        <div className="min-h-0 overflow-y-auto p-5 sm:p-6">{children}</div>
       </div>
     </div>
   );
