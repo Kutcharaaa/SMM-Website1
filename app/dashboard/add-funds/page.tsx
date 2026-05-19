@@ -156,12 +156,6 @@ export default function AddFundsPage() {
   const minimumAmount =
     conversionRate > 0 ? baseMinimumPhp / conversionRate : baseMinimumPhp;
 
-  const iconUrl =
-    selectedMethod?.icon_url ||
-    selectedMethod?.icon ||
-    selectedMethod?.image_url ||
-    "";
-
   const canSubmit =
     Number(amount || 0) >= minimumAmount &&
     Boolean(selectedMethod) &&
@@ -170,7 +164,6 @@ export default function AddFundsPage() {
     !submittingDeposit;
 
   const selectedAmountIsPreset = quickAmounts.includes(Number(amount || 0));
-
   const processingLabel = selectedMethod?.processing_time || "Manual Review";
 
   const instructions =
@@ -192,6 +185,7 @@ export default function AddFundsPage() {
     };
 
     const symbol = symbols[code] || `${code} `;
+
     return `${symbol}${Number(value || 0).toLocaleString(undefined, {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
@@ -200,6 +194,7 @@ export default function AddFundsPage() {
 
   async function copyText(text?: string | null) {
     if (!text) return;
+
     await navigator.clipboard.writeText(text);
     showToast("Copied to clipboard.", "success");
   }
@@ -232,7 +227,9 @@ export default function AddFundsPage() {
 
     if (Number(amount) < minimumAmount) {
       showToast(
-        `Minimum deposit is ${formatCurrencyValue(minimumAmount)} (₱${baseMinimumPhp.toFixed(2)} PHP).`,
+        `Minimum deposit is ${formatCurrencyValue(
+          minimumAmount,
+        )} (₱${baseMinimumPhp.toFixed(2)} PHP).`,
         "warning",
       );
       setSubmittingDeposit(false);
@@ -307,7 +304,9 @@ export default function AddFundsPage() {
         admins.map((admin) => ({
           user_id: admin.id,
           title: "New Deposit Request",
-          message: `New ${currency} ${Number(amount).toFixed(2)} deposit request via ${selectedMethod.name}.`,
+          message: `New ${currency} ${Number(amount).toFixed(
+            2,
+          )} deposit request via ${selectedMethod.name}.`,
           type: "new_deposit",
           is_read: false,
         })),
@@ -327,8 +326,8 @@ export default function AddFundsPage() {
   return (
     <DashboardGuard>
       <DashboardLayout>
-        <div className="-m-8 min-h-screen bg-[#f6f9fc] p-6 lg:p-8">
-          <div className="mb-7">
+        <div className="min-h-screen min-w-0 bg-[#f6f9fc]">
+          <div className="mb-7 min-w-0">
             <h1 className="text-3xl font-black text-slate-950">Add Funds</h1>
 
             <p className="mt-2 text-sm font-semibold text-slate-500">
@@ -336,12 +335,12 @@ export default function AddFundsPage() {
             </p>
           </div>
 
-          <div className="grid gap-7 xl:grid-cols-[1fr_360px]">
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="grid min-w-0 gap-7 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               <section className="border-b border-slate-100 p-5 lg:p-6">
                 <StepHeader number="1" title="Choose Payment Method" />
 
-                <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+                <div className="mt-5 grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
                   {paymentMethods.length <= 0 ? (
                     <div className="col-span-full rounded-2xl border border-slate-200 p-8 text-center text-sm font-semibold text-slate-500">
                       No active payment methods yet.
@@ -349,6 +348,7 @@ export default function AddFundsPage() {
                   ) : (
                     paymentMethods.map((method) => {
                       const isSelected = method.id === methodId;
+
                       const methodIcon =
                         method.icon_url ||
                         method.icon ||
@@ -358,12 +358,13 @@ export default function AddFundsPage() {
                       return (
                         <button
                           key={method.id}
+                          type="button"
                           onClick={() => {
                             setMethodId(method.id);
                             setShowQrDetails(false);
                             setQrPreviewOpen(false);
                           }}
-                          className={`relative flex min-h-[138px] flex-col items-center justify-center rounded-2xl border p-5 text-center transition ${
+                          className={`relative flex min-h-[138px] min-w-0 flex-col items-center justify-center rounded-2xl border p-5 text-center transition ${
                             isSelected
                               ? "border-blue-500 bg-blue-50/40 shadow-sm"
                               : "border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/20"
@@ -377,7 +378,7 @@ export default function AddFundsPage() {
 
                           <PaymentIcon src={methodIcon} name={method.name} />
 
-                          <h3 className="mt-3 text-sm font-black text-slate-950">
+                          <h3 className="mt-3 line-clamp-2 text-sm font-black text-slate-950">
                             {method.name}
                           </h3>
 
@@ -398,6 +399,7 @@ export default function AddFundsPage() {
 
                 <div className="mt-5 flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-semibold text-slate-600">
                   <Info size={18} className="mt-0.5 shrink-0 text-blue-600" />
+
                   <p>
                     Payments are reviewed securely. Your funds will be added
                     after successful verification.
@@ -408,13 +410,14 @@ export default function AddFundsPage() {
               <section className="border-b border-slate-100 p-5 lg:p-6">
                 <StepHeader number="2" title="Select Amount" />
 
-                <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                   {quickAmounts.map((value) => {
                     const selected = Number(amount || 0) === value;
 
                     return (
                       <button
                         key={value}
+                        type="button"
                         onClick={() => setAmount(String(value))}
                         className={`relative rounded-2xl border p-5 text-center transition ${
                           selected
@@ -428,11 +431,11 @@ export default function AddFundsPage() {
                           </span>
                         )}
 
-                        <h3 className="text-2xl font-black text-slate-950">
+                        <h3 className="truncate text-2xl font-black text-slate-950">
                           {formatCurrencyValue(value)}
                         </h3>
 
-                        <p className="mt-2 text-sm font-semibold text-slate-500">
+                        <p className="mt-2 truncate text-sm font-semibold text-slate-500">
                           You pay {formatCurrencyValue(value)}
                         </p>
                       </button>
@@ -440,6 +443,7 @@ export default function AddFundsPage() {
                   })}
 
                   <button
+                    type="button"
                     onClick={() => {
                       if (selectedAmountIsPreset) setAmount("");
                     }}
@@ -450,9 +454,11 @@ export default function AddFundsPage() {
                     }`}
                   >
                     <Pencil size={18} className="mx-auto text-slate-500" />
+
                     <h3 className="mt-2 text-base font-black text-slate-700">
                       Custom Amount
                     </h3>
+
                     <p className="mt-2 text-sm font-semibold text-slate-500">
                       Enter any amount
                     </p>
@@ -464,19 +470,19 @@ export default function AddFundsPage() {
                     Or enter custom amount
                   </label>
 
-                  <div className="mt-3 flex overflow-hidden rounded-xl border border-slate-200">
+                  <div className="mt-3 flex min-w-0 flex-col overflow-hidden rounded-xl border border-slate-200 sm:flex-row">
                     <input
                       type="number"
                       placeholder="Enter amount"
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
-                      className="h-12 flex-1 px-4 text-sm font-semibold text-slate-900 outline-none"
+                      className="h-12 min-w-0 flex-1 px-4 text-sm font-semibold text-slate-900 outline-none"
                     />
 
                     <select
                       value={currency}
                       onChange={(e) => setCurrency(e.target.value)}
-                      className="border-l border-slate-200 bg-slate-50 px-4 text-sm font-black text-slate-700 outline-none"
+                      className="h-12 border-t border-slate-200 bg-slate-50 px-4 text-sm font-black text-slate-700 outline-none sm:border-l sm:border-t-0"
                     >
                       {currencies.map((item) => (
                         <option key={item.id} value={item.currency_code}>
@@ -496,7 +502,7 @@ export default function AddFundsPage() {
               <section className="border-b border-slate-100 p-5 lg:p-6">
                 <StepHeader number="3" title="Payment Details" />
 
-                <div className="mt-5 grid gap-5 lg:grid-cols-[280px_1fr]">
+                <div className="mt-5 grid min-w-0 gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
                     <h3 className="text-sm font-black text-slate-900">
                       QR Code
@@ -538,9 +544,9 @@ export default function AddFundsPage() {
                     </button>
                   </div>
 
-                  <div className="space-y-4">
+                  <div className="min-w-0 space-y-4">
                     {showQrDetails && selectedMethod && (
-                      <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="grid min-w-0 gap-4 sm:grid-cols-2">
                         <AccountBox
                           label="Account Name"
                           value={selectedMethod.account_name || "N/A"}
@@ -588,7 +594,7 @@ export default function AddFundsPage() {
 
                         <Upload size={26} className="text-blue-600" />
 
-                        <p className="mt-3 text-sm font-black text-slate-800">
+                        <p className="mt-3 max-w-full truncate text-sm font-black text-slate-800">
                           {proofFile ? proofFile.name : "Click to upload proof"}
                         </p>
 
@@ -605,6 +611,7 @@ export default function AddFundsPage() {
                 <StepHeader number="4" title="Review & Submit" />
 
                 <button
+                  type="button"
                   onClick={handleSubmit}
                   disabled={!canSubmit}
                   className="mt-5 flex w-full items-center justify-center gap-3 rounded-xl bg-blue-600 py-4 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
@@ -612,24 +619,25 @@ export default function AddFundsPage() {
                   {submittingDeposit
                     ? "Submitting..."
                     : "Submit Deposit Request"}
+
                   <ArrowRight size={18} />
                 </button>
 
-                <div className="mt-4 flex items-center justify-center gap-2 text-xs font-semibold text-slate-500">
-                  <Lock size={14} />
+                <div className="mt-4 flex items-center justify-center gap-2 text-center text-xs font-semibold text-slate-500">
+                  <Lock size={14} className="shrink-0" />
                   Secure payment review by Ascend Service
                 </div>
               </section>
             </div>
 
-            <aside className="space-y-5">
+            <aside className="min-w-0 space-y-5">
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xl font-black text-slate-950">
+                <div className="flex items-center justify-between gap-4">
+                  <h3 className="min-w-0 truncate text-xl font-black text-slate-950">
                     Payment Summary
                   </h3>
 
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-purple-50 text-purple-600">
                     <Wallet size={22} />
                   </div>
                 </div>
@@ -672,7 +680,7 @@ export default function AddFundsPage() {
                   Payment Instructions
                 </h3>
 
-                <div className="mt-4 whitespace-pre-line text-sm font-medium leading-relaxed text-slate-600">
+                <div className="mt-4 whitespace-pre-line break-words text-sm font-medium leading-relaxed text-slate-600">
                   {instructions}
                 </div>
               </div>
@@ -693,8 +701,8 @@ export default function AddFundsPage() {
           </div>
 
           {qrPreviewOpen && selectedMethod?.qr_url && (
-            <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-              <div className="relative w-full max-w-2xl rounded-3xl bg-white p-5 shadow-2xl">
+            <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm sm:p-4">
+              <div className="relative max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-4 shadow-2xl sm:p-5">
                 <button
                   type="button"
                   onClick={() => setQrPreviewOpen(false)}
@@ -704,9 +712,10 @@ export default function AddFundsPage() {
                 </button>
 
                 <div className="pr-12">
-                  <h3 className="text-2xl font-black text-slate-950">
+                  <h3 className="text-xl font-black text-slate-950 sm:text-2xl">
                     {selectedMethod.name} QR Code
                   </h3>
+
                   <p className="mt-1 text-sm font-semibold text-slate-500">
                     Scan this QR code to send your payment.
                   </p>
@@ -734,12 +743,14 @@ function processingLabelFor(method: PaymentMethod) {
 
 function StepHeader({ number, title }: { number: string; title: string }) {
   return (
-    <div className="flex items-center gap-3">
-      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-sm font-black text-white">
+    <div className="flex min-w-0 items-center gap-3">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-black text-white">
         {number}
       </span>
 
-      <h2 className="text-lg font-black text-slate-950">{title}</h2>
+      <h2 className="min-w-0 truncate text-lg font-black text-slate-950">
+        {title}
+      </h2>
     </div>
   );
 }
@@ -772,13 +783,15 @@ function AccountBox({
   onCopy: () => void;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+    <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4">
       <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
         {label}
       </p>
 
-      <div className="mt-2 flex items-center justify-between gap-3">
-        <p className="break-all text-sm font-black text-slate-900">{value}</p>
+      <div className="mt-2 flex min-w-0 items-center justify-between gap-3">
+        <p className="min-w-0 break-all text-sm font-black text-slate-900">
+          {value}
+        </p>
 
         <button
           type="button"
@@ -802,10 +815,11 @@ function SummaryRow({
   valueClassName?: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <p className="text-sm font-bold text-slate-500">{label}</p>
+    <div className="flex min-w-0 items-center justify-between gap-4">
+      <p className="shrink-0 text-sm font-bold text-slate-500">{label}</p>
+
       <p
-        className={`text-right text-sm font-black text-slate-950 ${valueClassName}`}
+        className={`min-w-0 truncate text-right text-sm font-black text-slate-950 ${valueClassName}`}
       >
         {value}
       </p>
@@ -816,8 +830,8 @@ function SummaryRow({
 function TrustItem({ text }: { text: string }) {
   return (
     <div className="flex items-center gap-3 text-sm font-semibold text-slate-600">
-      <CheckCircle2 size={17} className="text-blue-600" />
-      {text}
+      <CheckCircle2 size={17} className="shrink-0 text-blue-600" />
+      <span className="min-w-0">{text}</span>
     </div>
   );
 }
