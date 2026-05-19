@@ -419,146 +419,62 @@ async function transferCommissionToBalance() {
     return;
   }
 
+  if (amount > availableCommission) {
+    setTransferMessage("Transfer amount is higher than your available commission.");
+    return;
+  }
+
   setTransferring(true);
 
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
 
-  if (!user) {
+  if (!session?.access_token) {
     setTransferMessage("You need to login again.");
     setTransferring(false);
     return;
   }
 
-  const { data: freshCommissions, error: commissionError } = await supabase
-    .from("affiliate_commissions")
-    .select("*")
-    .eq("referrer_id", user.id)
-    .eq("status", "available")
-    .order("created_at", { ascending: true });
+  try {
+    const response = await fetch("/api/affiliate/transfer-commission", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        amount,
+      }),
+    });
 
-  if (commissionError) {
-    setTransferMessage(commissionError.message);
-    setTransferring(false);
-    return;
-  }
+    const result = await response.json();
 
-  const availableRows = ((freshCommissions || []) as CommissionRecord[]).map(
-    (commission) => {
-      const commissionAmount = toNumber(commission.commission_amount);
-      const usedAmount = toNumber(commission.used_amount);
-      const availableAmount = Math.max(0, commissionAmount - usedAmount);
-
-      return {
-        commission,
-        commissionAmount,
-        usedAmount,
-        availableAmount,
-      };
-    },
-  );
-
-  const freshAvailableCommission = availableRows.reduce(
-    (total, item) => total + item.availableAmount,
-    0,
-  );
-
-  if (amount > freshAvailableCommission) {
-    setTransferMessage("Transfer amount is higher than your available commission.");
-    setTransferring(false);
-    await loadAffiliateData();
-    return;
-  }
-
-  let remainingAmount = amount;
-
-  for (const item of availableRows) {
-    if (remainingAmount <= 0) break;
-    if (item.availableAmount <= 0) continue;
-
-    const useFromThis = Math.min(item.availableAmount, remainingAmount);
-    const newUsedAmount = item.usedAmount + useFromThis;
-    const newStatus =
-      newUsedAmount >= item.commissionAmount ? "used" : "available";
-
-    const { error: updateCommissionError } = await supabase
-      .from("affiliate_commissions")
-      .update({
-        used_amount: newUsedAmount,
-        status: newStatus,
-      })
-      .eq("id", item.commission.id);
-
-    if (updateCommissionError) {
-      setTransferMessage(updateCommissionError.message);
+    if (!response.ok || !result.success) {
+      setTransferMessage(
+        result.message || "Failed to transfer affiliate commission.",
+      );
       setTransferring(false);
       return;
     }
 
-    remainingAmount -= useFromThis;
-  }
-
-  if (remainingAmount > 0.009) {
     setTransferMessage(
-      "Transfer failed because available commission changed. Please try again.",
+      result.message ||
+        `${formatAmount(amount)} commission transferred to your balance.`,
     );
-    setTransferring(false);
+
+    setTransferAmount("");
+
     await loadAffiliateData();
-    return;
+
+    if (showCommissionsModal) {
+      await loadAllCommissions();
+    }
+  } catch {
+    setTransferMessage("Failed to transfer affiliate commission.");
   }
 
-  const currentBalance = toNumber(profile?.balance);
-
-  const { error: profileError } = await supabase
-    .from("profiles")
-    .update({
-      balance: currentBalance + amount,
-    })
-    .eq("id", user.id);
-
-  if (profileError) {
-    setTransferMessage(profileError.message);
-    setTransferring(false);
-    return;
-  }
-
-  const { data: transferRecord, error: transferError } = await supabase
-    .from("affiliate_commission_transfers")
-    .insert({
-      user_id: user.id,
-      amount,
-      status: "completed",
-    })
-    .select("id, amount, status, created_at")
-    .single();
-
-  if (transferError) {
-    console.warn("AFFILIATE_TRANSFER_HISTORY_NOT_READY:", transferError.message);
-  }
-
-  await supabase.from("wallet_transactions").insert({
-    user_id: user.id,
-    type: "affiliate_commission_transfer",
-    amount,
-    status: "completed",
-    description: "Affiliate commission transferred to wallet balance",
-    reference_type: "affiliate_commission_transfer",
-    reference_id: transferRecord?.id || null,
-  });
-
-  setTransferMessage(
-    `${formatAmount(amount)} commission transferred to your balance.`,
-  );
-
-  setTransferAmount("");
   setTransferring(false);
-
-  await loadAffiliateData();
-
-  if (showCommissionsModal) {
-    await loadAllCommissions();
-  }
 }
 
   if (loading) {
