@@ -156,37 +156,38 @@ export default function ResellerPointsCard() {
 
   return (
     <>
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div>
+      <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
             <h3 className="text-[17px] font-black text-slate-950">
               Reseller Points
             </h3>
 
             <button
+              type="button"
               onClick={async () => {
                 await loadConversionHistory();
                 setHistoryOpen(true);
               }}
-              className="mt-1 text-xs font-black text-blue-600 hover:text-blue-700"
+              className="mt-1 text-left text-xs font-black text-blue-600 hover:text-blue-700"
             >
               Conversion History
             </button>
           </div>
 
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-            <Star size={28} fill="currentColor" />
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600 sm:h-14 sm:w-14">
+            <Star size={26} fill="currentColor" />
           </div>
         </div>
 
-        <div className="mt-6">
+        <div className="mt-6 min-w-0">
           <p className="text-sm font-semibold text-slate-500">
             Available Points
           </p>
 
-          <h4 className="mt-4 text-4xl font-black text-slate-950">
+          <h4 className="mt-4 min-w-0 truncate text-3xl font-black text-slate-950 sm:text-4xl">
             {points.toLocaleString()}
-            <span className="ml-2 text-lg font-bold text-slate-400">
+            <span className="ml-2 text-base font-bold text-slate-400 sm:text-lg">
               pts
             </span>
           </h4>
@@ -194,12 +195,12 @@ export default function ResellerPointsCard() {
 
         <div className="my-6 h-px bg-slate-100" />
 
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-semibold text-slate-500">
             Estimated Wallet Credit
           </p>
 
-          <h4 className="mt-3 text-3xl font-black text-blue-600">
+          <h4 className="mt-3 min-w-0 truncate text-2xl font-black text-blue-600 sm:text-3xl">
             {formatAmount(estimatedPhp)}
           </h4>
 
@@ -209,6 +210,7 @@ export default function ResellerPointsCard() {
         </div>
 
         <button
+          type="button"
           onClick={() => setOpen(true)}
           className="mt-7 w-full rounded-xl bg-blue-600 py-3.5 text-sm font-black text-white transition hover:bg-blue-700"
         >
@@ -217,11 +219,11 @@ export default function ResellerPointsCard() {
       </div>
 
       {open && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 p-6">
-              <div>
-                <h3 className="text-2xl font-black text-slate-950">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm sm:p-4">
+          <div className="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-5 sm:p-6">
+              <div className="min-w-0">
+                <h3 className="text-xl font-black text-slate-950 sm:text-2xl">
                   Convert Points
                 </h3>
 
@@ -231,20 +233,21 @@ export default function ResellerPointsCard() {
               </div>
 
               <button
+                type="button"
                 onClick={() => setOpen(false)}
-                className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200"
               >
                 <X size={20} />
               </button>
             </div>
 
-            <div className="p-6">
+            <div className="min-h-0 overflow-y-auto p-5 sm:p-6">
               <div className="rounded-2xl bg-blue-50 p-5">
                 <p className="text-sm font-semibold text-slate-500">
                   Available Points
                 </p>
 
-                <h4 className="mt-2 text-3xl font-black text-blue-600">
+                <h4 className="mt-2 truncate text-2xl font-black text-blue-600 sm:text-3xl">
                   {points.toLocaleString()} pts
                 </h4>
 
@@ -271,7 +274,7 @@ export default function ResellerPointsCard() {
                   You will receive
                 </p>
 
-                <h4 className="mt-2 text-3xl font-black text-slate-950">
+                <h4 className="mt-2 truncate text-2xl font-black text-slate-950 sm:text-3xl">
                   {formatAmount(convertPhp)}
                 </h4>
 
@@ -281,6 +284,7 @@ export default function ResellerPointsCard() {
               </div>
 
               <button
+                type="button"
                 onClick={handleConvertPoints}
                 disabled={converting}
                 className="mt-6 w-full rounded-2xl bg-blue-600 py-4 text-sm font-black text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
@@ -293,11 +297,11 @@ export default function ResellerPointsCard() {
       )}
 
       {historyOpen && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 p-6">
-              <div>
-                <h3 className="text-2xl font-black text-slate-950">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm sm:p-4">
+          <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-5 sm:p-6">
+              <div className="min-w-0">
+                <h3 className="text-xl font-black text-slate-950 sm:text-2xl">
                   Conversion History
                 </h3>
 
@@ -307,59 +311,59 @@ export default function ResellerPointsCard() {
               </div>
 
               <button
+                type="button"
                 onClick={() => setHistoryOpen(false)}
-                className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200"
               >
                 <X size={20} />
               </button>
             </div>
 
-            <div className="max-h-[500px] overflow-y-auto">
+            <div className="min-h-0 overflow-y-auto">
               {conversionHistory.length <= 0 ? (
                 <div className="p-10 text-center text-slate-500">
                   No conversion history yet.
                 </div>
               ) : (
-                <table className="w-full text-sm">
-                  <thead className="bg-slate-50 text-slate-500">
-                    <tr>
-                      <th className="p-5 text-left font-bold">Date</th>
-                      <th className="p-5 text-left font-bold">Points</th>
-                      <th className="p-5 text-left font-bold">USD</th>
-                      <th className="p-5 text-left font-bold">Amount</th>
-                      <th className="p-5 text-left font-bold">Level</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {conversionHistory.map((item) => (
-                      <tr
-                        key={item.id}
-                        className="border-t border-slate-100"
-                      >
-                        <td className="p-5 text-slate-500">
-                          {new Date(item.created_at).toLocaleString()}
-                        </td>
-
-                        <td className="p-5 font-black text-slate-950">
-                          {item.points_used} pts
-                        </td>
-
-                        <td className="p-5 font-semibold text-slate-700">
-                          ${Number(item.usd_value).toFixed(2)}
-                        </td>
-
-                        <td className="p-5 font-black text-blue-600">
-                          {formatAmount(item.php_value)}
-                        </td>
-
-                        <td className="p-5 text-slate-500">
-                          {item.reseller_level}
-                        </td>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[760px] text-sm">
+                    <thead className="bg-slate-50 text-slate-500">
+                      <tr>
+                        <th className="p-5 text-left font-bold">Date</th>
+                        <th className="p-5 text-left font-bold">Points</th>
+                        <th className="p-5 text-left font-bold">USD</th>
+                        <th className="p-5 text-left font-bold">Amount</th>
+                        <th className="p-5 text-left font-bold">Level</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+
+                    <tbody>
+                      {conversionHistory.map((item) => (
+                        <tr key={item.id} className="border-t border-slate-100">
+                          <td className="whitespace-nowrap p-5 text-slate-500">
+                            {new Date(item.created_at).toLocaleString()}
+                          </td>
+
+                          <td className="whitespace-nowrap p-5 font-black text-slate-950">
+                            {item.points_used} pts
+                          </td>
+
+                          <td className="whitespace-nowrap p-5 font-semibold text-slate-700">
+                            ${Number(item.usd_value).toFixed(2)}
+                          </td>
+
+                          <td className="whitespace-nowrap p-5 font-black text-blue-600">
+                            {formatAmount(item.php_value)}
+                          </td>
+
+                          <td className="max-w-[220px] truncate p-5 text-slate-500">
+                            {item.reseller_level}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           </div>

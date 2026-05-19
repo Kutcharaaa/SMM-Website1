@@ -124,15 +124,16 @@ export default function ResellerLevelCard() {
 
   return (
     <>
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex items-center justify-between">
+      <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h3 className="text-[17px] font-black text-slate-950">
             Reseller Level
           </h3>
 
           <button
+            type="button"
             onClick={() => setOpen(true)}
-            className="text-xs font-black text-blue-600 hover:text-blue-700"
+            className="w-fit text-xs font-black text-blue-600 hover:text-blue-700"
           >
             View All Levels
           </button>
@@ -141,13 +142,13 @@ export default function ResellerLevelCard() {
         <div
           className={`mt-4 overflow-hidden rounded-2xl bg-gradient-to-r ${currentLevel.gradient}`}
         >
-          <div className="flex items-center gap-4 p-6">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-sm">
-              <CurrentIcon size={34} className="text-white" />
+          <div className="flex items-center gap-4 p-5 sm:p-6">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-sm sm:h-16 sm:w-16">
+              <CurrentIcon size={30} className="text-white sm:size-[34px]" />
             </div>
 
-            <div>
-              <h4 className="text-4xl font-black text-white">
+            <div className="min-w-0">
+              <h4 className="truncate text-2xl font-black text-white sm:text-4xl">
                 {currentLevel.name}
               </h4>
 
@@ -158,11 +159,11 @@ export default function ResellerLevelCard() {
           </div>
         </div>
 
-        <div className="mt-5">
-          <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
-            <span>Next Level: {nextLevel.name}</span>
+        <div className="mt-5 min-w-0">
+          <div className="flex flex-col gap-1 text-xs font-semibold text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+            <span className="truncate">Next Level: {nextLevel.name}</span>
 
-            <span>
+            <span className="truncate sm:text-right">
               {formatAmount(totalSpent)} / {formatAmount(nextLevel.required)}
             </span>
           </div>
@@ -185,18 +186,18 @@ export default function ResellerLevelCard() {
             `100 Points = ${currentLevel.points}`,
             "Child Panel",
           ].map((perk) => (
-            <div key={perk} className="flex items-center gap-3">
-              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+            <div key={perk} className="flex min-w-0 items-center gap-3">
+              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
                 <Check size={12} strokeWidth={3} />
               </div>
 
-              <span className="text-sm font-semibold text-slate-700">
+              <span className="min-w-0 truncate text-sm font-semibold text-slate-700">
                 {perk}
               </span>
 
               {perk === "Child Panel" && (
                 <span
-                  className={`rounded-full px-2 py-1 text-[10px] font-black ${
+                  className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-black ${
                     currentLevel.child
                       ? "bg-green-50 text-green-600"
                       : "bg-red-50 text-red-500"
@@ -211,28 +212,30 @@ export default function ResellerLevelCard() {
       </div>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-6xl overflow-hidden rounded-3xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 p-6">
-              <div>
-                <h3 className="text-2xl font-black text-slate-950">
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-slate-950/50 p-3 backdrop-blur-sm sm:p-4">
+          <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-5 sm:items-center sm:p-6">
+              <div className="min-w-0">
+                <h3 className="text-xl font-black text-slate-950 sm:text-2xl">
                   Reseller Level Path
                 </h3>
+
                 <p className="mt-1 text-sm font-semibold text-slate-500">
                   Your level is based on total spend.
                 </p>
               </div>
 
               <button
+                type="button"
                 onClick={() => setOpen(false)}
-                className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 transition hover:bg-slate-200 sm:h-11 sm:w-11"
               >
                 <X size={21} />
               </button>
             </div>
 
-            <div className="overflow-y-auto p-6">
-              <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            <div className="min-h-0 overflow-y-auto p-5 sm:p-6">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
                 {levels.map((level) => {
                   const Icon = level.icon;
                   const isCurrent = level.level === currentLevel.level;
@@ -241,7 +244,7 @@ export default function ResellerLevelCard() {
                   return (
                     <div
                       key={level.level}
-                      className={`overflow-hidden rounded-2xl border bg-white shadow-sm ${
+                      className={`min-w-0 overflow-hidden rounded-2xl border bg-white shadow-sm ${
                         isCurrent
                           ? "border-blue-300 ring-4 ring-blue-50"
                           : "border-slate-200"
@@ -250,28 +253,33 @@ export default function ResellerLevelCard() {
                       <div
                         className={`bg-gradient-to-r ${level.gradient} p-5 text-white`}
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/15">
                             <Icon size={27} />
                           </div>
 
-                          <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-black">
+                          <span className="shrink-0 rounded-full bg-white/15 px-3 py-1 text-xs font-black">
                             Level {level.level}
                           </span>
                         </div>
 
-                        <h4 className="mt-4 text-2xl font-black">
+                        <h4 className="mt-4 truncate text-xl font-black sm:text-2xl">
                           {level.name}
                         </h4>
 
-                        <p className="mt-1 text-sm font-semibold text-white/80">
+                        <p className="mt-1 truncate text-sm font-semibold text-white/80">
                           Required spend: {formatAmount(level.required)}
                         </p>
                       </div>
 
                       <div className="space-y-4 p-5">
                         <LevelRow label="Discount" value={level.discount} />
-                        <LevelRow label="Point Value" value={`100 pts = ${level.points}`} />
+
+                        <LevelRow
+                          label="Point Value"
+                          value={`100 pts = ${level.points}`}
+                        />
+
                         <LevelRow
                           label="Child Panel"
                           value={level.child ? "Unlocked" : "Locked"}
@@ -309,9 +317,12 @@ export default function ResellerLevelCard() {
 
 function LevelRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between border-b border-slate-100 pb-3 last:border-b-0 last:pb-0">
-      <p className="text-sm font-semibold text-slate-500">{label}</p>
-      <p className="text-sm font-black text-slate-900">{value}</p>
+    <div className="flex min-w-0 items-center justify-between gap-4 border-b border-slate-100 pb-3 last:border-b-0 last:pb-0">
+      <p className="shrink-0 text-sm font-semibold text-slate-500">{label}</p>
+
+      <p className="min-w-0 truncate text-right text-sm font-black text-slate-900">
+        {value}
+      </p>
     </div>
   );
 }

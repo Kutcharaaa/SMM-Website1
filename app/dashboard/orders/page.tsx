@@ -22,7 +22,6 @@ import {
   RotateCcw,
   Search,
   ShieldCheck,
-  ShoppingBag,
   ShoppingCart,
   Sparkles,
   Star,
@@ -167,16 +166,22 @@ function StatCard({
   color: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-start gap-4">
-        <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${color}`}>
+    <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex min-w-0 items-start gap-4">
+        <div
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${color}`}
+        >
           <Icon size={24} />
         </div>
 
-        <div>
-          <p className="text-sm font-bold text-slate-500">{title}</p>
-          <h3 className="mt-1 text-2xl font-black text-slate-950">{value}</h3>
-          <p className="mt-1 text-xs font-semibold text-slate-500">{subtitle}</p>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold text-slate-500">{title}</p>
+          <h3 className="mt-1 truncate text-2xl font-black text-slate-950">
+            {value}
+          </h3>
+          <p className="mt-1 truncate text-xs font-semibold text-slate-500">
+            {subtitle}
+          </p>
         </div>
       </div>
     </div>
@@ -199,9 +204,9 @@ function SourceBadge({ source }: { source: string }) {
 
 function SideDetail({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <p className="text-sm font-bold text-slate-500">{label}</p>
-      <p className="max-w-[210px] truncate text-right text-sm font-black text-slate-800">
+    <div className="flex min-w-0 items-center justify-between gap-4">
+      <p className="shrink-0 text-sm font-bold text-slate-500">{label}</p>
+      <p className="min-w-0 max-w-[210px] truncate text-right text-sm font-black text-slate-800">
         {value}
       </p>
     </div>
@@ -210,18 +215,20 @@ function SideDetail({ label, value }: { label: string; value: ReactNode }) {
 
 function StepHeader({ step, title }: { step: string; title: string }) {
   return (
-    <div className="flex items-center gap-3">
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-sm font-black text-white">
+    <div className="flex min-w-0 items-center gap-3">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-sm font-black text-white">
         {step}
       </span>
-      <h4 className="text-lg font-black text-slate-950">{title}</h4>
+      <h4 className="min-w-0 truncate text-lg font-black text-slate-950">
+        {title}
+      </h4>
     </div>
   );
 }
 
 function PlatformIcon({ name }: { name: string }) {
   return (
-    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-lg">
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-lg">
       {getPlatformSvg(name)}
     </span>
   );
@@ -315,12 +322,7 @@ function getPlatformSvg(name: string) {
     );
   }
 
-  if (clean.includes("google")) {
-    return (
-      <span className="font-black text-blue-600">G</span>
-    );
-  }
-
+  if (clean.includes("google")) return <span className="font-black text-blue-600">G</span>;
   if (clean.includes("others")) return <span className="font-black">+</span>;
   if (clean.includes("everything")) return <span className="font-black">☰</span>;
 
@@ -346,7 +348,7 @@ function ServiceFilterChip({
     <button
       type="button"
       onClick={onClick}
-      className={`flex h-10 items-center gap-2 rounded-xl border px-4 text-xs font-black transition ${
+      className={`flex h-10 shrink-0 items-center gap-2 rounded-xl border px-4 text-xs font-black transition ${
         active
           ? "border-blue-600 bg-blue-50 text-blue-700"
           : "border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-600"
@@ -355,6 +357,161 @@ function ServiceFilterChip({
       <Icon size={15} />
       {label}
     </button>
+  );
+}
+
+function OrderDetailsCard({
+  order,
+  progress,
+  formatAmount,
+  copyText,
+  onClose,
+}: {
+  order: Order;
+  progress: number;
+  formatAmount: (amount: number) => string;
+  copyText: (text: string) => Promise<void>;
+  onClose: () => void;
+}) {
+  return (
+    <div className="space-y-5">
+      <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+              Order ID
+            </p>
+
+            <h4 className="mt-1 truncate text-xl font-black text-slate-950">
+              #{order.id.slice(0, 8)}
+            </h4>
+          </div>
+
+          <span
+            className={`shrink-0 rounded-full px-3 py-1 text-xs font-black capitalize ${getStatusStyle(
+              order.status,
+            )}`}
+          >
+            {order.status || "pending"}
+          </span>
+        </div>
+
+        <div className="mt-5 rounded-2xl bg-slate-50 p-4">
+          <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+            Service
+          </p>
+
+          <p className="mt-2 text-sm font-black leading-6 text-slate-900">
+            {order.service_name || "Unknown Service"}
+          </p>
+        </div>
+
+        <div className="mt-4 rounded-2xl bg-slate-50 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                Link
+              </p>
+
+              <p className="mt-2 truncate text-sm font-semibold text-slate-600">
+                {order.link || "No link"}
+              </p>
+            </div>
+
+            {order.link && (
+              <button
+                type="button"
+                onClick={() => copyText(order.link)}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-slate-500 shadow-sm transition hover:text-blue-600"
+              >
+                <Copy size={15} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-5 space-y-4">
+          <SideDetail
+            label="Source"
+            value={getOrderSource(order) === "api" ? "API" : "Dashboard"}
+          />
+
+          <SideDetail
+            label="Quantity"
+            value={Number(order.quantity || 0).toLocaleString()}
+          />
+
+          <SideDetail label="Charge" value={formatAmount(order.price || 0)} />
+
+          <SideDetail
+            label="Start Count"
+            value={String(order.start_count || 0)}
+          />
+
+          <SideDetail
+            label="Current Count"
+            value={String(order.current_count || 0)}
+          />
+
+          <div>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-bold text-slate-500">Progress</p>
+
+              <p className="text-right text-sm font-black text-slate-700">
+                {Number(order.current_count || 0).toLocaleString()} /{" "}
+                {Number(order.quantity || 0).toLocaleString()}
+              </p>
+            </div>
+
+            <div className="mt-3 flex items-center gap-3">
+              <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
+                <div
+                  style={{ width: `${progress}%` }}
+                  className={`h-full rounded-full ${
+                    order.status === "completed" ? "bg-green-500" : "bg-blue-600"
+                  }`}
+                />
+              </div>
+
+              <span className="text-xs font-black text-slate-500">
+                {progress.toFixed(0)}%
+              </span>
+            </div>
+          </div>
+
+          <SideDetail
+            label="Order Date"
+            value={new Date(order.created_at).toLocaleString()}
+          />
+
+          <SideDetail label="Note" value="No note provided" />
+        </div>
+      </div>
+
+      <div className="rounded-2xl bg-blue-50 p-5 text-sm font-semibold text-slate-600">
+        Keep this page open to receive live updates on your order progress.
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-xl border border-slate-200 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50"
+        >
+          Close
+        </button>
+
+        <a
+          href={order.link}
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-sm font-black text-white transition hover:bg-blue-700"
+        >
+          Go to Service
+          <ExternalLink size={15} />
+        </a>
+      </div>
+    </div>
   );
 }
 
@@ -408,63 +565,61 @@ export default function OrdersPage() {
     setLoading(false);
   }
 
-async function loadOrderData() {
-  let allServices: Service[] = [];
-  let from = 0;
-  const batchSize = 1000;
+  async function loadOrderData() {
+    let allServices: Service[] = [];
+    let from = 0;
+    const batchSize = 1000;
 
-  while (true) {
-    const to = from + batchSize - 1;
+    while (true) {
+      const to = from + batchSize - 1;
 
-    const { data, error } = await supabase
-      .from("services")
-      .select("*")
-      .order("category")
-      .range(from, to);
+      const { data, error } = await supabase
+        .from("services")
+        .select("*")
+        .order("category")
+        .range(from, to);
 
-    if (error) {
-      showToast(error.message, "error");
-      break;
+      if (error) {
+        showToast(error.message, "error");
+        break;
+      }
+
+      const batch = (data || []) as Service[];
+
+      allServices = [...allServices, ...batch];
+
+      if (batch.length < batchSize) break;
+
+      from += batchSize;
     }
 
-    const batch = (data || []) as Service[];
+    const activeServices = allServices.filter((service) => {
+      const cleanStatus = String(service.status || "active")
+        .toLowerCase()
+        .trim();
 
-    allServices = [...allServices, ...batch];
+      return (
+        cleanStatus === "active" ||
+        cleanStatus === "enabled" ||
+        cleanStatus === "available" ||
+        cleanStatus === ""
+      );
+    });
 
-    if (batch.length < batchSize) {
-      break;
-    }
+    setServices(activeServices);
 
-    from += batchSize;
+    const { data: authData } = await supabase.auth.getUser();
+
+    if (!authData.user) return;
+
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("balance")
+      .eq("id", authData.user.id)
+      .single();
+
+    if (profileData) setProfile(profileData as Profile);
   }
-
-  const activeServices = allServices.filter((service) => {
-    const cleanStatus = String(service.status || "active")
-      .toLowerCase()
-      .trim();
-
-    return (
-      cleanStatus === "active" ||
-      cleanStatus === "enabled" ||
-      cleanStatus === "available" ||
-      cleanStatus === ""
-    );
-  });
-
-  setServices(activeServices);
-
-  const { data: authData } = await supabase.auth.getUser();
-
-  if (!authData.user) return;
-
-  const { data: profileData } = await supabase
-    .from("profiles")
-    .select("balance")
-    .eq("id", authData.user.id)
-    .single();
-
-  if (profileData) setProfile(profileData as Profile);
-}
 
   useEffect(() => {
     async function refreshOrders() {
@@ -503,8 +658,12 @@ async function loadOrderData() {
   }, []);
 
   const totalOrders = orders.length;
-  const completedOrders = orders.filter((o) => o.status === "completed").length;
-  const processingOrders = orders.filter((o) => o.status === "processing").length;
+  const completedOrders = orders.filter(
+    (order) => String(order.status).toLowerCase() === "completed",
+  ).length;
+  const processingOrders = orders.filter(
+    (order) => String(order.status).toLowerCase() === "processing",
+  ).length;
   const totalSpent = orders.reduce(
     (sum, order) => sum + Number(order.price || 0),
     0,
@@ -521,7 +680,9 @@ async function loadOrderData() {
         getOrderSource(order).toLowerCase().includes(keyword);
 
       const matchesStatus =
-        statusFilter === "all" ? true : order.status === statusFilter;
+        statusFilter === "all"
+          ? true
+          : String(order.status || "").toLowerCase() === statusFilter;
 
       return matchesSearch && matchesStatus;
     });
@@ -552,9 +713,6 @@ async function loadOrderData() {
   const filteredServices = useMemo(() => {
     const keyword = serviceSearch.toLowerCase().trim();
 
-    // Important: when the user types in search, search across ALL active services first.
-    // This prevents the selected platform filter from hiding imported provider services
-    // with category formats like "Tik Tok", "TIKTOK", or provider-specific names.
     let rows = (keyword ? services : networkServices).filter((service) => {
       if (!category) return true;
       return normalizeServiceText(service.category) === normalizeServiceText(category);
@@ -629,7 +787,7 @@ async function loadOrderData() {
 
   const cheapestPrice =
     filteredServices.length > 0
-      ? Math.min(...filteredServices.map((s) => Number(s.price_per_1000 || 0)))
+      ? Math.min(...filteredServices.map((service) => Number(service.price_per_1000 || 0)))
       : 0;
 
   const estimatedCharge = selectedService
@@ -708,10 +866,7 @@ async function loadOrderData() {
 
     const qty = Number(quantity);
 
-    if (
-      qty < selectedService.min_quantity ||
-      qty > selectedService.max_quantity
-    ) {
+    if (qty < selectedService.min_quantity || qty > selectedService.max_quantity) {
       showToast(
         `Quantity must be between ${selectedService.min_quantity} and ${selectedService.max_quantity}.`,
         "warning",
@@ -779,10 +934,10 @@ async function loadOrderData() {
   return (
     <DashboardGuard>
       <DashboardLayout>
-        <div className="-m-8 grid min-h-screen bg-[#f6f9fc] lg:grid-cols-[1fr_390px]">
-          <section className="p-6 lg:p-8">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div>
+        <div className="grid min-h-screen min-w-0 bg-[#f6f9fc] lg:grid-cols-[minmax(0,1fr)_390px]">
+          <section className="min-w-0 p-0 sm:p-2 lg:p-0">
+            <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0">
                 <h1 className="text-3xl font-black text-slate-950">Orders</h1>
                 <p className="mt-2 text-sm font-semibold text-slate-500">
                   Track and monitor all your orders in real-time.
@@ -790,15 +945,16 @@ async function loadOrderData() {
               </div>
 
               <button
+                type="button"
                 onClick={() => setOrderModalOpen(true)}
-                className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 sm:w-fit"
               >
                 <Plus size={18} />
                 New Order
               </button>
             </div>
 
-            <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+            <div className="mt-8 grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
               <StatCard
                 icon={Package}
                 title="Total Orders"
@@ -811,7 +967,11 @@ async function loadOrderData() {
                 icon={CheckCircle2}
                 title="Completed"
                 value={String(completedOrders)}
-                subtitle={`${totalOrders > 0 ? ((completedOrders / totalOrders) * 100).toFixed(1) : "0"}% of total`}
+                subtitle={`${
+                  totalOrders > 0
+                    ? ((completedOrders / totalOrders) * 100).toFixed(1)
+                    : "0"
+                }% of total`}
                 color="bg-green-50 text-green-600"
               />
 
@@ -819,7 +979,11 @@ async function loadOrderData() {
                 icon={RefreshCw}
                 title="Processing"
                 value={String(processingOrders)}
-                subtitle={`${totalOrders > 0 ? ((processingOrders / totalOrders) * 100).toFixed(1) : "0"}% of total`}
+                subtitle={`${
+                  totalOrders > 0
+                    ? ((processingOrders / totalOrders) * 100).toFixed(1)
+                    : "0"
+                }% of total`}
                 color="bg-orange-50 text-orange-500"
               />
 
@@ -833,8 +997,8 @@ async function loadOrderData() {
             </div>
 
             <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                <div className="relative flex-1">
+              <div className="flex min-w-0 flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                <div className="relative min-w-0 flex-1">
                   <Search
                     size={18}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
@@ -851,7 +1015,7 @@ async function loadOrderData() {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 outline-none transition focus:border-blue-500 xl:w-52"
+                  className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 outline-none transition focus:border-blue-500 xl:w-52"
                 >
                   <option value="all">Status: All</option>
                   <option value="pending">Pending</option>
@@ -861,17 +1025,34 @@ async function loadOrderData() {
                 </select>
 
                 <button
+                  type="button"
                   onClick={loadOrders}
-                  className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition hover:bg-blue-100"
+                  className="flex h-12 w-full items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition hover:bg-blue-100 xl:w-12"
                 >
                   <RefreshCw size={19} />
                 </button>
               </div>
             </div>
 
-            <div className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[1050px] text-sm">
+            <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="flex items-center justify-between gap-3 border-b border-slate-100 p-5">
+                <div className="min-w-0">
+                  <h3 className="truncate text-lg font-black text-slate-950">
+                    Order History
+                  </h3>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    {filteredOrders.length} order
+                    {filteredOrders.length === 1 ? "" : "s"} found
+                  </p>
+                </div>
+
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                  <ShoppingCart size={18} />
+                </div>
+              </div>
+
+              <div className="hidden overflow-x-auto xl:block">
+                <table className="w-full min-w-[980px] text-sm">
                   <thead className="bg-slate-50 text-slate-500">
                     <tr>
                       <th className="p-5 text-left font-black">Order ID</th>
@@ -879,9 +1060,7 @@ async function loadOrderData() {
                       <th className="p-5 text-left font-black">Source</th>
                       <th className="p-5 text-left font-black">Quantity</th>
                       <th className="p-5 text-left font-black">Charge</th>
-                      <th className="p-5 text-left font-black">Progress</th>
                       <th className="p-5 text-left font-black">Status</th>
-                      <th className="p-5 text-left font-black">Date</th>
                       <th className="p-5 text-left font-black">Action</th>
                     </tr>
                   </thead>
@@ -889,287 +1068,170 @@ async function loadOrderData() {
                   <tbody>
                     {loading ? (
                       <tr>
-                        <td colSpan={9} className="p-10 text-center text-slate-500">
+                        <td colSpan={7} className="p-10 text-center text-slate-500">
                           Loading orders...
                         </td>
                       </tr>
                     ) : filteredOrders.length <= 0 ? (
                       <tr>
-                        <td colSpan={9} className="p-16">
-                          <div className="flex flex-col items-center justify-center text-center">
-                            <div className="flex h-28 w-28 items-center justify-center rounded-full bg-blue-50 text-blue-600">
-                              <ShoppingBag size={50} />
-                            </div>
-
-                            <h3 className="mt-6 text-xl font-black text-slate-950">
-                              No orders found
-                            </h3>
-
-                            <p className="mt-2 text-sm font-medium text-slate-500">
-                              You haven&apos;t placed any orders yet.
-                            </p>
-
-                            <button
-                              onClick={() => setOrderModalOpen(true)}
-                              className="mt-6 flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-black text-white transition hover:bg-blue-700"
-                            >
-                              <Plus size={18} />
-                              New Order
-                            </button>
-                          </div>
+                        <td colSpan={7} className="p-10 text-center text-slate-500">
+                          No orders found.
                         </td>
                       </tr>
                     ) : (
-                      filteredOrders.map((order) => {
-                        const progress =
-                          Number(order.quantity || 0) > 0
-                            ? Math.min(
-                                100,
-                                (Number(order.current_count || 0) /
-                                  Number(order.quantity || 1)) *
-                                  100,
-                              )
-                            : 0;
+                      filteredOrders.map((order) => (
+                        <tr
+                          key={order.id}
+                          className={`border-t border-slate-100 transition hover:bg-slate-50 ${
+                            selectedOrder?.id === order.id ? "bg-blue-50/50" : ""
+                          }`}
+                        >
+                          <td className="whitespace-nowrap p-5 font-black text-slate-700">
+                            #{order.id.slice(0, 8)}
+                          </td>
 
-                        return (
-                          <tr
-                            key={order.id}
-                            onClick={() => setSelectedOrder(order)}
-                            className={`cursor-pointer border-t border-slate-100 transition hover:bg-blue-50/40 ${
-                              selectedOrder?.id === order.id ? "bg-blue-50/60" : ""
-                            }`}
-                          >
-                            <td className="p-5 font-black text-blue-600">
-                              #{order.id.slice(0, 8)}
-                            </td>
+                          <td className="max-w-[320px] p-5">
+                            <p className="truncate font-black text-slate-900">
+                              {order.service_name || "Unknown Service"}
+                            </p>
+                            <p className="mt-1 truncate text-xs font-semibold text-slate-400">
+                              {order.link}
+                            </p>
+                          </td>
 
-                            <td className="p-5">
-                              <p className="max-w-xs truncate font-black text-slate-950">
-                                {order.service_name}
-                              </p>
-                              <p className="mt-1 max-w-xs truncate text-xs font-medium text-slate-500">
-                                {order.link}
-                              </p>
-                            </td>
+                          <td className="whitespace-nowrap p-5">
+                            <SourceBadge source={getOrderSource(order)} />
+                          </td>
 
-                            <td className="p-5">
-                              <SourceBadge source={getOrderSource(order)} />
-                            </td>
+                          <td className="whitespace-nowrap p-5 font-semibold text-slate-500">
+                            {Number(order.quantity || 0).toLocaleString()}
+                          </td>
 
-                            <td className="p-5 font-bold text-slate-700">
-                              {Number(order.quantity || 0).toLocaleString()}
-                            </td>
+                          <td className="whitespace-nowrap p-5 font-black text-slate-900">
+                            {formatAmount(order.price || 0)}
+                          </td>
 
-                            <td className="p-5 font-black text-blue-600">
-                              {formatAmount(order.price)}
-                            </td>
+                          <td className="whitespace-nowrap p-5">
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-black capitalize ${getStatusStyle(
+                                order.status,
+                              )}`}
+                            >
+                              {order.status || "pending"}
+                            </span>
+                          </td>
 
-                            <td className="p-5">
-                              <div className="w-32">
-                                <div className="mb-2 flex items-center justify-between text-xs font-bold text-slate-500">
-                                  <span>{Number(order.current_count || 0).toLocaleString()}</span>
-                                  <span>{progress.toFixed(0)}%</span>
-                                </div>
-
-                                <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-                                  <div
-                                    style={{ width: `${progress}%` }}
-                                    className={`h-full rounded-full ${
-                                      order.status === "completed" ? "bg-green-500" : "bg-blue-600"
-                                    }`}
-                                  />
-                                </div>
-                              </div>
-                            </td>
-
-                            <td className="p-5">
-                              <span
-                                className={`rounded-full px-3 py-1 text-xs font-black capitalize ${getStatusStyle(
-                                  order.status,
-                                )}`}
-                              >
-                                {order.status}
-                              </span>
-                            </td>
-
-                            <td className="p-5 text-slate-500">
-                              {new Date(order.created_at).toLocaleDateString()}
-                            </td>
-
-                            <td className="p-5">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedOrder(order);
-                                }}
-                                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-blue-600 transition hover:border-blue-400 hover:bg-blue-50"
-                              >
-                                <Eye size={17} />
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })
+                          <td className="whitespace-nowrap p-5">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedOrder(order)}
+                              className="inline-flex items-center gap-2 rounded-xl bg-blue-50 px-4 py-2 text-xs font-black text-blue-600 transition hover:bg-blue-100"
+                            >
+                              <Eye size={15} />
+                              View
+                            </button>
+                          </td>
+                        </tr>
+                      ))
                     )}
                   </tbody>
                 </table>
               </div>
 
-              <div className="flex items-center justify-between border-t border-slate-100 p-5">
-                <p className="text-sm font-medium text-slate-500">
-                  Showing {filteredOrders.length} of {orders.length} orders
-                </p>
+              <div className="space-y-4 p-4 xl:hidden">
+                {loading ? (
+                  <div className="rounded-2xl border border-slate-100 p-8 text-center text-sm font-semibold text-slate-500">
+                    Loading orders...
+                  </div>
+                ) : filteredOrders.length <= 0 ? (
+                  <div className="rounded-2xl border border-slate-100 p-8 text-center text-sm font-semibold text-slate-500">
+                    No orders found.
+                  </div>
+                ) : (
+                  filteredOrders.map((order) => (
+                    <button
+                      key={order.id}
+                      type="button"
+                      onClick={() => setSelectedOrder(order)}
+                      className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-blue-300 hover:bg-blue-50/40"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-xs font-black uppercase text-slate-400">
+                            #{order.id.slice(0, 8)}
+                          </p>
+
+                          <h4 className="mt-2 line-clamp-2 text-sm font-black text-slate-950">
+                            {order.service_name || "Unknown Service"}
+                          </h4>
+                        </div>
+
+                        <span
+                          className={`shrink-0 rounded-full px-3 py-1 text-xs font-black capitalize ${getStatusStyle(
+                            order.status,
+                          )}`}
+                        >
+                          {order.status || "pending"}
+                        </span>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+                        <div className="rounded-xl bg-slate-50 p-3">
+                          <p className="font-bold text-slate-400">Quantity</p>
+                          <p className="mt-1 font-black text-slate-800">
+                            {Number(order.quantity || 0).toLocaleString()}
+                          </p>
+                        </div>
+
+                        <div className="rounded-xl bg-slate-50 p-3">
+                          <p className="font-bold text-slate-400">Charge</p>
+                          <p className="mt-1 font-black text-slate-800">
+                            {formatAmount(order.price || 0)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <SourceBadge source={getOrderSource(order)} />
+
+                        <span className="text-xs font-black text-blue-600">
+                          View Details
+                        </span>
+                      </div>
+                    </button>
+                  ))
+                )}
               </div>
             </div>
           </section>
 
-          <aside className="hidden border-l border-slate-200 bg-white p-6 lg:block">
-            <div className="sticky top-6">
-              <div className="mb-6 flex items-center justify-between">
-                <h3 className="text-xl font-black text-slate-950">Order Details</h3>
+          <aside className="hidden border-l border-slate-200 bg-slate-50 p-6 lg:block">
+            <div className="sticky top-28">
+              <div className="mb-5 flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-white">
+                  <Info size={20} />
+                </div>
 
-                <button
-                  onClick={() => setSelectedOrder(null)}
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-500"
-                >
-                  <X size={18} />
-                </button>
+                <div>
+                  <h3 className="text-lg font-black text-slate-950">
+                    Order Details
+                  </h3>
+                  <p className="text-sm font-semibold text-slate-500">
+                    Select an order to view details.
+                  </p>
+                </div>
               </div>
 
               {sideOrder ? (
-                <div className="space-y-5">
-                  <div className="rounded-2xl border border-slate-200 p-5">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-bold text-slate-500">Order ID</p>
-
-                        <div className="mt-2 flex items-center gap-2">
-                          <p className="font-black text-slate-950">
-                            #{sideOrder.id.slice(0, 8)}
-                          </p>
-
-                          <button onClick={() => copyText(sideOrder.id)}>
-                            <Copy size={15} className="text-slate-400" />
-                          </button>
-                        </div>
-                      </div>
-
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-black capitalize ${getStatusStyle(
-                          sideOrder.status,
-                        )}`}
-                      >
-                        {sideOrder.status}
-                      </span>
-                    </div>
-
-                    <div className="mt-4">
-                      <SourceBadge source={getOrderSource(sideOrder)} />
-                    </div>
-
-                    <div className="mt-6 rounded-2xl border border-slate-100 p-4">
-                      <h4 className="font-black text-slate-950">
-                        {sideOrder.service_name}
-                      </h4>
-
-                      <p className="mt-1 text-sm text-slate-500">
-                        Service order details
-                      </p>
-
-                      <div className="mt-4 border-t border-slate-100 pt-4">
-                        <p className="text-sm font-bold text-slate-500">Link</p>
-
-                        <div className="mt-2 flex items-center gap-2">
-                          <p className="max-w-[260px] truncate text-sm font-bold text-blue-600">
-                            {sideOrder.link}
-                          </p>
-
-                          <button onClick={() => copyText(sideOrder.link)}>
-                            <Copy size={15} className="text-slate-400" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-5 space-y-4">
-                      <SideDetail
-                        label="Source"
-                        value={getOrderSource(sideOrder) === "api" ? "API" : "Dashboard"}
-                      />
-
-                      <SideDetail
-                        label="Quantity"
-                        value={Number(sideOrder.quantity || 0).toLocaleString()}
-                      />
-
-                      <SideDetail label="Charge" value={formatAmount(sideOrder.price)} />
-
-                      <SideDetail label="Start Count" value={String(sideOrder.start_count || 0)} />
-
-                      <SideDetail
-                        label="Current Count"
-                        value={String(sideOrder.current_count || 0)}
-                      />
-
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-bold text-slate-500">Progress</p>
-
-                          <p className="text-sm font-black text-slate-700">
-                            {Number(sideOrder.current_count || 0).toLocaleString()} /{" "}
-                            {Number(sideOrder.quantity || 0).toLocaleString()}
-                          </p>
-                        </div>
-
-                        <div className="mt-3 flex items-center gap-3">
-                          <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
-                            <div
-                              style={{ width: `${sideProgress}%` }}
-                              className={`h-full rounded-full ${
-                                sideOrder.status === "completed" ? "bg-green-500" : "bg-blue-600"
-                              }`}
-                            />
-                          </div>
-
-                          <span className="text-xs font-black text-slate-500">
-                            {sideProgress.toFixed(0)}%
-                          </span>
-                        </div>
-                      </div>
-
-                      <SideDetail
-                        label="Order Date"
-                        value={new Date(sideOrder.created_at).toLocaleString()}
-                      />
-
-                      <SideDetail label="Note" value="No note provided" />
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl bg-blue-50 p-5 text-sm font-semibold text-slate-600">
-                    Keep this page open to receive live updates on your order progress.
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={() => setSelectedOrder(null)}
-                      className="rounded-xl border border-slate-200 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50"
-                    >
-                      Close
-                    </button>
-
-                    <a
-                      href={sideOrder.link}
-                      target="_blank"
-                      className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-sm font-black text-white transition hover:bg-blue-700"
-                    >
-                      Go to Service
-                      <ExternalLink size={15} />
-                    </a>
-                  </div>
-                </div>
+                <OrderDetailsCard
+                  order={sideOrder}
+                  progress={sideProgress}
+                  formatAmount={formatAmount}
+                  copyText={copyText}
+                  onClose={() => setSelectedOrder(null)}
+                />
               ) : (
-                <div className="rounded-2xl border border-slate-200 p-8 text-center text-sm text-slate-500">
+                <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
                   Select an order to view details.
                 </div>
               )}
@@ -1177,129 +1239,133 @@ async function loadOrderData() {
           </aside>
         </div>
 
-        {orderModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm">
-            <div className="flex max-h-[94vh] w-full max-w-[1280px] flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-2xl">
-              <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-                    <ShoppingCart size={28} />
-                  </div>
-
-                  <div>
-                    <h3 className="text-2xl font-black text-slate-950">
-                      Create New Order
-                    </h3>
-                    <p className="mt-1 text-sm font-semibold text-slate-500">
-                      Choose a service and place your order in a few simple steps.
-                    </p>
-                  </div>
+        {selectedOrder && (
+          <div className="fixed inset-0 z-[90] flex items-end justify-center bg-slate-950/50 p-3 backdrop-blur-sm lg:hidden">
+            <div className="max-h-[90vh] w-full overflow-y-auto rounded-t-[28px] bg-white p-4 shadow-2xl">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-black text-slate-950">
+                    Order Details
+                  </h3>
+                  <p className="text-sm font-semibold text-slate-500">
+                    View order progress and information.
+                  </p>
                 </div>
 
                 <button
-                  onClick={() => setOrderModalOpen(false)}
-                  className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-50 text-slate-600 transition hover:bg-slate-100"
+                  type="button"
+                  onClick={() => setSelectedOrder(null)}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600"
                 >
-                  <X size={22} />
+                  <X size={20} />
                 </button>
               </div>
 
-              <div className="grid min-h-0 flex-1 overflow-hidden xl:grid-cols-[1fr_420px]">
-                <div className="min-h-0 overflow-y-auto p-6 pb-10">
+              <OrderDetailsCard
+                order={selectedOrder}
+                progress={sideProgress}
+                formatAmount={formatAmount}
+                copyText={copyText}
+                onClose={() => setSelectedOrder(null)}
+              />
+            </div>
+          </div>
+        )}
+
+        {orderModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm">
+            <div className="flex max-h-[94vh] w-full max-w-7xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-5 sm:items-center sm:p-6">
+                <div className="min-w-0">
+                  <h3 className="text-xl font-black text-slate-950 sm:text-2xl">
+                    Create New Order
+                  </h3>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    Choose a platform, select service, then place your order.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setOrderModalOpen(false)}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="grid min-h-0 flex-1 overflow-hidden xl:grid-cols-[minmax(0,1fr)_370px]">
+                <div className="min-h-0 overflow-y-auto p-4 sm:p-6">
                   <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                     <StepHeader step="1" title="Choose Platform" />
 
-                    <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7">
-                      {networks
-                        .filter(
-                          (item) =>
-                            item.name !== "Website" && item.name !== "Reviews",
-                        )
-                        .map((item) => {
-                          const active = network === item.name;
-
-                          return (
-                            <button
-                              key={item.name}
-                              onClick={() => {
-                                setNetwork(active ? "Everything" : item.name);
-                                setCategory("");
-                                setSelectedServiceId("");
-                                setServiceSearch("");
-                              }}
-                              className={`relative flex h-[92px] flex-col items-center justify-center gap-2 rounded-2xl border bg-white text-sm font-black transition ${
-                                active
-                                  ? "border-blue-600 bg-blue-50 text-blue-700 shadow-sm"
-                                  : "border-slate-200 text-slate-700 hover:border-blue-300 hover:bg-blue-50/40"
-                              }`}
-                            >
-                              {active && (
-                                <span className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg">
-                                  <Check size={14} strokeWidth={3} />
-                                </span>
-                              )}
-
-                              <PlatformIcon name={item.name} />
-                              <span>{item.name}</span>
-                            </button>
-                          );
-                        })}
+                    <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-7">
+                      {networks.map((item) => (
+                        <button
+                          key={item.name}
+                          type="button"
+                          onClick={() => {
+                            setNetwork(item.name);
+                            setCategory("");
+                            setSelectedServiceId("");
+                          }}
+                          className={`flex min-w-0 items-center gap-3 rounded-2xl border p-3 text-left transition ${
+                            network === item.name
+                              ? "border-blue-600 bg-blue-50 text-blue-700"
+                              : "border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50/40"
+                          }`}
+                        >
+                          <PlatformIcon name={item.name} />
+                          <span className="min-w-0 truncate text-xs font-black">
+                            {item.name}
+                          </span>
+                        </button>
+                      ))}
                     </div>
                   </div>
 
                   <div className="mt-5 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-                    <StepHeader step="2" title="Find Your Service" />
+                    <StepHeader step="2" title="Select Service" />
 
-                    <div className="mt-5 flex flex-col gap-3 xl:flex-row">
-                      <div className="relative flex-1">
-                        <Search
-                          size={20}
-                          className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                        />
-
-                        <input
-                          value={serviceSearch}
-                          onChange={(e) => {
-                            setServiceSearch(e.target.value);
-                            setSelectedServiceId("");
-                          }}
-                          placeholder="Search by Service ID, name, category, or provider service ID..."
-                          className="h-14 w-full rounded-2xl border border-slate-200 bg-white pl-12 pr-12 text-sm font-semibold text-slate-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
-                        />
-
-                        {serviceSearch && (
-                          <button
-                            onClick={() => setServiceSearch("")}
-                            className="absolute right-4 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-slate-100 text-slate-400 transition hover:bg-slate-200 hover:text-slate-700"
-                          >
-                            <X size={15} />
-                          </button>
-                        )}
-                      </div>
-
+                    <div className="mt-5 grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)]">
                       <select
                         value={category}
                         onChange={(e) => {
                           setCategory(e.target.value);
                           setSelectedServiceId("");
                         }}
-                        className="h-14 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 outline-none transition focus:border-blue-500 xl:w-72"
+                        className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 outline-none transition focus:border-blue-500"
                       >
                         <option value="">All Categories</option>
-                        {categories.map((cat) => (
-                          <option key={cat} value={cat}>
-                            {cat}
+                        {categories.map((item) => (
+                          <option key={item} value={item}>
+                            {item}
                           </option>
                         ))}
                       </select>
 
-                      <button className="flex h-14 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-600 transition hover:border-blue-300 hover:text-blue-600">
-                        <Filter size={18} />
-                        Filter
-                      </button>
+                      <div className="relative">
+                        <Search
+                          size={18}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+                        />
+
+                        <input
+                          value={serviceSearch}
+                          onChange={(e) => setServiceSearch(e.target.value)}
+                          placeholder="Search service name or ID..."
+                          className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 pr-11 text-sm font-semibold outline-none transition focus:border-blue-500"
+                        />
+                      </div>
                     </div>
 
-                    <div className="mt-4 flex flex-wrap gap-3">
+                    <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+                      <ServiceFilterChip
+                        active={serviceFilter === "all"}
+                        onClick={() => setServiceFilter("all")}
+                        icon={Grid3X3}
+                        label="All"
+                      />
                       <ServiceFilterChip
                         active={serviceFilter === "favorites"}
                         onClick={() =>
@@ -1307,27 +1373,23 @@ async function loadOrderData() {
                             serviceFilter === "favorites" ? "all" : "favorites",
                           )
                         }
-                        icon={Star}
+                        icon={Heart}
                         label="Favorites"
                       />
                       <ServiceFilterChip
-                        active={serviceFilter === "all"}
-                        onClick={() => setServiceFilter("all")}
-                        icon={Grid3X3}
-                        label="All Services"
-                      />
-                      <ServiceFilterChip
                         active={serviceFilter === "cheapest"}
-                        onClick={() => setServiceFilter("cheapest")}
+                        onClick={() =>
+                          setServiceFilter(
+                            serviceFilter === "cheapest" ? "all" : "cheapest",
+                          )
+                        }
                         icon={Tag}
                         label="Cheapest"
                       />
                       <ServiceFilterChip
                         active={serviceFilter === "fast"}
                         onClick={() =>
-                          setServiceFilter(
-                            serviceFilter === "fast" ? "all" : "fast",
-                          )
+                          setServiceFilter(serviceFilter === "fast" ? "all" : "fast")
                         }
                         icon={Zap}
                         label="Fast"
@@ -1360,9 +1422,11 @@ async function loadOrderData() {
                           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
                             <Search size={28} />
                           </div>
+
                           <h5 className="mt-4 text-lg font-black text-slate-950">
                             No matching services found
                           </h5>
+
                           <p className="mt-2 text-sm font-semibold text-slate-500">
                             Search directly by service ID or service name.
                           </p>
@@ -1376,6 +1440,7 @@ async function loadOrderData() {
                           return (
                             <button
                               key={service.id}
+                              type="button"
                               onClick={() => setSelectedServiceId(service.id)}
                               className={`w-full rounded-2xl border p-4 text-left transition ${
                                 active
@@ -1383,7 +1448,7 @@ async function loadOrderData() {
                                   : "border-slate-200 bg-white hover:border-blue-300 hover:bg-blue-50/40"
                               }`}
                             >
-                              <div className="flex gap-4">
+                              <div className="flex min-w-0 gap-4">
                                 <div
                                   className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${
                                     active
@@ -1409,48 +1474,38 @@ async function loadOrderData() {
                                       </span>
                                     ))}
 
-                                    {active && (
-                                      <span className="rounded-lg bg-green-100 px-2 py-1 text-xs font-black text-green-600">
-                                        SELECTED
-                                      </span>
-                                    )}
+                                    <span className="rounded-lg bg-green-50 px-2 py-1 text-xs font-black text-green-600">
+                                      {formatAmount(service.price_per_1000)} / 1K
+                                    </span>
                                   </div>
 
-                                  <p className="mt-2 line-clamp-2 font-black text-slate-950">
+                                  <h5 className="mt-3 line-clamp-2 text-sm font-black text-slate-950">
                                     {service.name}
+                                  </h5>
+
+                                  <p className="mt-2 line-clamp-2 text-xs font-semibold text-slate-500">
+                                    {service.category || "Uncategorized"}
                                   </p>
 
-                                  <p className="mt-1 text-xs font-semibold text-slate-500">
-                                    {service.category}
-                                  </p>
-
-                                  <div className="mt-3 flex flex-wrap gap-3 text-xs font-bold text-slate-600">
-                                    <span>
-                                      {formatAmount(service.price_per_1000)}
-                                      /1k
-                                    </span>
-                                    <span>
-                                      Min {Number(service.min_quantity || 0).toLocaleString()}
-                                    </span>
-                                    <span>
-                                      Max {Number(service.max_quantity || 0).toLocaleString()}
-                                    </span>
+                                  <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-slate-500">
+                                    <span>Min: {service.min_quantity}</span>
+                                    <span>Max: {service.max_quantity}</span>
                                   </div>
                                 </div>
 
                                 <span
-                                  onClick={(event) => {
-                                    event.stopPropagation();
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     toggleFavoriteService(service.id);
                                   }}
-                                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${
+                                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
                                     favorite
-                                      ? "border-red-200 bg-red-50 text-red-500"
-                                      : "border-slate-200 text-slate-400 hover:text-red-500"
+                                      ? "bg-red-50 text-red-500"
+                                      : "bg-slate-100 text-slate-400"
                                   }`}
                                 >
                                   <Heart
-                                    size={18}
+                                    size={17}
                                     fill={favorite ? "currentColor" : "none"}
                                   />
                                 </span>
@@ -1470,55 +1525,70 @@ async function loadOrderData() {
                         <label className="text-sm font-black text-slate-700">
                           Link
                         </label>
+
                         <div className="relative mt-2">
                           <LinkIcon
                             size={18}
                             className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
                           />
+
                           <input
                             value={link}
                             onChange={(e) => setLink(e.target.value)}
                             placeholder="https://..."
-                            className="h-13 w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm font-semibold outline-none transition focus:border-blue-500"
+                            className="h-[52px] w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm font-semibold outline-none transition focus:border-blue-500"
                           />
                         </div>
                       </div>
 
-                      <div>
-                        <label className="text-sm font-black text-slate-700">
-                          Quantity
-                        </label>
-                        <input
-                          type="number"
-                          value={quantity}
-                          onChange={(e) => setQuantity(e.target.value)}
-                          placeholder={
-                            selectedService
-                              ? `${selectedService.min_quantity} - ${selectedService.max_quantity}`
-                              : "Enter quantity"
-                          }
-                          className="mt-2 h-13 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition focus:border-blue-500"
-                        />
-                      </div>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div>
+                          <label className="text-sm font-black text-slate-700">
+                            Quantity
+                          </label>
 
-                      <div>
-                        <label className="text-sm font-black text-slate-700">
-                          Notes (optional)
-                        </label>
-                        <textarea
-                          value={notes}
-                          onChange={(e) => setNotes(e.target.value)}
-                          placeholder="Add special instructions if needed..."
-                          rows={3}
-                          className="mt-2 w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition focus:border-blue-500"
-                        />
+                          <input
+                            type="number"
+                            value={quantity}
+                            onChange={(e) => setQuantity(e.target.value)}
+                            placeholder="Example: 1000"
+                            className="mt-2 h-[52px] w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold outline-none transition focus:border-blue-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-sm font-black text-slate-700">
+                            Notes
+                          </label>
+
+                          <input
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
+                            placeholder="Optional"
+                            className="mt-2 h-[52px] w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold outline-none transition focus:border-blue-500"
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>
 
-                <aside className="hidden border-l border-slate-200 bg-slate-50 p-6 xl:block">
-                  <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+                    {selectedService && (
+                      <div className="mt-5 rounded-2xl bg-slate-50 p-4">
+                        <div className="grid gap-3 text-sm sm:grid-cols-3">
+                          <SideDetail
+                            label="Min"
+                            value={selectedService.min_quantity}
+                          />
+                          <SideDetail
+                            label="Max"
+                            value={selectedService.max_quantity}
+                          />
+                          <SideDetail label="Speed" value={getDetail("Speed")} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-5 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm xl:hidden">
                     <h4 className="text-lg font-black text-slate-950">
                       Order Summary
                     </h4>
@@ -1528,26 +1598,12 @@ async function loadOrderData() {
                         label="Selected Service"
                         value={selectedService?.name || "No service selected"}
                       />
+
                       <SideDetail
                         label="Service ID"
                         value={getPublicServiceId(selectedService)}
                       />
-                      <SideDetail
-                        label="Category"
-                        value={selectedService?.category || "N/A"}
-                      />
-                      <SideDetail
-                        label="Min / Max"
-                        value={
-                          selectedService
-                            ? `${Number(
-                                selectedService.min_quantity || 0,
-                              ).toLocaleString()} / ${Number(
-                                selectedService.max_quantity || 0,
-                              ).toLocaleString()}`
-                            : "N/A"
-                        }
-                      />
+
                       <SideDetail
                         label="Rate"
                         value={
@@ -1556,10 +1612,12 @@ async function loadOrderData() {
                             : "N/A"
                         }
                       />
+
                       <SideDetail
                         label="Estimated Charge"
                         value={formatAmount(estimatedCharge)}
                       />
+
                       <SideDetail
                         label="Wallet Balance"
                         value={formatAmount(profile?.balance || 0)}
@@ -1573,6 +1631,7 @@ async function loadOrderData() {
                     </div>
 
                     <button
+                      type="button"
                       onClick={handleOrder}
                       disabled={!canPlaceOrder || placingOrder}
                       className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
@@ -1580,6 +1639,98 @@ async function loadOrderData() {
                       {placingOrder ? "Placing Order..." : "Place Order"}
                       <Sparkles size={18} />
                     </button>
+                  </div>
+                </div>
+
+                <aside className="hidden border-l border-slate-200 bg-slate-50 p-6 xl:block">
+                  <div className="sticky top-0 space-y-5">
+                    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+                      <h4 className="text-lg font-black text-slate-950">
+                        Order Summary
+                      </h4>
+
+                      <div className="mt-5 space-y-4">
+                        <SideDetail
+                          label="Selected Service"
+                          value={selectedService?.name || "No service selected"}
+                        />
+
+                        <SideDetail
+                          label="Service ID"
+                          value={getPublicServiceId(selectedService)}
+                        />
+
+                        <SideDetail
+                          label="Rate"
+                          value={
+                            selectedService
+                              ? `${formatAmount(selectedService.price_per_1000)} / 1,000`
+                              : "N/A"
+                          }
+                        />
+
+                        <SideDetail
+                          label="Estimated Charge"
+                          value={formatAmount(estimatedCharge)}
+                        />
+
+                        <SideDetail
+                          label="Wallet Balance"
+                          value={formatAmount(profile?.balance || 0)}
+                        />
+                      </div>
+
+                      <div className="mt-5 rounded-2xl bg-blue-50 p-4 text-sm font-semibold text-blue-700">
+                        {selectedService
+                          ? "Review your order before placing it."
+                          : "Select a service to see details here."}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleOrder}
+                        disabled={!canPlaceOrder || placingOrder}
+                        className="mt-5 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {placingOrder ? "Placing Order..." : "Place Order"}
+                        <Sparkles size={18} />
+                      </button>
+                    </div>
+
+                    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                          <Info size={20} />
+                        </div>
+
+                        <div>
+                          <h4 className="font-black text-slate-950">
+                            Quick Tips
+                          </h4>
+                          <p className="text-xs font-semibold text-slate-500">
+                            Make sure your link is public before ordering.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 space-y-3">
+                        {[
+                          "Do not order the same link twice at the same time.",
+                          "Use the minimum and maximum quantity correctly.",
+                          "Read service notes before placing an order.",
+                        ].map((tip) => (
+                          <div key={tip} className="flex gap-3">
+                            <Check
+                              size={16}
+                              className="mt-0.5 shrink-0 text-blue-600"
+                            />
+                            <p className="text-sm font-semibold leading-6 text-slate-600">
+                              {tip}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </aside>
               </div>

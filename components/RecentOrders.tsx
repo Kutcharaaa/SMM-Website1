@@ -2,6 +2,7 @@
 
 import { supabase } from "@/lib/supabase";
 import { useDisplayCurrency } from "@/lib/useDisplayCurrency";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 type Order = {
@@ -40,16 +41,18 @@ export default function RecentOrders() {
   }, []);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-100 p-6">
-        <h3 className="text-xl font-black text-slate-950">Recent Orders</h3>
+    <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex flex-col gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <h3 className="text-lg font-black text-slate-950 sm:text-xl">
+          Recent Orders
+        </h3>
 
-        <a
+        <Link
           href="/dashboard/orders"
-          className="px-4 py-2 text-sm font-bold text-blue-600 transition hover:text-gray-800"
+          className="inline-flex w-fit items-center rounded-xl px-0 py-1 text-sm font-bold text-blue-600 transition hover:text-gray-800 sm:px-4 sm:py-2"
         >
           View All Orders
-        </a>
+        </Link>
       </div>
 
       <div className="overflow-x-auto">
@@ -80,19 +83,19 @@ export default function RecentOrders() {
                     key={order.id}
                     className="border-t border-slate-100 transition hover:bg-slate-50"
                   >
-                    <td className="p-5 font-semibold text-slate-500">
+                    <td className="whitespace-nowrap p-5 font-semibold text-slate-500">
                       #{order.id.slice(0, 8)}
                     </td>
 
-                    <td className="p-5 font-bold text-slate-900">
+                    <td className="max-w-[280px] truncate p-5 font-bold text-slate-900">
                       {order.service_name || "Unknown Service"}
                     </td>
 
-                    <td className="p-5 text-slate-500">
+                    <td className="whitespace-nowrap p-5 text-slate-500">
                       {Number(order.quantity || 0).toLocaleString()}
                     </td>
 
-                    <td className="p-5">
+                    <td className="whitespace-nowrap p-5">
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-bold capitalize ${
                           status === "completed"
@@ -108,7 +111,7 @@ export default function RecentOrders() {
                       </span>
                     </td>
 
-                    <td className="p-5 font-black text-slate-900">
+                    <td className="whitespace-nowrap p-5 font-black text-slate-900">
                       {formatAmount(order.price)}
                     </td>
                   </tr>

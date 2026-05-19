@@ -2,6 +2,7 @@
 
 import { supabase } from "@/lib/supabase";
 import { useDisplayCurrency } from "@/lib/useDisplayCurrency";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 type Payment = {
@@ -14,6 +15,7 @@ type Payment = {
 
 export default function RecentPayments() {
   const { formatAmount } = useDisplayCurrency();
+
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -65,7 +67,11 @@ export default function RecentPayments() {
       return "bg-yellow-50 text-yellow-600";
     }
 
-    if (status === "rejected" || status === "cancelled" || status === "canceled") {
+    if (
+      status === "rejected" ||
+      status === "cancelled" ||
+      status === "canceled"
+    ) {
       return "bg-red-50 text-red-600";
     }
 
@@ -82,20 +88,20 @@ export default function RecentPayments() {
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-100 p-6">
-        <div>
-          <h3 className="text-xl font-black text-slate-950">
+    <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex flex-col gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <div className="min-w-0">
+          <h3 className="text-lg font-black text-slate-950 sm:text-xl">
             Recent Payments
           </h3>
         </div>
 
-        <a
+        <Link
           href="/dashboard/transactions"
-          className="px-4 py-2 text-sm font-bold text-blue-600 transition hover:text-gray-800"
+          className="inline-flex w-fit items-center rounded-xl px-0 py-1 text-sm font-bold text-blue-600 transition hover:text-gray-800 sm:px-4 sm:py-2"
         >
           View All Payments
-        </a>
+        </Link>
       </div>
 
       <div className="overflow-x-auto">
@@ -128,19 +134,19 @@ export default function RecentPayments() {
                   key={payment.id}
                   className="border-t border-slate-100 transition hover:bg-slate-50"
                 >
-                  <td className="p-5 font-semibold text-slate-500">
+                  <td className="whitespace-nowrap p-5 font-semibold text-slate-500">
                     #{payment.id.slice(0, 8)}
                   </td>
 
-                  <td className="p-5 font-bold text-slate-900">
+                  <td className="max-w-[260px] truncate p-5 font-bold text-slate-900">
                     {payment.method || "Manual Payment"}
                   </td>
 
-                  <td className="p-5 font-black text-slate-900">
+                  <td className="whitespace-nowrap p-5 font-black text-slate-900">
                     {formatAmount(payment.amount || 0)}
                   </td>
 
-                  <td className="p-5">
+                  <td className="whitespace-nowrap p-5">
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusClass(
                         payment.status,
