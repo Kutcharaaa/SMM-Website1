@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export async function POST(request: NextRequest) {
   try {
     const authHeader = request.headers.get("authorization");
-    const token = authHeader?.replace("Bearer ", "");
+    const token = authHeader?.startsWith("Bearer ")
+      ? authHeader.replace("Bearer ", "").trim()
+      : "";
 
     if (!token) {
       return NextResponse.json(
@@ -79,6 +76,7 @@ export async function POST(request: NextRequest) {
       .from("child_panel_subscriptions")
       .update({
         auto_renew: false,
+        updated_at: new Date().toISOString(),
       })
       .eq("id", subscription.id);
 
@@ -91,6 +89,13 @@ export async function POST(request: NextRequest) {
         { status: 500 },
       );
     }
+
+    await supabaseAdmin
+      .from("profiles")
+      .update({
+        child_panel_auto_renew: false,
+      })
+      .eq("id", user.id);
 
     await supabaseAdmin.from("notifications").insert({
       user_id: user.id,
@@ -107,7 +112,9 @@ export async function POST(request: NextRequest) {
       message:
         "Auto-renew cancelled successfully. Your Child Panel access will remain active until the current expiry date.",
     });
-  } catch {
+  } catch (error) {
+    console.error("CHILD_PANEL_CANCEL_AUTO_RENEW_ERROR:", error);
+
     return NextResponse.json(
       {
         success: false,
