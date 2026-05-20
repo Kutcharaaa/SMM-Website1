@@ -134,6 +134,34 @@ function getPublicServiceId(service: Service | null) {
   return service.provider_service_id || service.id.slice(0, 8);
 }
 
+function isCustomCommentService(service: Service | null) {
+  if (!service) return false;
+
+  const text = `${service.name || ""} ${service.category || ""} ${
+    service.description || ""
+  }`.toLowerCase();
+
+  return (
+    text.includes("custom comments") ||
+    text.includes("comments custom") ||
+    text.includes("custom comment") ||
+    text.includes("comment custom") ||
+    text.includes("custom comment") ||
+    text.includes("comments package")
+  );
+}
+
+function getCommentLines(value: string) {
+  return value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function getCommentQuantity(value: string) {
+  return getCommentLines(value).length;
+}
+
 function getOrderSource(order: Order) {
   return (order.order_source || "dashboard").toLowerCase() === "api"
     ? "api"
@@ -537,6 +565,7 @@ export default function OrdersPage() {
   const [link, setLink] = useState("");
   const [quantity, setQuantity] = useState("");
   const [notes, setNotes] = useState("");
+  const [customComments, setCustomComments] = useState("");
   const [placingOrder, setPlacingOrder] = useState(false);
   const [favoriteServiceIds, setFavoriteServiceIds] = useState<string[]>([]);
   const [serviceFilter, setServiceFilter] = useState("all");
@@ -785,17 +814,23 @@ export default function OrdersPage() {
   const selectedService =
     services.find((service) => service.id === selectedServiceId) || null;
 
+  const isSelectedCustomCommentService = isCustomCommentService(selectedService);
+  const customCommentQuantity = getCommentQuantity(customComments);
+  const orderQuantity = isSelectedCustomCommentService
+    ? customCommentQuantity
+    : Number(quantity || 0);
+
   const cheapestPrice =
     filteredServices.length > 0
       ? Math.min(...filteredServices.map((service) => Number(service.price_per_1000 || 0)))
       : 0;
 
   const estimatedCharge = selectedService
-    ? (Number(quantity || 0) / 1000) * Number(selectedService.price_per_1000)
+    ? (Number(orderQuantity || 0) / 1000) * Number(selectedService.price_per_1000)
     : 0;
 
   const canPlaceOrder = Boolean(
-    selectedService && link && quantity && Number(quantity) > 0,
+    selectedService && link && orderQuantity && Number(orderQuantity) > 0,
   );
 
   function getServiceTags(service: Service) {
@@ -828,6 +863,7 @@ export default function OrdersPage() {
     setLink("");
     setQuantity("");
     setNotes("");
+    setCustomComments("");
     setServiceFilter("all");
   }
 
@@ -864,7 +900,21 @@ export default function OrdersPage() {
       return;
     }
 
-    const qty = Number(quantity);
+    const customCommentMode = isCustomCommentService(selectedService);
+    const cleanedComments = getCommentLines(customComments).join("\n");
+    const qty = customCommentMode ? getCommentQuantity(customComments) : Number(quantity);
+
+    if (customCommentMode && qty <= 0) {
+      showToast("Please enter at least one comment. Use 1 comment per line.", "warning");
+      setPlacingOrder(false);
+      return;
+    }
+
+    if (!customCommentMode && (!quantity || qty <= 0)) {
+      showToast("Please enter a valid quantity.", "warning");
+      setPlacingOrder(false);
+      return;
+    }
 
     if (qty < selectedService.min_quantity || qty > selectedService.max_quantity) {
       showToast(
@@ -894,6 +944,7 @@ export default function OrdersPage() {
           serviceId: selectedService.id,
           link,
           quantity: qty,
+          comments: customCommentMode ? cleanedComments : undefined,
         }),
       });
 
@@ -1441,7 +1492,11 @@ export default function OrdersPage() {
                             <button
                               key={service.id}
                               type="button"
-                              onClick={() => setSelectedServiceId(service.id)}
+                              onClick={() => {
+                                setSelectedServiceId(service.id);
+                                setQuantity("");
+                                setCustomComments("");
+                              }}
                               className={`w-full rounded-2xl border p-4 text-left transition ${
                                 active
                                   ? "border-blue-600 bg-blue-50 shadow-sm"
@@ -1541,34 +1596,92 @@ export default function OrdersPage() {
                         </div>
                       </div>
 
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div>
-                          <label className="text-sm font-black text-slate-700">
-                            Quantity
-                          </label>
+                      {isSelectedCustomCommentService ? (
+                        <div className="space-y-4">
+                          <div>
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                              <label className="text-sm font-black text-slate-700">
+                                Comments
+                              </label>
 
-                          <input
-                            type="number"
-                            value={quantity}
-                            onChange={(e) => setQuantity(e.target.value)}
-                            placeholder="Example: 1000"
-                            className="mt-2 h-[52px] w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold outline-none transition focus:border-blue-500"
-                          />
+                              <span className="text-xs font-black text-blue-600">
+                                {customCommentQuantity} comment
+                                {customCommentQuantity === 1 ? "" : "s"} detected
+                              </span>
+                            </div>
+
+                            <textarea
+                              value={customComments}
+                              onChange={(e) => setCustomComments(e.target.value)}
+                              placeholder={`Type your comments here...\n1 comment per line\nExample: Amazing post!`}
+                              rows={7}
+                              className="mt-2 w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold leading-6 outline-none transition focus:border-blue-500"
+                            />
+
+                            <p className="mt-2 text-xs font-semibold text-slate-500">
+                              For this service, quantity is automatically counted from your comments.
+                            </p>
+                          </div>
+
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <div>
+                              <label className="text-sm font-black text-slate-700">
+                                Quantity
+                              </label>
+
+                              <input
+                                type="number"
+                                value={customCommentQuantity || ""}
+                                readOnly
+                                placeholder="Auto-counted"
+                                className="mt-2 h-[52px] w-full cursor-not-allowed rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-700 outline-none"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="text-sm font-black text-slate-700">
+                                Notes
+                              </label>
+
+                              <input
+                                value={notes}
+                                onChange={(e) => setNotes(e.target.value)}
+                                placeholder="Optional"
+                                className="mt-2 h-[52px] w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold outline-none transition focus:border-blue-500"
+                              />
+                            </div>
+                          </div>
                         </div>
+                      ) : (
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div>
+                            <label className="text-sm font-black text-slate-700">
+                              Quantity
+                            </label>
 
-                        <div>
-                          <label className="text-sm font-black text-slate-700">
-                            Notes
-                          </label>
+                            <input
+                              type="number"
+                              value={quantity}
+                              onChange={(e) => setQuantity(e.target.value)}
+                              placeholder="Example: 1000"
+                              className="mt-2 h-[52px] w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold outline-none transition focus:border-blue-500"
+                            />
+                          </div>
 
-                          <input
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                            placeholder="Optional"
-                            className="mt-2 h-[52px] w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold outline-none transition focus:border-blue-500"
-                          />
+                          <div>
+                            <label className="text-sm font-black text-slate-700">
+                              Notes
+                            </label>
+
+                            <input
+                              value={notes}
+                              onChange={(e) => setNotes(e.target.value)}
+                              placeholder="Optional"
+                              className="mt-2 h-[52px] w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold outline-none transition focus:border-blue-500"
+                            />
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
 
                     {selectedService && (
@@ -1603,6 +1716,13 @@ export default function OrdersPage() {
                         label="Service ID"
                         value={getPublicServiceId(selectedService)}
                       />
+
+                      {isSelectedCustomCommentService && (
+                        <SideDetail
+                          label="Comments Count"
+                          value={customCommentQuantity || 0}
+                        />
+                      )}
 
                       <SideDetail
                         label="Rate"
