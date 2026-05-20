@@ -65,11 +65,38 @@ type Deposit = {
   created_at: string;
 };
 
+
+type ChildService = {
+  id: string;
+  name: string;
+  category: string | null;
+  platform: string | null;
+  description: string | null;
+  price_per_1000: number | null;
+  min_quantity: number | null;
+  max_quantity: number | null;
+  status: string | null;
+  base_price_per_1000: number;
+  customer_price_per_1000: number;
+  markup_percent: number;
+  owner_profit_per_1000: number;
+};
+
 function formatMoney(value: number | string | null | undefined) {
   return `₱${Number(value || 0).toLocaleString("en-PH", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+}
+
+
+function formatNumber(value: number | string | null | undefined) {
+  return Number(value || 0).toLocaleString("en-PH");
+}
+
+function calculateCharge(pricePer1000: number, quantity: number) {
+  if (!Number.isFinite(pricePer1000) || !Number.isFinite(quantity)) return 0;
+  return Number(((quantity / 1000) * pricePer1000).toFixed(6));
 }
 
 function getAccentShadow(color: string) {
@@ -245,6 +272,14 @@ export default function ChildPanelDashboardPage() {
   const [proofPreview, setProofPreview] = useState("");
   const [submittingDeposit, setSubmittingDeposit] = useState(false);
 
+  const [services, setServices] = useState<ChildService[]>([]);
+  const [loadingServices, setLoadingServices] = useState(false);
+  const [serviceSearch, setServiceSearch] = useState("");
+  const [newOrderOpen, setNewOrderOpen] = useState(false);
+  const [selectedServiceId, setSelectedServiceId] = useState("");
+  const [orderLink, setOrderLink] = useState("");
+  const [orderQuantity, setOrderQuantity] = useState("");
+
   const primaryColor = panel?.primary_color || "#ff4f8b";
 
   const displayName = useMemo(() => {
@@ -276,6 +311,39 @@ export default function ChildPanelDashboardPage() {
     };
   }, [deposits]);
 
+  const filteredServices = useMemo(() => {
+    const query = serviceSearch.toLowerCase().trim();
+
+    return services.filter((service) => {
+      if (!query) return true;
+
+      return (
+        String(service.id || "").toLowerCase().includes(query) ||
+        String(service.name || "").toLowerCase().includes(query) ||
+        String(service.platform || "").toLowerCase().includes(query) ||
+        String(service.category || "").toLowerCase().includes(query)
+      );
+    });
+  }, [serviceSearch, services]);
+
+  const selectedService = useMemo(() => {
+    return services.find((service) => service.id === selectedServiceId) || null;
+  }, [selectedServiceId, services]);
+
+  const orderQuantityNumber = useMemo(() => {
+    const value = Number(orderQuantity || 0);
+    if (!Number.isFinite(value)) return 0;
+    return Math.max(0, Math.floor(value));
+  }, [orderQuantity]);
+
+  const orderCharge = useMemo(() => {
+    if (!selectedService) return 0;
+    return calculateCharge(
+      Number(selectedService.customer_price_per_1000 || 0),
+      orderQuantityNumber,
+    );
+  }, [orderQuantityNumber, selectedService]);
+
   function getStoredToken() {
     const localToken = window.localStorage.getItem("child_panel_token");
     const localSlug = window.localStorage.getItem("child_panel_slug");
@@ -288,6 +356,40 @@ export default function ChildPanelDashboardPage() {
     if (sessionToken && sessionSlug === slug) return sessionToken;
 
     return "";
+  }
+
+  async function loadServices(panelSlug = slug, sessionToken = getStoredToken()) {
+    if (!panelSlug || !sessionToken) return;
+
+    setLoadingServices(true);
+
+    try {
+      const response = await fetch("/api/child-panel/customers/services/list", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          slug: panelSlug,
+          token: sessionToken,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        setMessage(result.message || "Failed to load services.");
+        setServices([]);
+        return;
+      }
+
+      setServices((result.services || []) as ChildService[]);
+    } catch (error) {
+      console.error("CHILD_PANEL_SERVICES_LIST_ERROR:", error);
+      setMessage("Failed to load services.");
+    } finally {
+      setLoadingServices(false);
+    }
   }
 
   async function loadDeposits(panelSlug = slug, sessionToken = getStoredToken()) {
@@ -363,6 +465,7 @@ export default function ChildPanelDashboardPage() {
       document.title = `Dashboard | ${result.panel.panel_name}`;
       setDynamicFavicon(result.panel.logo_url);
 
+      await loadServices(slug, token);
       await loadDeposits(slug, token);
 
       setLoading(false);
@@ -400,6 +503,33 @@ export default function ChildPanelDashboardPage() {
   function openAddFundsModal() {
     setMessage("");
     setAddFundsOpen(true);
+  }
+
+  function openNewOrderModal(service?: ChildService) {
+    setMessage("");
+
+    if (service) {
+      setSelectedServiceId(service.id);
+      setOrderQuantity(String(service.min_quantity || 100));
+    } else if (!selectedServiceId && services[0]) {
+      setSelectedServiceId(services[0].id);
+      setOrderQuantity(String(services[0].min_quantity || 100));
+    }
+
+    setNewOrderOpen(true);
+  }
+
+  function closeNewOrderModal() {
+    setNewOrderOpen(false);
+    setOrderLink("");
+    setOrderQuantity("");
+  }
+
+  function previewOrderOnly() {
+    setMessage(
+      "Service selection is ready. Next step is creating the child panel order API so this button can place real orders.",
+    );
+    setNewOrderOpen(false);
   }
 
   function closeAddFundsModal() {
@@ -553,6 +683,7 @@ export default function ChildPanelDashboardPage() {
       setSubmittingDeposit(false);
       setAddFundsOpen(false);
       resetAddFundsForm();
+      await loadServices(slug, token);
       await loadDeposits(slug, token);
       await loadDashboard();
     } catch (error) {
@@ -677,6 +808,7 @@ export default function ChildPanelDashboardPage() {
               icon={Plus}
               label="New Order"
               primaryColor={primaryColor}
+              onClick={() => openNewOrderModal()}
             />
             <SidebarItem
               icon={ShoppingCart}
@@ -771,6 +903,10 @@ export default function ChildPanelDashboardPage() {
                   icon={Plus}
                   label="New Order"
                   primaryColor={primaryColor}
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    openNewOrderModal();
+                  }}
                 />
                 <SidebarItem
                   icon={ShoppingCart}
@@ -886,6 +1022,7 @@ export default function ChildPanelDashboardPage() {
                   <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                     <button
                       type="button"
+                      onClick={() => openNewOrderModal()}
                       className="inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-4 text-sm font-black text-white transition"
                       style={{
                         background: `linear-gradient(135deg, ${primaryColor}, #7c3aed)`,
@@ -965,6 +1102,115 @@ export default function ChildPanelDashboardPage() {
                 icon={CheckCircle2}
                 primaryColor={primaryColor}
               />
+            </div>
+
+            <div className="rounded-[28px] border border-white/10 bg-white/[0.05] shadow-2xl backdrop-blur">
+              <div className="flex flex-col gap-4 border-b border-white/10 p-5 lg:flex-row lg:items-center lg:justify-between">
+                <div className="min-w-0">
+                  <h3 className="text-xl font-black">Services</h3>
+                  <p className="mt-1 text-sm font-semibold text-white/45">
+                    Browse available services with this panel&apos;s markup already included.
+                  </p>
+                </div>
+
+                <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
+                  <div className="flex h-12 min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 sm:min-w-[320px]">
+                    <Search size={17} className="shrink-0 text-white/30" />
+                    <input
+                      value={serviceSearch}
+                      onChange={(event) => setServiceSearch(event.target.value)}
+                      placeholder="Search service, platform, category, or ID..."
+                      className="min-w-0 flex-1 bg-transparent text-sm font-bold text-white outline-none placeholder:text-white/25"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => loadServices()}
+                    className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-black text-white/75 transition hover:bg-white/[0.08]"
+                  >
+                    <RefreshCw size={16} />
+                    Refresh
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-5">
+                {loadingServices ? (
+                  <div className="rounded-[24px] border border-white/10 bg-black/20 p-8 text-center">
+                    <Loader2 className="mx-auto animate-spin text-white/50" size={28} />
+                    <p className="mt-3 text-sm font-bold text-white/45">
+                      Loading services...
+                    </p>
+                  </div>
+                ) : filteredServices.length <= 0 ? (
+                  <div className="rounded-[24px] border border-dashed border-white/10 bg-black/20 p-8 text-center">
+                    <div
+                      className="mx-auto flex h-14 w-14 items-center justify-center rounded-3xl"
+                      style={{
+                        backgroundColor: `${primaryColor}18`,
+                        color: primaryColor,
+                      }}
+                    >
+                      <Package size={25} />
+                    </div>
+                    <h4 className="mt-4 text-lg font-black">No services found</h4>
+                    <p className="mt-2 text-sm font-semibold leading-6 text-white/45">
+                      Try another search term or refresh the service list.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {filteredServices.slice(0, 12).map((service) => (
+                      <button
+                        key={service.id}
+                        type="button"
+                        onClick={() => openNewOrderModal(service)}
+                        className="rounded-[22px] border border-white/10 bg-black/20 p-4 text-left transition hover:border-white/20 hover:bg-white/[0.06]"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="line-clamp-2 text-sm font-black text-white">
+                              {service.name}
+                            </p>
+                            <p className="mt-2 truncate text-xs font-semibold text-white/40">
+                              {service.platform || "Platform"} · {service.category || "Category"}
+                            </p>
+                          </div>
+                          <span
+                            className="shrink-0 rounded-full px-3 py-1 text-[10px] font-black"
+                            style={{
+                              backgroundColor: `${primaryColor}18`,
+                              color: primaryColor,
+                            }}
+                          >
+                            ID {String(service.id).slice(0, 6)}
+                          </span>
+                        </div>
+
+                        <div className="mt-4 grid grid-cols-2 gap-3">
+                          <div className="rounded-2xl bg-white/[0.04] p-3">
+                            <p className="text-[10px] font-black uppercase tracking-wide text-white/35">
+                              Price / 1K
+                            </p>
+                            <p className="mt-1 text-sm font-black text-white">
+                              {formatMoney(service.customer_price_per_1000)}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl bg-white/[0.04] p-3">
+                            <p className="text-[10px] font-black uppercase tracking-wide text-white/35">
+                              Min / Max
+                            </p>
+                            <p className="mt-1 text-xs font-black text-white">
+                              {formatNumber(service.min_quantity)} / {formatNumber(service.max_quantity)}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="rounded-[28px] border border-white/10 bg-white/[0.05] shadow-2xl backdrop-blur">
@@ -1113,6 +1359,7 @@ export default function ChildPanelDashboardPage() {
 
                     <button
                       type="button"
+                      onClick={() => openNewOrderModal()}
                       className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-black text-white"
                       style={{
                         background: `linear-gradient(135deg, ${primaryColor}, #7c3aed)`,
@@ -1190,7 +1437,11 @@ export default function ChildPanelDashboardPage() {
                   <h3 className="text-lg font-black">Quick Actions</h3>
 
                   <div className="mt-5 grid gap-3">
-                    <button className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-left text-sm font-black text-white/75 transition hover:bg-white/[0.08]">
+                    <button
+                      type="button"
+                      onClick={() => openNewOrderModal()}
+                      className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-left text-sm font-black text-white/75 transition hover:bg-white/[0.08]"
+                    >
                       New Order
                       <Plus size={17} />
                     </button>
@@ -1215,6 +1466,157 @@ export default function ChildPanelDashboardPage() {
           </div>
         </section>
       </div>
+
+      {newOrderOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-black/75 p-3 backdrop-blur-sm sm:p-5 lg:items-center">
+          <div className="my-4 w-full max-w-3xl overflow-hidden rounded-[32px] border border-white/10 bg-[#080a18] shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-white/10 p-5 sm:p-6">
+              <div className="min-w-0">
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-white/35">
+                  Order
+                </p>
+                <h3 className="mt-1 text-2xl font-black text-white">
+                  New Order
+                </h3>
+                <p className="mt-1 text-sm font-semibold leading-6 text-white/50">
+                  Select a service and preview the price with the panel owner&apos;s markup applied.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeNewOrderModal}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white/70 transition hover:bg-white/[0.08]"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-5 p-5 sm:p-6">
+              <div>
+                <label className="mb-2 block text-sm font-black text-white/80">
+                  Service
+                </label>
+                <select
+                  value={selectedServiceId}
+                  onChange={(event) => {
+                    const serviceId = event.target.value;
+                    const service = services.find((item) => item.id === serviceId) || null;
+                    setSelectedServiceId(serviceId);
+                    setOrderQuantity(service ? String(service.min_quantity || 100) : "");
+                  }}
+                  className="h-12 w-full rounded-2xl border border-white/10 bg-[#0d1024] px-4 text-sm font-bold text-white outline-none focus:border-white/30"
+                >
+                  <option value="">Select service</option>
+                  {services.map((service) => (
+                    <option key={service.id} value={service.id}>
+                      {service.name} · {formatMoney(service.customer_price_per_1000)} / 1K
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedService && (
+                <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-5">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0">
+                      <h4 className="line-clamp-2 text-lg font-black text-white">
+                        {selectedService.name}
+                      </h4>
+                      <p className="mt-2 text-sm font-semibold text-white/45">
+                        {selectedService.platform || "Platform"} · {selectedService.category || "Category"}
+                      </p>
+                      <p className="mt-3 text-sm font-semibold leading-6 text-white/45">
+                        {selectedService.description || "No service description available."}
+                      </p>
+                    </div>
+                    <div className="grid shrink-0 grid-cols-2 gap-3 sm:min-w-[260px]">
+                      <div className="rounded-2xl bg-black/20 p-3">
+                        <p className="text-[10px] font-black uppercase tracking-wide text-white/35">
+                          Price / 1K
+                        </p>
+                        <p className="mt-1 text-sm font-black text-white">
+                          {formatMoney(selectedService.customer_price_per_1000)}
+                        </p>
+                      </div>
+                      <div className="rounded-2xl bg-black/20 p-3">
+                        <p className="text-[10px] font-black uppercase tracking-wide text-white/35">
+                          Markup
+                        </p>
+                        <p className="mt-1 text-sm font-black text-white">
+                          {Number(selectedService.markup_percent || 0)}%
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="mb-2 block text-sm font-black text-white/80">
+                  Link
+                </label>
+                <input
+                  value={orderLink}
+                  onChange={(event) => setOrderLink(event.target.value)}
+                  placeholder="Enter your social media link"
+                  className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-bold text-white outline-none placeholder:text-white/25 focus:border-white/30"
+                />
+              </div>
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-black text-white/80">
+                    Quantity
+                  </label>
+                  <input
+                    type="number"
+                    value={orderQuantity}
+                    onChange={(event) => setOrderQuantity(event.target.value)}
+                    placeholder="Enter quantity"
+                    className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-bold text-white outline-none placeholder:text-white/25 focus:border-white/30"
+                  />
+                  {selectedService && (
+                    <p className="mt-2 text-xs font-semibold text-white/40">
+                      Min {formatNumber(selectedService.min_quantity)} · Max {formatNumber(selectedService.max_quantity)}
+                    </p>
+                  )}
+                </div>
+
+                <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-white/35">
+                    Estimated Charge
+                  </p>
+                  <h4 className="mt-2 text-3xl font-black text-white">
+                    {formatMoney(orderCharge)}
+                  </h4>
+                  <p className="mt-1 text-xs font-semibold text-white/45">
+                    Balance: {formatMoney(customer.balance)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-orange-400/20 bg-orange-500/10 p-4 text-sm font-bold leading-6 text-orange-100">
+                Service pricing is now connected. The final order submit will be connected in the next API step so it can safely charge balance and record owner profit.
+              </div>
+
+              <button
+                type="button"
+                onClick={previewOrderOnly}
+                disabled={!selectedService || !orderLink.trim() || orderQuantityNumber <= 0}
+                className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-sm font-black text-white transition disabled:cursor-not-allowed disabled:opacity-45"
+                style={{
+                  background: `linear-gradient(135deg, ${primaryColor}, #7c3aed)`,
+                  boxShadow: getAccentShadow(primaryColor),
+                }}
+              >
+                <ShoppingCart size={18} />
+                Preview Ready
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {addFundsOpen && (
         <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-black/75 p-3 backdrop-blur-sm sm:p-5 lg:items-center">
