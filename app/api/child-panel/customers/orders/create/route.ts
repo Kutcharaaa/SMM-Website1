@@ -34,7 +34,10 @@ function getCommentLines(value: unknown) {
     .filter(Boolean);
 }
 
-function isCustomCommentsService(serviceName?: string | null, category?: string | null) {
+function isCustomCommentsService(
+  serviceName?: string | null,
+  category?: string | null,
+) {
   const text = `${serviceName || ""} ${category || ""}`.toLowerCase();
 
   return (
@@ -192,9 +195,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const customComments = isCustomCommentsService(service.name, service.category);
+    const customComments = isCustomCommentsService(
+      service.name,
+      service.category,
+    );
     const commentLines = getCommentLines(comments);
-
     const quantity = customComments ? commentLines.length : requestedQuantity;
 
     if (customComments && commentLines.length <= 0) {
@@ -275,13 +280,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const now = new Date().toISOString();
     const newBalance = Number((currentBalance - customerPrice).toFixed(6));
+    const savedComments = customComments ? commentLines.join("\n") : null;
+    const orderType = customComments ? "custom_comments" : "default";
 
     const { error: balanceError } = await supabaseAdmin
       .from("child_panel_customers")
       .update({
         balance: newBalance,
-        updated_at: new Date().toISOString(),
+        updated_at: now,
       })
       .eq("id", customer.id)
       .eq("child_panel_id", panel.id);
@@ -296,7 +304,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: order, error: orderError } = await supabaseAdmin
+    const { data: childOrder, error: childOrderError } = await supabaseAdmin
       .from("child_panel_orders")
       .insert({
         child_panel_id: panel.id,
@@ -323,18 +331,19 @@ export async function POST(request: NextRequest) {
         provider_response: null,
         synced_at: null,
 
-        comments: customComments ? commentLines.join("\n") : null,
-        order_type: customComments ? "custom_comments" : "default",
+        comments: savedComments,
+        order_type: orderType,
+        updated_at: now,
       })
       .select("*")
       .single();
 
-    if (orderError) {
+    if (childOrderError) {
       await supabaseAdmin
         .from("child_panel_customers")
         .update({
           balance: currentBalance,
-          updated_at: new Date().toISOString(),
+          updated_at: now,
         })
         .eq("id", customer.id)
         .eq("child_panel_id", panel.id);
@@ -342,7 +351,98 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: orderError.message,
+          message: childOrderError.message,
+        },
+        { status: 500 },
+      );
+    }
+
+    const { data: mainOrder, error: mainOrderError } = await supabaseAdmin
+      .from("orders")
+      .insert({
+        user_id: panel.owner_user_id,
+
+        service_name: service.name,
+        link,
+        quantity,
+        price: basePrice,
+
+        start_count: 0,
+        current_count: 0,
+        status: "pending",
+
+        provider_order_id: null,
+        provider_name: "Child Panel",
+
+        source: "child_panel",
+        child_panel_order_id: childOrder.id,
+        child_panel_id: panel.id,
+        child_panel_customer_id: customer.id,
+
+        base_price: basePrice,
+        customer_price: customerPrice,
+        markup_percent: markupPercent,
+        owner_profit: ownerProfit,
+
+        comments: savedComments,
+        order_type: orderType,
+      })
+      .select("id")
+      .single();
+
+    if (mainOrderError) {
+      await supabaseAdmin
+        .from("child_panel_customers")
+        .update({
+          balance: currentBalance,
+          updated_at: now,
+        })
+        .eq("id", customer.id)
+        .eq("child_panel_id", panel.id);
+
+      await supabaseAdmin
+        .from("child_panel_orders")
+        .delete()
+        .eq("id", childOrder.id);
+
+      return NextResponse.json(
+        {
+          success: false,
+          message: mainOrderError.message,
+        },
+        { status: 500 },
+      );
+    }
+
+    const { error: linkError } = await supabaseAdmin
+      .from("child_panel_orders")
+      .update({
+        main_order_id: mainOrder.id,
+        updated_at: now,
+      })
+      .eq("id", childOrder.id);
+
+    if (linkError) {
+      await supabaseAdmin
+        .from("child_panel_customers")
+        .update({
+          balance: currentBalance,
+          updated_at: now,
+        })
+        .eq("id", customer.id)
+        .eq("child_panel_id", panel.id);
+
+      await supabaseAdmin.from("orders").delete().eq("id", mainOrder.id);
+
+      await supabaseAdmin
+        .from("child_panel_orders")
+        .delete()
+        .eq("id", childOrder.id);
+
+      return NextResponse.json(
+        {
+          success: false,
+          message: linkError.message,
         },
         { status: 500 },
       );
@@ -361,7 +461,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: "Order placed successfully.",
-      order,
+      order: {
+        ...childOrder,
+        main_order_id: mainOrder.id,
+      },
+      mainOrderId: mainOrder.id,
       balance: newBalance,
       pricing: {
         basePrice,
