@@ -52,6 +52,19 @@ type Customer = {
   created_at: string;
 };
 
+type Deposit = {
+  id: string;
+  amount: number;
+  method: string | null;
+  reference_number: string | null;
+  proof_url: string | null;
+  status: string;
+  reject_reason: string | null;
+  approved_at: string | null;
+  rejected_at: string | null;
+  created_at: string;
+};
+
 function formatMoney(value: number | string | null | undefined) {
   return `₱${Number(value || 0).toLocaleString("en-PH", {
     minimumFractionDigits: 2,
@@ -88,6 +101,45 @@ function sanitizeFileName(value: string) {
     .replace(/[^a-z0-9.\-_]/g, "-")
     .replace(/-+/g, "-")
     .slice(0, 80);
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return "—";
+
+  return new Date(value).toLocaleString("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function getDepositStatusStyle(status?: string | null) {
+  const clean = String(status || "pending").toLowerCase();
+
+  if (["approved", "completed", "paid"].includes(clean)) {
+    return "bg-emerald-500/10 text-emerald-200 ring-emerald-400/20";
+  }
+
+  if (["rejected", "failed", "cancelled", "canceled"].includes(clean)) {
+    return "bg-red-500/10 text-red-200 ring-red-400/20";
+  }
+
+  return "bg-orange-500/10 text-orange-200 ring-orange-400/20";
+}
+
+function getDepositStatusLabel(status?: string | null) {
+  const clean = String(status || "pending").toLowerCase();
+
+  if (clean === "approved" || clean === "completed" || clean === "paid") {
+    return "Approved";
+  }
+
+  if (clean === "rejected") return "Rejected";
+  if (clean === "failed") return "Failed";
+
+  return "Pending";
 }
 
 function StatCard({
@@ -178,6 +230,8 @@ export default function ChildPanelDashboardPage() {
 
   const [panel, setPanel] = useState<Panel | null>(null);
   const [customer, setCustomer] = useState<Customer | null>(null);
+  const [deposits, setDeposits] = useState<Deposit[]>([]);
+  const [loadingDeposits, setLoadingDeposits] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -203,6 +257,25 @@ export default function ChildPanelDashboardPage() {
     return fullName || customer.username || "Customer";
   }, [customer]);
 
+  const depositStats = useMemo(() => {
+    const pending = deposits.filter(
+      (deposit) => String(deposit.status || "pending").toLowerCase() === "pending",
+    ).length;
+
+    const approvedTotal = deposits
+      .filter((deposit) =>
+        ["approved", "completed", "paid"].includes(
+          String(deposit.status || "").toLowerCase(),
+        ),
+      )
+      .reduce((sum, deposit) => sum + Number(deposit.amount || 0), 0);
+
+    return {
+      pending,
+      approvedTotal,
+    };
+  }, [deposits]);
+
   function getStoredToken() {
     const localToken = window.localStorage.getItem("child_panel_token");
     const localSlug = window.localStorage.getItem("child_panel_slug");
@@ -215,6 +288,35 @@ export default function ChildPanelDashboardPage() {
     if (sessionToken && sessionSlug === slug) return sessionToken;
 
     return "";
+  }
+
+  async function loadDeposits(panelSlug = slug, sessionToken = getStoredToken()) {
+    if (!panelSlug || !sessionToken) return;
+
+    setLoadingDeposits(true);
+
+    try {
+      const response = await fetch("/api/child-panel/customers/deposits/list", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          slug: panelSlug,
+          token: sessionToken,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setDeposits((result.deposits || []) as Deposit[]);
+      }
+    } catch (error) {
+      console.error("CHILD_PANEL_DEPOSITS_LIST_ERROR:", error);
+    } finally {
+      setLoadingDeposits(false);
+    }
   }
 
   async function loadDashboard() {
@@ -260,6 +362,8 @@ export default function ChildPanelDashboardPage() {
 
       document.title = `Dashboard | ${result.panel.panel_name}`;
       setDynamicFavicon(result.panel.logo_url);
+
+      await loadDeposits(slug, token);
 
       setLoading(false);
     } catch {
@@ -449,6 +553,7 @@ export default function ChildPanelDashboardPage() {
       setSubmittingDeposit(false);
       setAddFundsOpen(false);
       resetAddFundsForm();
+      await loadDeposits(slug, token);
       await loadDashboard();
     } catch (error) {
       console.error("CHILD_PANEL_DEPOSIT_SUBMIT_ERROR:", error);
@@ -860,6 +965,102 @@ export default function ChildPanelDashboardPage() {
                 icon={CheckCircle2}
                 primaryColor={primaryColor}
               />
+            </div>
+
+            <div className="rounded-[28px] border border-white/10 bg-white/[0.05] shadow-2xl backdrop-blur">
+              <div className="flex flex-col gap-4 border-b border-white/10 p-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <h3 className="text-xl font-black">Recent Add Funds</h3>
+                  <p className="mt-1 text-sm font-semibold text-white/45">
+                    Track your pending, approved, and rejected deposit requests.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => loadDeposits()}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-black text-white/75 transition hover:bg-white/[0.08]"
+                >
+                  <RefreshCw size={16} />
+                  Refresh
+                </button>
+              </div>
+
+              <div className="p-5">
+                {loadingDeposits ? (
+                  <div className="rounded-[24px] border border-white/10 bg-black/20 p-8 text-center">
+                    <Loader2 className="mx-auto animate-spin text-white/50" size={28} />
+                    <p className="mt-3 text-sm font-bold text-white/45">
+                      Loading deposit history...
+                    </p>
+                  </div>
+                ) : deposits.length <= 0 ? (
+                  <div className="rounded-[24px] border border-dashed border-white/10 bg-black/20 p-8 text-center">
+                    <div
+                      className="mx-auto flex h-14 w-14 items-center justify-center rounded-3xl"
+                      style={{
+                        backgroundColor: `${primaryColor}18`,
+                        color: primaryColor,
+                      }}
+                    >
+                      <Wallet size={25} />
+                    </div>
+                    <h4 className="mt-4 text-lg font-black">No deposits yet</h4>
+                    <p className="mt-2 text-sm font-semibold leading-6 text-white/45">
+                      Your add funds requests will appear here after you submit one.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {deposits.slice(0, 5).map((deposit) => (
+                      <div
+                        key={deposit.id}
+                        className="rounded-[22px] border border-white/10 bg-black/20 p-4"
+                      >
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-lg font-black text-white">
+                                {formatMoney(deposit.amount)}
+                              </p>
+                              <span
+                                className={`rounded-full px-3 py-1 text-xs font-black ring-1 ${getDepositStatusStyle(
+                                  deposit.status,
+                                )}`}
+                              >
+                                {getDepositStatusLabel(deposit.status)}
+                              </span>
+                            </div>
+                            <p className="mt-1 truncate text-sm font-semibold text-white/50">
+                              {deposit.method || "Payment Method"} · Ref: {deposit.reference_number || "—"}
+                            </p>
+                            <p className="mt-1 text-xs font-semibold text-white/35">
+                              {formatDateTime(deposit.created_at)}
+                            </p>
+                            {deposit.reject_reason && (
+                              <p className="mt-2 rounded-2xl bg-red-500/10 px-3 py-2 text-xs font-bold text-red-200">
+                                Reason: {deposit.reject_reason}
+                              </p>
+                            )}
+                          </div>
+
+                          {deposit.proof_url && (
+                            <a
+                              href={deposit.proof_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-black text-white/70 transition hover:bg-white/[0.08]"
+                            >
+                              <FileImage size={15} />
+                              Proof
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
