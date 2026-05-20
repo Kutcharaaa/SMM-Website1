@@ -21,6 +21,7 @@ import {
   Store,
   Upload,
   Wallet,
+  XCircle,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -63,6 +64,34 @@ type Subscription = {
   cancelled_at: string | null;
 };
 
+type ChildPanelCustomer = {
+  id: string;
+  email: string | null;
+  username: string | null;
+  firstname: string | null;
+  lastname: string | null;
+  balance: number | string | null;
+  status: string | null;
+};
+
+type ChildPanelDeposit = {
+  id: string;
+  child_panel_id: string;
+  owner_user_id: string;
+  customer_id: string;
+  amount: number | string | null;
+  method: string | null;
+  reference_number: string | null;
+  proof_url: string | null;
+  status: string | null;
+  reject_reason: string | null;
+  approved_at: string | null;
+  rejected_at: string | null;
+  created_at: string;
+  updated_at: string | null;
+  child_panel_customers?: ChildPanelCustomer | null;
+};
+
 const CHILD_PANEL_PRICE = 349;
 
 function slugify(value: string) {
@@ -84,6 +113,25 @@ function formatDate(value?: string | null) {
   });
 }
 
+function formatDateTime(value?: string | null) {
+  if (!value) return "—";
+
+  return new Date(value).toLocaleString("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function formatMoney(value: number | string | null | undefined) {
+  return `₱${Number(value || 0).toLocaleString("en-PH", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
 function getResellerRank(level?: string | null) {
   const clean = String(level || "").toLowerCase();
 
@@ -101,7 +149,7 @@ function getResellerRank(level?: string | null) {
 function getStatusStyle(status?: string | null) {
   const clean = String(status || "pending").toLowerCase();
 
-  if (clean === "active") {
+  if (clean === "active" || clean === "approved" || clean === "completed") {
     return "bg-emerald-50 text-emerald-700 ring-emerald-100";
   }
 
@@ -109,12 +157,8 @@ function getStatusStyle(status?: string | null) {
     return "bg-orange-50 text-orange-700 ring-orange-100";
   }
 
-  if (clean === "suspended") {
+  if (clean === "suspended" || clean === "rejected" || clean === "failed") {
     return "bg-red-50 text-red-700 ring-red-100";
-  }
-
-  if (clean === "rejected") {
-    return "bg-slate-100 text-slate-700 ring-slate-200";
   }
 
   return "bg-blue-50 text-blue-700 ring-blue-100";
@@ -124,11 +168,20 @@ function getStatusText(status?: string | null) {
   const clean = String(status || "pending").toLowerCase();
 
   if (clean === "active") return "Active";
+  if (clean === "approved") return "Approved";
   if (clean === "pending") return "Pending Approval";
   if (clean === "suspended") return "Suspended";
   if (clean === "rejected") return "Rejected";
 
   return clean.charAt(0).toUpperCase() + clean.slice(1);
+}
+
+function getCustomerName(customer?: ChildPanelCustomer | null) {
+  if (!customer) return "Unknown Customer";
+
+  const fullName = `${customer.firstname || ""} ${customer.lastname || ""}`.trim();
+
+  return fullName || customer.username || customer.email || "Unknown Customer";
 }
 
 function validateLogoDimensions(file: File) {
@@ -189,6 +242,18 @@ function InfoCard({
   );
 }
 
+function DepositStatusBadge({ status }: { status?: string | null }) {
+  return (
+    <span
+      className={`inline-flex rounded-full px-3 py-1 text-xs font-black ring-1 ${getStatusStyle(
+        status,
+      )}`}
+    >
+      {getStatusText(status)}
+    </span>
+  );
+}
+
 export default function ChildPanelPage() {
   const { showToast } = useToast();
 
@@ -205,6 +270,11 @@ export default function ChildPanelPage() {
   const [logoUrl, setLogoUrl] = useState("");
   const [logoUploading, setLogoUploading] = useState(false);
   const [primaryColor, setPrimaryColor] = useState("#2563eb");
+
+  const [deposits, setDeposits] = useState<ChildPanelDeposit[]>([]);
+  const [depositsLoading, setDepositsLoading] = useState(false);
+  const [updatingDepositId, setUpdatingDepositId] = useState<string | null>(null);
+  const [rejectReasons, setRejectReasons] = useState<Record<string, string>>({});
 
   const resellerRank = getResellerRank(profile?.reseller_level);
   const hasLevelPerk = resellerRank >= 3;
@@ -224,6 +294,58 @@ export default function ChildPanelPage() {
     if (!panelSlug) return "ascend-service.org/child/your-panel";
     return `ascend-service.org/child/${panelSlug}`;
   }, [panelSlug]);
+
+  const pendingDeposits = useMemo(() => {
+    return deposits.filter(
+      (deposit) => String(deposit.status || "pending").toLowerCase() === "pending",
+    );
+  }, [deposits]);
+
+  const approvedDepositsTotal = useMemo(() => {
+    return deposits
+      .filter((deposit) => String(deposit.status || "").toLowerCase() === "approved")
+      .reduce((sum, deposit) => sum + Number(deposit.amount || 0), 0);
+  }, [deposits]);
+
+  async function loadOwnerDeposits() {
+    setDepositsLoading(true);
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      setDeposits([]);
+      setDepositsLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/child-panel/owner/deposits/list", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        showToast(result.message || "Failed to load customer deposits.", "error");
+        setDeposits([]);
+        setDepositsLoading(false);
+        return;
+      }
+
+      setDeposits((result.deposits || []) as ChildPanelDeposit[]);
+      setDepositsLoading(false);
+    } catch {
+      showToast("Failed to load customer deposits.", "error");
+      setDeposits([]);
+      setDepositsLoading(false);
+    }
+  }
 
   async function loadData() {
     setLoading(true);
@@ -282,6 +404,8 @@ export default function ChildPanelPage() {
     if (subscriptionData) {
       setSubscription(subscriptionData as Subscription);
     }
+
+    await loadOwnerDeposits();
 
     setLoading(false);
   }
@@ -458,6 +582,63 @@ export default function ChildPanelPage() {
     showToast("Child Panel URL copied.", "success");
   }
 
+  async function updateDepositStatus(
+    deposit: ChildPanelDeposit,
+    action: "approve" | "reject",
+  ) {
+    if (updatingDepositId) return;
+
+    const reason = rejectReasons[deposit.id] || "";
+
+    if (action === "reject" && !reason.trim()) {
+      showToast("Please enter a reject reason before rejecting.", "warning");
+      return;
+    }
+
+    setUpdatingDepositId(deposit.id);
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      showToast("Please login again.", "error");
+      setUpdatingDepositId(null);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/child-panel/owner/deposits/update", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          depositId: deposit.id,
+          action,
+          rejectReason: reason,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        showToast(result.message || "Failed to update deposit.", "error");
+        setUpdatingDepositId(null);
+        return;
+      }
+
+      showToast(result.message || "Deposit updated successfully.", "success");
+      setRejectReasons((current) => ({ ...current, [deposit.id]: "" }));
+      setUpdatingDepositId(null);
+      loadOwnerDeposits();
+    } catch {
+      showToast("Failed to update deposit.", "error");
+      setUpdatingDepositId(null);
+    }
+  }
+
   if (loading) {
     return (
       <DashboardGuard>
@@ -547,9 +728,9 @@ export default function ChildPanelPage() {
 
             <InfoCard
               icon={Globe}
-              title="Panel URL"
-              value={panelSlug || "Not Set"}
-              subtitle="Your future child panel link"
+              title="Pending Deposits"
+              value={String(pendingDeposits.length)}
+              subtitle={`${formatMoney(approvedDepositsTotal)} approved total`}
               color="bg-orange-50 text-orange-700"
             />
           </div>
@@ -584,331 +765,516 @@ export default function ChildPanelPage() {
           )}
 
           {hasAccess && (
-            <div className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-              <div className="min-w-0 rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-                <div className="flex items-start gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
-                    <Settings size={24} />
+            <>
+              <div className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+                <div className="min-w-0 rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
+                      <Settings size={24} />
+                    </div>
+
+                    <div className="min-w-0">
+                      <h2 className="text-xl font-black text-slate-950">
+                        Set Up Your Child Panel
+                      </h2>
+
+                      <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
+                        Fill in your panel information. New panels are marked
+                        pending until admin approval.
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="min-w-0">
-                    <h2 className="text-xl font-black text-slate-950">
-                      Set Up Your Child Panel
-                    </h2>
+                  <div className="mt-6 grid gap-5">
+                    <div>
+                      <label className="mb-2 block text-sm font-black text-slate-700">
+                        Panel Name
+                      </label>
 
-                    <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
-                      Fill in your panel information. New panels are marked
-                      pending until admin approval.
-                    </p>
+                      <input
+                        value={panelName}
+                        onChange={(event) =>
+                          handlePanelNameChange(event.target.value)
+                        }
+                        placeholder="Example: Kutchara Boost Panel"
+                        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-black text-slate-700">
+                        Panel Slug / URL
+                      </label>
+
+                      <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
+                        <input
+                          value={panelSlug}
+                          onChange={(event) =>
+                            setPanelSlug(slugify(event.target.value))
+                          }
+                          placeholder="your-panel-name"
+                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
+                        />
+
+                        <button
+                          type="button"
+                          onClick={copyUrl}
+                          className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-5 text-sm font-black text-blue-700 transition hover:bg-blue-100"
+                        >
+                          <Copy size={16} />
+                          Copy URL
+                        </button>
+                      </div>
+
+                      <p className="mt-2 break-all text-xs font-bold text-slate-500">
+                        Preview: https://{childPanelUrl}
+                      </p>
+                    </div>
+
+                    <div className="grid gap-5 md:grid-cols-2">
+                      <div>
+                        <label className="mb-2 block text-sm font-black text-slate-700">
+                          Support Email
+                        </label>
+
+                        <input
+                          value={supportEmail}
+                          onChange={(event) =>
+                            setSupportEmail(event.target.value)
+                          }
+                          placeholder="support@yourpanel.com"
+                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-sm font-black text-slate-700">
+                          Theme Color
+                        </label>
+
+                        <div className="flex h-12 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4">
+                          <Palette size={18} className="text-slate-400" />
+
+                          <input
+                            type="color"
+                            value={primaryColor}
+                            onChange={(event) =>
+                              setPrimaryColor(event.target.value)
+                            }
+                            className="h-8 w-10 cursor-pointer border-0 bg-transparent p-0"
+                          />
+
+                          <input
+                            value={primaryColor}
+                            onChange={(event) =>
+                              setPrimaryColor(event.target.value)
+                            }
+                            className="min-w-0 flex-1 bg-transparent text-sm font-bold text-slate-800 outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-black text-slate-700">
+                        Upload Logo
+                      </label>
+
+                      <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-5">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                            {logoUrl ? (
+                              <img
+                                src={logoUrl}
+                                alt="Child Panel Logo"
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <Store size={28} className="text-slate-400" />
+                            )}
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-black text-slate-800">
+                              Logo must be exactly 512 x 512 px
+                            </p>
+
+                            <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+                              Accepted formats: PNG, JPG, WEBP. Maximum file size:
+                              2MB.
+                            </p>
+
+                            <label className="mt-4 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700">
+                              {logoUploading ? (
+                                <>
+                                  <Loader2 size={17} className="animate-spin" />
+                                  Uploading...
+                                </>
+                              ) : (
+                                <>
+                                  <Upload size={17} />
+                                  Choose Logo
+                                </>
+                              )}
+
+                              <input
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp"
+                                disabled={logoUploading}
+                                onChange={(event) => {
+                                  const file = event.target.files?.[0];
+                                  if (file) uploadLogo(file);
+                                  event.target.value = "";
+                                }}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={savePanel}
+                      disabled={saving}
+                      className="inline-flex h-13 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-4 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-fit"
+                    >
+                      {saving ? (
+                        <Loader2 size={18} className="animate-spin" />
+                      ) : (
+                        <Save size={18} />
+                      )}
+
+                      {saving
+                        ? "Saving..."
+                        : panel
+                          ? "Save Settings"
+                          : "Create Child Panel"}
+                    </button>
                   </div>
                 </div>
 
-                <div className="mt-6 grid gap-5">
-                  <div>
-                    <label className="mb-2 block text-sm font-black text-slate-700">
-                      Panel Name
-                    </label>
+                <aside className="min-w-0 space-y-5">
+                  <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="flex items-center justify-between gap-4">
+                      <h3 className="text-lg font-black text-slate-950">
+                        Panel Preview
+                      </h3>
 
-                    <input
-                      value={panelName}
-                      onChange={(event) =>
-                        handlePanelNameChange(event.target.value)
-                      }
-                      placeholder="Example: Kutchara Boost Panel"
-                      className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-sm font-black text-slate-700">
-                      Panel Slug / URL
-                    </label>
-
-                    <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
-                      <input
-                        value={panelSlug}
-                        onChange={(event) =>
-                          setPanelSlug(slugify(event.target.value))
-                        }
-                        placeholder="your-panel-name"
-                        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
-                      />
-
-                      <button
-                        type="button"
-                        onClick={copyUrl}
-                        className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-5 text-sm font-black text-blue-700 transition hover:bg-blue-100"
-                      >
-                        <Copy size={16} />
-                        Copy URL
-                      </button>
+                      {panel && (
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-black ring-1 ${getStatusStyle(
+                            panel.status,
+                          )}`}
+                        >
+                          {getStatusText(panel.status)}
+                        </span>
+                      )}
                     </div>
 
-                    <p className="mt-2 break-all text-xs font-bold text-slate-500">
-                      Preview: https://{childPanelUrl}
+                    <div
+                      className="mt-5 rounded-[24px] p-5 text-white shadow-sm"
+                      style={{ backgroundColor: primaryColor || "#2563eb" }}
+                    >
+                      <div className="flex items-center gap-3">
+                        {logoUrl ? (
+                          <img
+                            src={logoUrl}
+                            alt={panelName || "Child Panel"}
+                            className="h-11 w-11 rounded-2xl bg-white object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/20 text-lg font-black">
+                            {(panelName || "P").charAt(0).toUpperCase()}
+                          </div>
+                        )}
+
+                        <div className="min-w-0">
+                          <h4 className="truncate text-lg font-black">
+                            {panelName || "Your Panel Name"}
+                          </h4>
+
+                          <p className="truncate text-xs font-semibold text-white/80">
+                            Powered by Ascend Service
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 rounded-2xl bg-white/15 p-4">
+                        <p className="text-xs font-black uppercase tracking-wide text-white/70">
+                          Panel URL
+                        </p>
+
+                        <p className="mt-2 break-all text-sm font-black">
+                          {childPanelUrl}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                    <h3 className="text-lg font-black text-slate-950">
+                      Access Details
+                    </h3>
+
+                    <div className="mt-5 space-y-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-sm font-bold text-slate-500">
+                          Reseller Level
+                        </span>
+
+                        <span className="text-right text-sm font-black text-slate-900">
+                          {profile?.reseller_level || "New Reseller"}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-sm font-bold text-slate-500">
+                          Access Type
+                        </span>
+
+                        <span className="text-right text-sm font-black text-slate-900">
+                          {hasLevelPerk || hasFreeAccess
+                            ? "Free Lifetime"
+                            : "Paid Subscription"}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-sm font-bold text-slate-500">
+                          Expires At
+                        </span>
+
+                        <span className="text-right text-sm font-black text-slate-900">
+                          {hasLevelPerk || hasFreeAccess
+                            ? "Never"
+                            : formatDate(
+                                subscription?.expires_at ||
+                                  profile?.child_panel_subscription_expires_at,
+                              )}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {panel?.status === "pending" && (
+                    <div className="rounded-[24px] border border-orange-100 bg-orange-50 p-5">
+                      <div className="flex gap-3">
+                        <AlertTriangle
+                          className="mt-0.5 shrink-0 text-orange-600"
+                          size={20}
+                        />
+
+                        <div>
+                          <h4 className="font-black text-orange-700">
+                            Pending Admin Approval
+                          </h4>
+
+                          <p className="mt-1 text-sm font-semibold leading-6 text-orange-700/80">
+                            Your panel setup is saved. Admin approval is needed
+                            before the public child panel becomes active.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {panel?.status === "active" && (
+                    <a
+                      href={`/child/${panel.panel_slug}`}
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-4 text-sm font-black text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700"
+                    >
+                      <CheckCircle2 size={18} />
+                      Open Child Panel
+                    </a>
+                  )}
+                </aside>
+              </div>
+
+              <div className="rounded-[28px] border border-slate-200 bg-white shadow-sm">
+                <div className="flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h3 className="text-xl font-black text-slate-950">
+                      Customer Add Funds Requests
+                    </h3>
+                    <p className="mt-1 text-sm font-semibold text-slate-500">
+                      Approve or reject deposits submitted by customers from your child panel.
                     </p>
-                  </div>
-
-                  <div className="grid gap-5 md:grid-cols-2">
-                    <div>
-                      <label className="mb-2 block text-sm font-black text-slate-700">
-                        Support Email
-                      </label>
-
-                      <input
-                        value={supportEmail}
-                        onChange={(event) =>
-                          setSupportEmail(event.target.value)
-                        }
-                        placeholder="support@yourpanel.com"
-                        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="mb-2 block text-sm font-black text-slate-700">
-                        Theme Color
-                      </label>
-
-                      <div className="flex h-12 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4">
-                        <Palette size={18} className="text-slate-400" />
-
-                        <input
-                          type="color"
-                          value={primaryColor}
-                          onChange={(event) =>
-                            setPrimaryColor(event.target.value)
-                          }
-                          className="h-8 w-10 cursor-pointer border-0 bg-transparent p-0"
-                        />
-
-                        <input
-                          value={primaryColor}
-                          onChange={(event) =>
-                            setPrimaryColor(event.target.value)
-                          }
-                          className="min-w-0 flex-1 bg-transparent text-sm font-bold text-slate-800 outline-none"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-sm font-black text-slate-700">
-                      Upload Logo
-                    </label>
-
-                    <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-5">
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                        <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                          {logoUrl ? (
-                            <img
-                              src={logoUrl}
-                              alt="Child Panel Logo"
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <Store size={28} className="text-slate-400" />
-                          )}
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-black text-slate-800">
-                            Logo must be exactly 512 x 512 px
-                          </p>
-
-                          <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
-                            Accepted formats: PNG, JPG, WEBP. Maximum file size:
-                            2MB.
-                          </p>
-
-                          <label className="mt-4 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700">
-                            {logoUploading ? (
-                              <>
-                                <Loader2 size={17} className="animate-spin" />
-                                Uploading...
-                              </>
-                            ) : (
-                              <>
-                                <Upload size={17} />
-                                Choose Logo
-                              </>
-                            )}
-
-                            <input
-                              type="file"
-                              accept="image/png,image/jpeg,image/webp"
-                              disabled={logoUploading}
-                              onChange={(event) => {
-                                const file = event.target.files?.[0];
-                                if (file) uploadLogo(file);
-                                event.target.value = "";
-                              }}
-                              className="hidden"
-                            />
-                          </label>
-                        </div>
-                      </div>
-                    </div>
                   </div>
 
                   <button
                     type="button"
-                    onClick={savePanel}
-                    disabled={saving}
-                    className="inline-flex h-13 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-4 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-fit"
+                    onClick={loadOwnerDeposits}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 sm:w-fit"
                   >
-                    {saving ? (
-                      <Loader2 size={18} className="animate-spin" />
-                    ) : (
-                      <Save size={18} />
-                    )}
-
-                    {saving
-                      ? "Saving..."
-                      : panel
-                        ? "Save Settings"
-                        : "Create Child Panel"}
+                    <RefreshCw size={17} />
+                    Refresh Deposits
                   </button>
                 </div>
+
+                {depositsLoading ? (
+                  <div className="p-10 text-center">
+                    <Loader2 className="mx-auto animate-spin text-blue-600" size={28} />
+                    <p className="mt-3 text-sm font-bold text-slate-500">
+                      Loading customer deposits...
+                    </p>
+                  </div>
+                ) : deposits.length <= 0 ? (
+                  <div className="p-10 text-center">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-3xl bg-blue-50 text-blue-600">
+                      <Wallet size={26} />
+                    </div>
+                    <h4 className="mt-4 text-lg font-black text-slate-950">
+                      No customer deposits yet
+                    </h4>
+                    <p className="mt-1 text-sm font-semibold text-slate-500">
+                      Add funds requests from your child panel customers will appear here.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[1050px] text-sm">
+                      <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                        <tr>
+                          <th className="px-5 py-4 text-left">Customer</th>
+                          <th className="px-5 py-4 text-left">Amount</th>
+                          <th className="px-5 py-4 text-left">Method</th>
+                          <th className="px-5 py-4 text-left">Reference</th>
+                          <th className="px-5 py-4 text-left">Proof</th>
+                          <th className="px-5 py-4 text-left">Status</th>
+                          <th className="px-5 py-4 text-left">Date</th>
+                          <th className="px-5 py-4 text-left">Action</th>
+                        </tr>
+                      </thead>
+
+                      <tbody>
+                        {deposits.map((deposit) => {
+                          const status = String(deposit.status || "pending").toLowerCase();
+                          const pending = status === "pending";
+
+                          return (
+                            <tr
+                              key={deposit.id}
+                              className="border-t border-slate-100 transition hover:bg-slate-50/70"
+                            >
+                              <td className="px-5 py-5 align-top">
+                                <p className="font-black text-slate-900">
+                                  {getCustomerName(deposit.child_panel_customers)}
+                                </p>
+                                <p className="mt-1 max-w-[190px] truncate text-xs font-semibold text-slate-400">
+                                  {deposit.child_panel_customers?.email || deposit.customer_id}
+                                </p>
+                                <p className="mt-1 text-xs font-black text-blue-600">
+                                  Balance: {formatMoney(deposit.child_panel_customers?.balance)}
+                                </p>
+                              </td>
+
+                              <td className="px-5 py-5 align-top font-black text-emerald-600">
+                                {formatMoney(deposit.amount)}
+                              </td>
+
+                              <td className="px-5 py-5 align-top font-bold text-slate-700">
+                                {deposit.method || "Manual Payment"}
+                              </td>
+
+                              <td className="px-5 py-5 align-top">
+                                <p className="max-w-[160px] truncate font-semibold text-slate-600">
+                                  {deposit.reference_number || "—"}
+                                </p>
+                              </td>
+
+                              <td className="px-5 py-5 align-top">
+                                {deposit.proof_url ? (
+                                  <a
+                                    href={deposit.proof_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-2 rounded-xl bg-blue-50 px-3 py-2 text-xs font-black text-blue-700 transition hover:bg-blue-100"
+                                  >
+                                    View Proof
+                                    <ExternalLink size={13} />
+                                  </a>
+                                ) : (
+                                  <span className="text-xs font-bold text-slate-400">No proof</span>
+                                )}
+                              </td>
+
+                              <td className="px-5 py-5 align-top">
+                                <DepositStatusBadge status={deposit.status} />
+                                {deposit.reject_reason && (
+                                  <p className="mt-2 max-w-[180px] text-xs font-semibold text-red-500">
+                                    {deposit.reject_reason}
+                                  </p>
+                                )}
+                              </td>
+
+                              <td className="px-5 py-5 align-top">
+                                <p className="font-bold text-slate-700">
+                                  {formatDateTime(deposit.created_at)}
+                                </p>
+                              </td>
+
+                              <td className="px-5 py-5 align-top">
+                                {pending ? (
+                                  <div className="min-w-[250px] space-y-3">
+                                    <div className="flex gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => updateDepositStatus(deposit, "approve")}
+                                        disabled={updatingDepositId === deposit.id}
+                                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-black text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                      >
+                                        {updatingDepositId === deposit.id ? (
+                                          <Loader2 size={14} className="animate-spin" />
+                                        ) : (
+                                          <CheckCircle2 size={14} />
+                                        )}
+                                        Approve
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => updateDepositStatus(deposit, "reject")}
+                                        disabled={updatingDepositId === deposit.id}
+                                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-600 px-3 py-2 text-xs font-black text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                      >
+                                        <XCircle size={14} />
+                                        Reject
+                                      </button>
+                                    </div>
+
+                                    <input
+                                      value={rejectReasons[deposit.id] || ""}
+                                      onChange={(event) =>
+                                        setRejectReasons((current) => ({
+                                          ...current,
+                                          [deposit.id]: event.target.value,
+                                        }))
+                                      }
+                                      placeholder="Reject reason required if rejecting"
+                                      className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 outline-none transition focus:border-red-300 focus:ring-4 focus:ring-red-50"
+                                    />
+                                  </div>
+                                ) : (
+                                  <span className="text-xs font-bold text-slate-400">
+                                    {status === "approved"
+                                      ? `Approved ${formatDateTime(deposit.approved_at)}`
+                                      : status === "rejected"
+                                        ? `Rejected ${formatDateTime(deposit.rejected_at)}`
+                                        : "No action"}
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
-
-              <aside className="min-w-0 space-y-5">
-                <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-                  <div className="flex items-center justify-between gap-4">
-                    <h3 className="text-lg font-black text-slate-950">
-                      Panel Preview
-                    </h3>
-
-                    {panel && (
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-black ring-1 ${getStatusStyle(
-                          panel.status,
-                        )}`}
-                      >
-                        {getStatusText(panel.status)}
-                      </span>
-                    )}
-                  </div>
-
-                  <div
-                    className="mt-5 rounded-[24px] p-5 text-white shadow-sm"
-                    style={{ backgroundColor: primaryColor || "#2563eb" }}
-                  >
-                    <div className="flex items-center gap-3">
-                      {logoUrl ? (
-                        <img
-                          src={logoUrl}
-                          alt={panelName || "Child Panel"}
-                          className="h-11 w-11 rounded-2xl bg-white object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/20 text-lg font-black">
-                          {(panelName || "P").charAt(0).toUpperCase()}
-                        </div>
-                      )}
-
-                      <div className="min-w-0">
-                        <h4 className="truncate text-lg font-black">
-                          {panelName || "Your Panel Name"}
-                        </h4>
-
-                        <p className="truncate text-xs font-semibold text-white/80">
-                          Powered by Ascend Service
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="mt-5 rounded-2xl bg-white/15 p-4">
-                      <p className="text-xs font-black uppercase tracking-wide text-white/70">
-                        Panel URL
-                      </p>
-
-                      <p className="mt-2 break-all text-sm font-black">
-                        {childPanelUrl}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-                  <h3 className="text-lg font-black text-slate-950">
-                    Access Details
-                  </h3>
-
-                  <div className="mt-5 space-y-4">
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="text-sm font-bold text-slate-500">
-                        Reseller Level
-                      </span>
-
-                      <span className="text-right text-sm font-black text-slate-900">
-                        {profile?.reseller_level || "New Reseller"}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="text-sm font-bold text-slate-500">
-                        Access Type
-                      </span>
-
-                      <span className="text-right text-sm font-black text-slate-900">
-                        {hasLevelPerk || hasFreeAccess
-                          ? "Free Lifetime"
-                          : "Paid Subscription"}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="text-sm font-bold text-slate-500">
-                        Expires At
-                      </span>
-
-                      <span className="text-right text-sm font-black text-slate-900">
-                        {hasLevelPerk || hasFreeAccess
-                          ? "Never"
-                          : formatDate(
-                              subscription?.expires_at ||
-                                profile?.child_panel_subscription_expires_at,
-                            )}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {panel?.status === "pending" && (
-                  <div className="rounded-[24px] border border-orange-100 bg-orange-50 p-5">
-                    <div className="flex gap-3">
-                      <AlertTriangle
-                        className="mt-0.5 shrink-0 text-orange-600"
-                        size={20}
-                      />
-
-                      <div>
-                        <h4 className="font-black text-orange-700">
-                          Pending Admin Approval
-                        </h4>
-
-                        <p className="mt-1 text-sm font-semibold leading-6 text-orange-700/80">
-                          Your panel setup is saved. Admin approval is needed
-                          before the public child panel becomes active.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {panel?.status === "active" && (
-                  <a
-                    href={`/child/${panel.panel_slug}`}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-4 text-sm font-black text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700"
-                  >
-                    <CheckCircle2 size={18} />
-                    Open Child Panel
-                  </a>
-                )}
-              </aside>
-            </div>
+            </>
           )}
         </div>
       </DashboardLayout>
