@@ -43,6 +43,7 @@ type ChildPanel = {
   support_email: string | null;
   logo_url: string | null;
   primary_color: string | null;
+  markup_percent: number | null;
   status: string;
   access_type: string;
   subscription_status: string | null;
@@ -203,7 +204,8 @@ function getCustomerName(deposit: CustomerDeposit) {
 
   if (!customer) return "Customer";
 
-  const fullName = `${customer.firstname || ""} ${customer.lastname || ""}`.trim();
+  const fullName =
+    `${customer.firstname || ""} ${customer.lastname || ""}`.trim();
 
   return fullName || customer.username || customer.email || "Customer";
 }
@@ -282,10 +284,15 @@ export default function ChildPanelPage() {
   const [logoUrl, setLogoUrl] = useState("");
   const [logoUploading, setLogoUploading] = useState(false);
   const [primaryColor, setPrimaryColor] = useState("#2563eb");
+  const [markupPercent, setMarkupPercent] = useState("20");
 
-  const [customerDeposits, setCustomerDeposits] = useState<CustomerDeposit[]>([]);
+  const [customerDeposits, setCustomerDeposits] = useState<CustomerDeposit[]>(
+    [],
+  );
   const [depositsLoading, setDepositsLoading] = useState(false);
-  const [depositActionLoadingId, setDepositActionLoadingId] = useState<string | null>(null);
+  const [depositActionLoadingId, setDepositActionLoadingId] = useState<
+    string | null
+  >(null);
 
   const resellerRank = getResellerRank(profile?.reseller_level);
   const hasLevelPerk = resellerRank >= 3;
@@ -306,9 +313,30 @@ export default function ChildPanelPage() {
     return `ascend-service.org/child/${panelSlug}`;
   }, [panelSlug]);
 
+  const cleanMarkupPercent = useMemo(() => {
+    const value = Number(markupPercent);
+
+    if (!Number.isFinite(value)) return 20;
+
+    return Math.min(500, Math.max(0, value));
+  }, [markupPercent]);
+
+  const markupPreview = useMemo(() => {
+    const basePrice = 100;
+    const customerPrice = basePrice + (basePrice * cleanMarkupPercent) / 100;
+    const ownerProfit = customerPrice - basePrice;
+
+    return {
+      basePrice,
+      customerPrice,
+      ownerProfit,
+    };
+  }, [cleanMarkupPercent]);
+
   const pendingDeposits = useMemo(() => {
     return customerDeposits.filter(
-      (deposit) => String(deposit.status || "pending").toLowerCase() === "pending",
+      (deposit) =>
+        String(deposit.status || "pending").toLowerCase() === "pending",
     ).length;
   }, [customerDeposits]);
 
@@ -357,7 +385,10 @@ export default function ChildPanelPage() {
       }
 
       if (!response.ok || !result.success) {
-        showToast(result.message || "Failed to load customer deposits.", "error");
+        showToast(
+          result.message || "Failed to load customer deposits.",
+          "error",
+        );
         setDepositsLoading(false);
         return;
       }
@@ -414,6 +445,7 @@ export default function ChildPanelPage() {
       setSupportEmail(childPanel.support_email || "");
       setLogoUrl(childPanel.logo_url || "");
       setPrimaryColor(childPanel.primary_color || "#2563eb");
+      setMarkupPercent(String(childPanel.markup_percent ?? 20));
     }
 
     const { data: subscriptionData } = await supabase
@@ -510,7 +542,10 @@ export default function ChildPanelPage() {
     if (saving) return;
 
     if (!hasAccess) {
-      showToast("You need Child Panel access before setting up a panel.", "error");
+      showToast(
+        "You need Child Panel access before setting up a panel.",
+        "error",
+      );
       return;
     }
 
@@ -534,6 +569,16 @@ export default function ChildPanelPage() {
         "Panel slug can only use lowercase letters, numbers, and hyphen.",
         "warning",
       );
+      return;
+    }
+
+    if (!Number.isFinite(Number(markupPercent))) {
+      showToast("Please enter a valid markup percentage.", "warning");
+      return;
+    }
+
+    if (cleanMarkupPercent < 0 || cleanMarkupPercent > 500) {
+      showToast("Markup percent must be between 0% and 500%.", "warning");
       return;
     }
 
@@ -562,6 +607,7 @@ export default function ChildPanelPage() {
           support_email: supportEmail.trim() || null,
           logo_url: logoUrl.trim() || null,
           primary_color: primaryColor || "#2563eb",
+          markup_percent: cleanMarkupPercent,
           access_type: accessType,
           subscription_status: subscriptionStatus,
           updated_at: new Date().toISOString(),
@@ -584,6 +630,7 @@ export default function ChildPanelPage() {
         support_email: supportEmail.trim() || null,
         logo_url: logoUrl.trim() || null,
         primary_color: primaryColor || "#2563eb",
+        markup_percent: cleanMarkupPercent,
         status: "pending",
         access_type: accessType,
         subscription_status: subscriptionStatus,
@@ -922,6 +969,76 @@ export default function ChildPanelPage() {
                       </div>
                     </div>
 
+                    <div className="rounded-[24px] border border-blue-100 bg-blue-50/60 p-5">
+                      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-center">
+                        <div>
+                          <label className="mb-2 block text-sm font-black text-slate-700">
+                            Markup Percent
+                          </label>
+
+                          <div className="flex h-12 items-center rounded-2xl border border-blue-100 bg-white px-4 shadow-sm">
+                            <input
+                              type="number"
+                              min="0"
+                              max="500"
+                              step="0.01"
+                              value={markupPercent}
+                              onChange={(event) =>
+                                setMarkupPercent(event.target.value)
+                              }
+                              placeholder="20"
+                              className="min-w-0 flex-1 bg-transparent text-sm font-bold text-slate-800 outline-none"
+                            />
+
+                            <span className="text-sm font-black text-blue-600">
+                              %
+                            </span>
+                          </div>
+
+                          <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+                            This markup is added on top of Ascend base service
+                            prices. Customers will see the marked-up price, and
+                            the difference becomes your profit.
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
+                          <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                            Pricing Preview
+                          </p>
+
+                          <div className="mt-3 space-y-2 text-sm">
+                            <div className="flex items-center justify-between gap-4">
+                              <span className="font-semibold text-slate-500">
+                                Base Price
+                              </span>
+                              <span className="font-black text-slate-900">
+                                ₱{markupPreview.basePrice.toFixed(2)}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between gap-4">
+                              <span className="font-semibold text-slate-500">
+                                Customer Sees
+                              </span>
+                              <span className="font-black text-blue-600">
+                                ₱{markupPreview.customerPrice.toFixed(2)}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between gap-4">
+                              <span className="font-semibold text-slate-500">
+                                Your Profit
+                              </span>
+                              <span className="font-black text-emerald-600">
+                                ₱{markupPreview.ownerProfit.toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
                     <div>
                       <label className="mb-2 block text-sm font-black text-slate-700">
                         Upload Logo
@@ -947,8 +1064,8 @@ export default function ChildPanelPage() {
                             </p>
 
                             <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
-                              Accepted formats: PNG, JPG, WEBP. Maximum file size:
-                              2MB.
+                              Accepted formats: PNG, JPG, WEBP. Maximum file
+                              size: 2MB.
                             </p>
 
                             <label className="mt-4 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700">
@@ -1090,6 +1207,16 @@ export default function ChildPanelPage() {
 
                       <div className="flex items-center justify-between gap-4">
                         <span className="text-sm font-bold text-slate-500">
+                          Markup Percent
+                        </span>
+
+                        <span className="text-right text-sm font-black text-blue-600">
+                          {cleanMarkupPercent.toFixed(2)}%
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-sm font-bold text-slate-500">
                           Expires At
                         </span>
 
@@ -1147,7 +1274,8 @@ export default function ChildPanelPage() {
                     </h2>
 
                     <p className="mt-1 text-sm font-semibold text-slate-500">
-                      Review, approve, or reject add funds requests from your child panel customers.
+                      Review, approve, or reject add funds requests from your
+                      child panel customers.
                     </p>
                   </div>
 
@@ -1211,7 +1339,10 @@ export default function ChildPanelPage() {
                             colSpan={7}
                             className="px-5 py-12 text-center text-slate-500"
                           >
-                            <Loader2 className="mx-auto animate-spin" size={26} />
+                            <Loader2
+                              className="mx-auto animate-spin"
+                              size={26}
+                            />
                             <p className="mt-3 text-sm font-bold">
                               Loading customer deposits...
                             </p>
@@ -1228,9 +1359,12 @@ export default function ChildPanelPage() {
                         </tr>
                       ) : (
                         customerDeposits.map((deposit) => {
-                          const status = String(deposit.status || "pending").toLowerCase();
+                          const status = String(
+                            deposit.status || "pending",
+                          ).toLowerCase();
                           const pending = status === "pending";
-                          const updating = depositActionLoadingId === deposit.id;
+                          const updating =
+                            depositActionLoadingId === deposit.id;
 
                           return (
                             <tr
@@ -1301,7 +1435,10 @@ export default function ChildPanelPage() {
                                       <button
                                         type="button"
                                         onClick={() =>
-                                          updateCustomerDeposit(deposit.id, "approve")
+                                          updateCustomerDeposit(
+                                            deposit.id,
+                                            "approve",
+                                          )
                                         }
                                         disabled={updating}
                                         className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 text-xs font-black text-white transition hover:bg-emerald-700 disabled:opacity-50"
@@ -1320,7 +1457,10 @@ export default function ChildPanelPage() {
                                       <button
                                         type="button"
                                         onClick={() =>
-                                          updateCustomerDeposit(deposit.id, "reject")
+                                          updateCustomerDeposit(
+                                            deposit.id,
+                                            "reject",
+                                          )
                                         }
                                         disabled={updating}
                                         className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-red-600 px-3 text-xs font-black text-white transition hover:bg-red-700 disabled:opacity-50"
