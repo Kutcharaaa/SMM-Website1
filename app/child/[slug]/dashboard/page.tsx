@@ -323,6 +323,7 @@ export default function ChildPanelDashboardPage() {
   const [orderLink, setOrderLink] = useState("");
   const [orderQuantity, setOrderQuantity] = useState("");
   const [orderComments, setOrderComments] = useState("");
+  const [submittingOrder, setSubmittingOrder] = useState(false);
 
   const primaryColor = panel?.primary_color || "#ff4f8b";
 
@@ -656,17 +657,118 @@ export default function ChildPanelDashboardPage() {
   }
 
   function closeNewOrderModal() {
+    if (submittingOrder) return;
     setNewOrderOpen(false);
     setOrderLink("");
     setOrderQuantity("");
     setOrderComments("");
   }
 
-  function previewOrderOnly() {
-    setMessage(
-      "Service selection is ready. Next step is creating the child panel order API so this button can place real orders.",
-    );
-    setNewOrderOpen(false);
+  async function submitChildOrder() {
+    if (submittingOrder) return;
+
+    setMessage("");
+
+    if (!selectedService) {
+      setMessage("Please select a service.");
+      return;
+    }
+
+    if (!orderLink.trim()) {
+      setMessage("Please enter your link.");
+      return;
+    }
+
+    if (orderQuantityNumber <= 0) {
+      setMessage(
+        selectedServiceRequiresComments
+          ? "Please enter your custom comments, one comment per line."
+          : "Please enter a valid quantity.",
+      );
+      return;
+    }
+
+    if (orderQuantityNumber < getServiceMinimum(selectedService)) {
+      setMessage(
+        `Minimum quantity is ${formatNumber(getServiceMinimum(selectedService))}.`,
+      );
+      return;
+    }
+
+    if (orderQuantityNumber > getServiceMaximum(selectedService)) {
+      setMessage(
+        `Maximum quantity is ${formatNumber(getServiceMaximum(selectedService))}.`,
+      );
+      return;
+    }
+
+    if (orderCharge > Number(customer?.balance || 0)) {
+      setMessage(
+        `Insufficient balance. Required: ${formatMoney(orderCharge)}, Available: ${formatMoney(customer?.balance || 0)}.`,
+      );
+      return;
+    }
+
+    const token = getStoredToken();
+
+    if (!token) {
+      router.replace(`/child/${slug}/login`);
+      return;
+    }
+
+    setSubmittingOrder(true);
+    setMessage("Placing order...");
+
+    try {
+      const response = await fetch("/api/child-panel/customers/orders/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          slug,
+          token,
+          serviceId: selectedService.id,
+          link: orderLink.trim(),
+          quantity: orderQuantityNumber,
+          comments: selectedServiceRequiresComments
+            ? customCommentLines.join("\n")
+            : undefined,
+        }),
+      });
+
+      const responseText = await response.text();
+      let result: any = null;
+
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        setMessage(
+          `Order API returned non-JSON response. Status: ${response.status}. Make sure the API route is deployed.`,
+        );
+        setSubmittingOrder(false);
+        return;
+      }
+
+      if (!response.ok || !result.success) {
+        setMessage(getReadableError(result.message));
+        setSubmittingOrder(false);
+        return;
+      }
+
+      setMessage(result.message || "Order placed successfully.");
+      setNewOrderOpen(false);
+      setOrderLink("");
+      setOrderQuantity("");
+      setOrderComments("");
+      setSubmittingOrder(false);
+
+      await loadDashboard();
+    } catch (error) {
+      console.error("CHILD_PANEL_ORDER_SUBMIT_ERROR:", error);
+      setMessage("Failed to place order.");
+      setSubmittingOrder(false);
+    }
   }
 
   function closeAddFundsModal() {
@@ -1924,20 +2026,21 @@ export default function ChildPanelDashboardPage() {
 
               <div className="rounded-2xl border border-orange-400/20 bg-orange-500/10 p-4 text-sm font-bold leading-6 text-orange-100">
                 {selectedServiceRequiresComments
-                  ? "Custom comments detected. Quantity is based on one non-empty comment per line. The final order API will send these comments with the order."
-                  : "Service pricing is now connected. The final order submit will be connected in the next API step so it can safely charge balance and record owner profit."}
+                  ? "Custom comments detected. Quantity is based on one non-empty comment per line. These comments will be saved with your order."
+                  : "Review your service, link, quantity, and estimated charge before placing your order."}
               </div>
 
               <button
                 type="button"
-                onClick={previewOrderOnly}
+                onClick={submitChildOrder}
                 disabled={
                   !selectedService ||
                   !orderLink.trim() ||
                   orderQuantityNumber <= 0 ||
                   orderQuantityNumber < getServiceMinimum(selectedService) ||
                   orderQuantityNumber > getServiceMaximum(selectedService) ||
-                  (selectedServiceRequiresComments && customCommentQuantity <= 0)
+                  (selectedServiceRequiresComments && customCommentQuantity <= 0) ||
+                  submittingOrder
                 }
                 className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-sm font-black text-white transition disabled:cursor-not-allowed disabled:opacity-45"
                 style={{
@@ -1945,8 +2048,17 @@ export default function ChildPanelDashboardPage() {
                   boxShadow: getAccentShadow(primaryColor),
                 }}
               >
-                <ShoppingCart size={18} />
-                Preview Ready
+                {submittingOrder ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    Placing Order...
+                  </>
+                ) : (
+                  <>
+                    <ShoppingCart size={18} />
+                    Place Order
+                  </>
+                )}
               </button>
             </div>
           </div>
