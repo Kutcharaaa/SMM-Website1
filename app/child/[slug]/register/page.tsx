@@ -184,28 +184,40 @@ export default function ChildPanelRegisterPage() {
     setSubmitting(true);
 
     try {
-      const response = await fetch("/api/child-panel/customers/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          slug: panel.panel_slug,
-          firstname,
-          lastname,
-          username,
-          email,
-          password,
-        }),
-      });
+const response = await fetch("/api/child-panel/customers/register", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    slug: panel.panel_slug,
+    firstname,
+    lastname,
+    username,
+    email,
+    password,
+  }),
+});
 
-      const result = await response.json();
+const responseText = await response.text();
 
-      if (!result.success) {
-        setMessage(getReadableError(result.message));
-        setSubmitting(false);
-        return;
-      }
+let result: any = null;
+
+try {
+  result = JSON.parse(responseText);
+} catch {
+  setMessage(
+    `Register API returned non-JSON response. Status: ${response.status}. Make sure /api/child-panel/customers/register is deployed.`,
+  );
+  setSubmitting(false);
+  return;
+}
+
+if (!response.ok || !result.success) {
+  setMessage(getReadableError(result.message));
+  setSubmitting(false);
+  return;
+}
 
       setMessage("Account created successfully. Redirecting to login...");
 
