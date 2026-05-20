@@ -681,7 +681,7 @@ export default function OrdersPage() {
 
     const interval = setInterval(() => {
       refreshOrders();
-    }, 30000);
+    }, 3000);
 
     return () => clearInterval(interval);
   }, []);
