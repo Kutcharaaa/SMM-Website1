@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Coins,
   CreditCard,
+  Cross,
   FileClock,
   HandCoins,
   Landmark,
@@ -32,8 +33,11 @@ import {
   User,
   Users,
   Wallet,
+  Wallet2,
   X,
 } from "lucide-react";
+import { FaMoneyBillWave } from "react-icons/fa";
+import { BiMoney } from "react-icons/bi";
 
 type Role = "admin" | "head_admin" | "super_admin" | string;
 
@@ -156,6 +160,12 @@ export default function AdminSidebar({
           name: "Cash Accounts",
           href: "/admin/cash-accounts",
           icon: Wallet,
+          roles: ["head_admin", "super_admin"],
+        },
+                {
+          name: "Expenses",
+          href: "/admin/expenses",
+          icon: Wallet2,
           roles: ["head_admin", "super_admin"],
         },
         {
