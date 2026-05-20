@@ -23,8 +23,8 @@ function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-function slugifyUsername(value: string) {
-  return value
+function cleanUsername(value: unknown) {
+  return String(value || "")
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9_]/g, "")
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     const password = String(body.password || "");
     const firstname = cleanText(body.firstname);
     const lastname = cleanText(body.lastname);
-    const username = slugifyUsername(body.username || "");
+    const username = cleanUsername(body.username);
 
     if (!slug) {
       return NextResponse.json(
@@ -99,7 +99,19 @@ export async function POST(request: NextRequest) {
       .eq("panel_slug", slug)
       .maybeSingle();
 
-    if (panelError || !panel) {
+    if (panelError) {
+      console.error("CHILD_PANEL_LOOKUP_ERROR:", panelError.message);
+
+      return NextResponse.json(
+        {
+          success: false,
+          message: panelError.message,
+        },
+        { status: 500 },
+      );
+    }
+
+    if (!panel) {
       return NextResponse.json(
         {
           success: false,
@@ -119,18 +131,63 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: existingCustomer } = await supabaseAdmin
+    const { data: existingEmail, error: emailCheckError } = await supabaseAdmin
       .from("child_panel_customers")
       .select("id")
       .eq("child_panel_id", panel.id)
-      .or(`email.eq.${email},username.eq.${username}`)
+      .eq("email", email)
       .maybeSingle();
 
-    if (existingCustomer) {
+    if (emailCheckError) {
+      console.error("CHILD_PANEL_EMAIL_CHECK_ERROR:", emailCheckError.message);
+
       return NextResponse.json(
         {
           success: false,
-          message: "Email or username is already registered on this panel.",
+          message: emailCheckError.message,
+        },
+        { status: 500 },
+      );
+    }
+
+    if (existingEmail) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Email is already registered on this panel.",
+        },
+        { status: 409 },
+      );
+    }
+
+    const { data: existingUsername, error: usernameCheckError } =
+      await supabaseAdmin
+        .from("child_panel_customers")
+        .select("id")
+        .eq("child_panel_id", panel.id)
+        .eq("username", username)
+        .maybeSingle();
+
+    if (usernameCheckError) {
+      console.error(
+        "CHILD_PANEL_USERNAME_CHECK_ERROR:",
+        usernameCheckError.message,
+      );
+
+      return NextResponse.json(
+        {
+          success: false,
+          message: usernameCheckError.message,
+        },
+        { status: 500 },
+      );
+    }
+
+    if (existingUsername) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Username is already registered on this panel.",
         },
         { status: 409 },
       );
@@ -155,6 +212,8 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (insertError) {
+      console.error("CHILD_PANEL_CUSTOMER_INSERT_ERROR:", insertError.message);
+
       return NextResponse.json(
         {
           success: false,
