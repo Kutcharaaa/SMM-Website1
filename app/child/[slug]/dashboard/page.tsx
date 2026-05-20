@@ -6,6 +6,7 @@ import {
   Bell,
   CheckCircle2,
   CreditCard,
+  FileImage,
   Home,
   Loader2,
   LogOut,
@@ -75,6 +76,18 @@ function setDynamicFavicon(iconUrl?: string | null) {
   if (!existing.parentElement) {
     document.head.appendChild(existing);
   }
+}
+
+function getReadableError(value: unknown) {
+  return String(value || "Something went wrong. Please try again.");
+}
+
+function sanitizeFileName(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9.\-_]/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 80);
 }
 
 function StatCard({
@@ -172,10 +185,10 @@ export default function ChildPanelDashboardPage() {
 
   const [addFundsOpen, setAddFundsOpen] = useState(false);
   const [depositAmount, setDepositAmount] = useState("");
-  const [depositMethod, setDepositMethod] = useState("GCash");
+  const [depositMethod, setDepositMethod] = useState("");
   const [referenceNumber, setReferenceNumber] = useState("");
-  const [proofUrl, setProofUrl] = useState("");
-  const [proofUploading, setProofUploading] = useState(false);
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [proofPreview, setProofPreview] = useState("");
   const [submittingDeposit, setSubmittingDeposit] = useState(false);
 
   const primaryColor = panel?.primary_color || "#ff4f8b";
@@ -255,23 +268,49 @@ export default function ChildPanelDashboardPage() {
     }
   }
 
+  function logout() {
+    window.localStorage.removeItem("child_panel_token");
+    window.localStorage.removeItem("child_panel_slug");
+    window.localStorage.removeItem("child_panel_customer");
+
+    window.sessionStorage.removeItem("child_panel_token");
+    window.sessionStorage.removeItem("child_panel_slug");
+    window.sessionStorage.removeItem("child_panel_customer");
+
+    router.replace(`/child/${slug}/login`);
+  }
+
   function resetAddFundsForm() {
     setDepositAmount("");
-    setDepositMethod("GCash");
+    setDepositMethod("");
     setReferenceNumber("");
-    setProofUrl("");
-    setMessage("");
+    setProofFile(null);
+
+    if (proofPreview) {
+      URL.revokeObjectURL(proofPreview);
+    }
+
+    setProofPreview("");
   }
 
   function openAddFundsModal() {
-    resetAddFundsForm();
-    setMobileMenuOpen(false);
+    setMessage("");
     setAddFundsOpen(true);
   }
 
-  async function uploadDepositProof(file: File) {
-    if (!panel || !customer) {
-      setMessage("Please login again before uploading proof.");
+  function closeAddFundsModal() {
+    if (submittingDeposit) return;
+    setAddFundsOpen(false);
+    resetAddFundsForm();
+  }
+
+  function handleProofFile(file?: File | null) {
+    setMessage("");
+
+    if (!file) {
+      setProofFile(null);
+      if (proofPreview) URL.revokeObjectURL(proofPreview);
+      setProofPreview("");
       return;
     }
 
@@ -287,36 +326,21 @@ export default function ChildPanelDashboardPage() {
       return;
     }
 
-    setProofUploading(true);
-    setMessage("");
+    if (proofPreview) URL.revokeObjectURL(proofPreview);
 
-    const fileExt = file.name.split(".").pop() || "png";
-    const fileName = `${panel.id}/${customer.id}/${Date.now()}-deposit-proof.${fileExt}`;
-
-    const { error } = await supabase.storage
-      .from("child-panel-deposit-proofs")
-      .upload(fileName, file, {
-        cacheControl: "3600",
-        upsert: true,
-      });
-
-    if (error) {
-      setMessage(error.message);
-      setProofUploading(false);
-      return;
-    }
-
-    const { data } = supabase.storage
-      .from("child-panel-deposit-proofs")
-      .getPublicUrl(fileName);
-
-    setProofUrl(data.publicUrl);
-    setProofUploading(false);
-    setMessage("Payment proof uploaded successfully.");
+    setProofFile(file);
+    setProofPreview(URL.createObjectURL(file));
   }
 
   async function submitDeposit() {
-    if (submittingDeposit || !panel || !customer) return;
+    if (submittingDeposit) return;
+
+    setMessage("");
+
+    if (!panel || !customer) {
+      setMessage("Please login again before submitting add funds.");
+      return;
+    }
 
     const token = getStoredToken();
 
@@ -327,13 +351,13 @@ export default function ChildPanelDashboardPage() {
 
     const amount = Number(depositAmount || 0);
 
-    if (amount < 50) {
+    if (!Number.isFinite(amount) || amount < 50) {
       setMessage("Minimum add funds amount is ₱50.00.");
       return;
     }
 
     if (!depositMethod.trim()) {
-      setMessage("Please select a payment method.");
+      setMessage("Please enter or select your payment method.");
       return;
     }
 
@@ -342,34 +366,81 @@ export default function ChildPanelDashboardPage() {
       return;
     }
 
-    if (!proofUrl) {
-      setMessage("Please upload your payment proof.");
+    if (!proofFile) {
+      setMessage("Please choose your payment proof image first.");
       return;
     }
 
     setSubmittingDeposit(true);
-    setMessage("");
+    setMessage("Uploading payment proof...");
 
     try {
-      const response = await fetch("/api/child-panel/customers/deposits/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          slug: panel.panel_slug,
-          token,
-          amount,
-          method: depositMethod,
-          referenceNumber,
-          proofUrl,
-        }),
-      });
+      const fileExt = proofFile.name.split(".").pop()?.toLowerCase() || "png";
+      const fileName = `${panel.id}/${customer.id}/${Date.now()}-${sanitizeFileName(
+        proofFile.name,
+      )}.${fileExt}`;
 
-      const result = await response.json();
+      const { error: uploadError } = await supabase.storage
+        .from("child-panel-deposit-proofs")
+        .upload(fileName, proofFile, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: proofFile.type,
+        });
+
+      if (uploadError) {
+        setMessage(`Upload failed: ${uploadError.message}`);
+        setSubmittingDeposit(false);
+        return;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from("child-panel-deposit-proofs")
+        .getPublicUrl(fileName);
+
+      const proofUrl = publicUrlData?.publicUrl || "";
+
+      if (!proofUrl) {
+        setMessage("Upload failed: payment proof URL was not generated.");
+        setSubmittingDeposit(false);
+        return;
+      }
+
+      setMessage("Submitting add funds request...");
+
+      const response = await fetch(
+        "/api/child-panel/customers/deposits/create",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            slug,
+            token,
+            amount,
+            method: depositMethod.trim(),
+            referenceNumber: referenceNumber.trim(),
+            proofUrl,
+          }),
+        },
+      );
+
+      const responseText = await response.text();
+      let result: any = null;
+
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        setMessage(
+          `Deposit API returned non-JSON response. Status: ${response.status}. Make sure the API route is deployed.`,
+        );
+        setSubmittingDeposit(false);
+        return;
+      }
 
       if (!response.ok || !result.success) {
-        setMessage(result.message || "Failed to submit add funds request.");
+        setMessage(getReadableError(result.message));
         setSubmittingDeposit(false);
         return;
       }
@@ -378,28 +449,24 @@ export default function ChildPanelDashboardPage() {
       setSubmittingDeposit(false);
       setAddFundsOpen(false);
       resetAddFundsForm();
-      loadDashboard();
-    } catch {
+      await loadDashboard();
+    } catch (error) {
+      console.error("CHILD_PANEL_DEPOSIT_SUBMIT_ERROR:", error);
       setMessage("Failed to submit add funds request.");
       setSubmittingDeposit(false);
     }
   }
 
-  function logout() {
-    window.localStorage.removeItem("child_panel_token");
-    window.localStorage.removeItem("child_panel_slug");
-    window.localStorage.removeItem("child_panel_customer");
-
-    window.sessionStorage.removeItem("child_panel_token");
-    window.sessionStorage.removeItem("child_panel_slug");
-    window.sessionStorage.removeItem("child_panel_customer");
-
-    router.replace(`/child/${slug}/login`);
-  }
-
   useEffect(() => {
     loadDashboard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
+
+  useEffect(() => {
+    return () => {
+      if (proofPreview) URL.revokeObjectURL(proofPreview);
+    };
+  }, [proofPreview]);
 
   if (loading) {
     return (
@@ -609,7 +676,10 @@ export default function ChildPanelDashboardPage() {
                   icon={CreditCard}
                   label="Add Funds"
                   primaryColor={primaryColor}
-                  onClick={openAddFundsModal}
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    openAddFundsModal();
+                  }}
                 />
                 <SidebarItem
                   icon={Settings}
@@ -752,7 +822,7 @@ export default function ChildPanelDashboardPage() {
                   </div>
 
                   <p className="mt-3 text-xs font-semibold text-white/45">
-                    Add funds requests are credited after approval.
+                    Submit add funds and wait for approval from the panel owner.
                   </p>
                 </div>
               </div>
@@ -833,9 +903,7 @@ export default function ChildPanelDashboardPage() {
                       <ShoppingCart size={28} />
                     </div>
 
-                    <h4 className="mt-5 text-lg font-black">
-                      No orders yet
-                    </h4>
+                    <h4 className="mt-5 text-lg font-black">No orders yet</h4>
 
                     <p className="mt-2 text-sm font-semibold leading-6 text-white/45">
                       Once New Order is connected, customers can place orders
@@ -882,18 +950,14 @@ export default function ChildPanelDashboardPage() {
 
                   <div className="mt-5 space-y-3 text-sm">
                     <div className="flex items-center justify-between gap-4">
-                      <span className="font-semibold text-white/45">
-                        Email
-                      </span>
+                      <span className="font-semibold text-white/45">Email</span>
                       <span className="min-w-0 truncate text-right font-black">
                         {customer.email}
                       </span>
                     </div>
 
                     <div className="flex items-center justify-between gap-4">
-                      <span className="font-semibold text-white/45">
-                        Status
-                      </span>
+                      <span className="font-semibold text-white/45">Status</span>
                       <span
                         className="rounded-full px-3 py-1 text-xs font-black"
                         style={{
@@ -906,9 +970,7 @@ export default function ChildPanelDashboardPage() {
                     </div>
 
                     <div className="flex items-center justify-between gap-4">
-                      <span className="font-semibold text-white/45">
-                        Joined
-                      </span>
+                      <span className="font-semibold text-white/45">Joined</span>
                       <span className="font-black">
                         {new Date(customer.created_at).toLocaleDateString(
                           "en-PH",
@@ -954,90 +1016,80 @@ export default function ChildPanelDashboardPage() {
       </div>
 
       {addFundsOpen && (
-        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/70 p-3 backdrop-blur-sm sm:items-center sm:p-4">
-          <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-[32px] border border-white/10 bg-[#080a18] p-5 text-white shadow-2xl sm:p-6">
-            <div className="flex items-start justify-between gap-4">
+        <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-black/75 p-3 backdrop-blur-sm sm:p-5 lg:items-center">
+          <div className="my-4 w-full max-w-2xl overflow-hidden rounded-[32px] border border-white/10 bg-[#080a18] shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-white/10 p-5 sm:p-6">
               <div className="min-w-0">
-                <div
-                  className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.14em]"
-                  style={{
-                    borderColor: `${primaryColor}55`,
-                    backgroundColor: `${primaryColor}12`,
-                  }}
-                >
-                  <Wallet size={15} style={{ color: primaryColor }} />
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-white/35">
+                  Wallet
+                </p>
+                <h3 className="mt-1 text-2xl font-black text-white">
                   Add Funds
-                </div>
-
-                <h3 className="mt-4 text-2xl font-black">
-                  Submit Add Funds Request
                 </h3>
-
-                <p className="mt-2 text-sm font-semibold leading-6 text-white/50">
-                  Upload your payment proof and wait for the panel owner to approve your balance.
+                <p className="mt-1 text-sm font-semibold leading-6 text-white/50">
+                  Submit your payment details and proof. Your balance will update
+                  after approval.
                 </p>
               </div>
 
               <button
                 type="button"
-                onClick={() => setAddFundsOpen(false)}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white/70 transition hover:bg-white/[0.08] hover:text-white"
+                onClick={closeAddFundsModal}
+                disabled={submittingDeposit}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white/70 transition hover:bg-white/[0.08] disabled:opacity-50"
               >
                 <X size={20} />
               </button>
             </div>
 
-            <div className="mt-6 grid gap-5">
-              <div>
-                <label className="mb-2 block text-sm font-black text-white/80">
-                  Amount
-                </label>
-
-                <input
-                  type="number"
-                  min={50}
-                  value={depositAmount}
-                  onChange={(event) => setDepositAmount(event.target.value)}
-                  placeholder="Minimum ₱50.00"
-                  className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-bold text-white outline-none placeholder:text-white/25 focus:border-white/20"
-                />
-
-                <p className="mt-2 text-xs font-semibold text-white/40">
-                  Minimum add funds amount is ₱50.00.
+            <div className="space-y-5 p-5 sm:p-6">
+              <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-5">
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-white/35">
+                  Current Balance
                 </p>
+                <h4 className="mt-2 text-3xl font-black text-white">
+                  {formatMoney(customer.balance)}
+                </h4>
               </div>
 
-              <div className="grid gap-5 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-black text-white/80">
+                    Amount
+                  </label>
+                  <input
+                    type="number"
+                    min="50"
+                    value={depositAmount}
+                    onChange={(event) => setDepositAmount(event.target.value)}
+                    placeholder="Minimum ₱50"
+                    className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-bold text-white outline-none placeholder:text-white/25 focus:border-white/30"
+                  />
+                </div>
+
                 <div>
                   <label className="mb-2 block text-sm font-black text-white/80">
                     Payment Method
                   </label>
-
-                  <select
+                  <input
                     value={depositMethod}
                     onChange={(event) => setDepositMethod(event.target.value)}
-                    className="h-12 w-full rounded-2xl border border-white/10 bg-[#0b0d1d] px-4 text-sm font-bold text-white outline-none focus:border-white/20"
-                  >
-                    <option value="GCash">GCash</option>
-                    <option value="Maya">Maya</option>
-                    <option value="Bank Transfer">Bank Transfer</option>
-                    <option value="Crypto">Crypto</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-black text-white/80">
-                    Reference Number
-                  </label>
-
-                  <input
-                    value={referenceNumber}
-                    onChange={(event) => setReferenceNumber(event.target.value)}
-                    placeholder="Enter transaction/reference ID"
-                    className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-bold text-white outline-none placeholder:text-white/25 focus:border-white/20"
+                    placeholder="GCash, Maya, Bank, Crypto..."
+                    className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-bold text-white outline-none placeholder:text-white/25 focus:border-white/30"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-black text-white/80">
+                  Reference Number
+                </label>
+                <input
+                  value={referenceNumber}
+                  onChange={(event) => setReferenceNumber(event.target.value)}
+                  placeholder="Enter transaction/reference number"
+                  className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-bold text-white outline-none placeholder:text-white/25 focus:border-white/30"
+                />
               </div>
 
               <div>
@@ -1045,27 +1097,26 @@ export default function ChildPanelDashboardPage() {
                   Payment Proof
                 </label>
 
-                <div className="rounded-[24px] border border-dashed border-white/15 bg-white/[0.04] p-5">
+                <div className="rounded-[24px] border border-dashed border-white/15 bg-white/[0.035] p-5">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                     <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/20">
-                      {proofUrl ? (
+                      {proofPreview ? (
                         <img
-                          src={proofUrl}
-                          alt="Payment proof"
+                          src={proofPreview}
+                          alt="Payment proof preview"
                           className="h-full w-full object-cover"
                         />
                       ) : (
-                        <Upload size={30} className="text-white/35" />
+                        <FileImage size={30} className="text-white/35" />
                       )}
                     </div>
 
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-black text-white">
-                        Upload screenshot or receipt
+                        Upload payment screenshot
                       </p>
-
                       <p className="mt-1 text-xs font-semibold leading-5 text-white/45">
-                        Accepted formats: PNG, JPG, WEBP. Maximum file size: 5MB.
+                        Accepted: PNG, JPG, WEBP. Maximum file size: 5MB.
                       </p>
 
                       <label
@@ -1075,47 +1126,41 @@ export default function ChildPanelDashboardPage() {
                           boxShadow: getAccentShadow(primaryColor),
                         }}
                       >
-                        {proofUploading ? (
-                          <>
-                            <Loader2 size={17} className="animate-spin" />
-                            Uploading...
-                          </>
-                        ) : (
-                          <>
-                            <Upload size={17} />
-                            Choose Proof
-                          </>
-                        )}
-
+                        <Upload size={17} />
+                        {proofFile ? "Change Proof" : "Choose Proof"}
                         <input
                           type="file"
                           accept="image/png,image/jpeg,image/webp"
-                          disabled={proofUploading}
                           onChange={(event) => {
                             const file = event.target.files?.[0];
-                            if (file) uploadDepositProof(file);
+                            handleProofFile(file);
                             event.target.value = "";
                           }}
                           className="hidden"
                         />
                       </label>
+
+                      {proofFile && (
+                        <p className="mt-3 break-all text-xs font-bold text-white/45">
+                          Selected: {proofFile.name}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-                <p className="text-sm font-semibold leading-6 text-white/55">
-                  Your request will remain pending until the panel owner reviews your proof.
-                  Your wallet balance will update after approval.
-                </p>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm font-semibold leading-6 text-white/55">
+                The image will upload when you click Submit Request. Please do
+                not close this modal while the request is submitting.
               </div>
 
               <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
                 <button
                   type="button"
-                  onClick={() => setAddFundsOpen(false)}
-                  className="inline-flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-black text-white/75 transition hover:bg-white/[0.08] sm:w-auto"
+                  onClick={closeAddFundsModal}
+                  disabled={submittingDeposit}
+                  className="inline-flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-black text-white/75 transition hover:bg-white/[0.08] disabled:opacity-50 sm:w-auto"
                 >
                   Cancel
                 </button>
@@ -1123,8 +1168,8 @@ export default function ChildPanelDashboardPage() {
                 <button
                   type="button"
                   onClick={submitDeposit}
-                  disabled={submittingDeposit || proofUploading}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-black text-white transition disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                  disabled={submittingDeposit}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-black text-white transition disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                   style={{
                     background: `linear-gradient(135deg, ${primaryColor}, #7c3aed)`,
                     boxShadow: getAccentShadow(primaryColor),
@@ -1137,8 +1182,8 @@ export default function ChildPanelDashboardPage() {
                     </>
                   ) : (
                     <>
+                      <Wallet size={17} />
                       Submit Request
-                      <CheckCircle2 size={17} />
                     </>
                   )}
                 </button>
