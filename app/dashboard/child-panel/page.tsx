@@ -90,6 +90,52 @@ type CustomerDeposit = {
   } | null;
 };
 
+type CustomerOrder = {
+  id: string;
+  child_panel_id: string;
+  owner_user_id: string;
+  customer_id: string;
+  main_order_id: string | null;
+  service_id: string | null;
+  service_name: string;
+  link: string;
+  quantity: number | null;
+  base_price: number | null;
+  customer_price: number | null;
+  markup_percent: number | null;
+  owner_profit: number | null;
+  start_count: number | null;
+  current_count: number | null;
+  status: string | null;
+  provider_order_id: string | null;
+  provider_name: string | null;
+  comments?: string | null;
+  order_type?: string | null;
+  created_at: string;
+  updated_at: string | null;
+  child_panel_customers?:
+    | {
+        id?: string;
+        email?: string | null;
+        username?: string | null;
+        firstname?: string | null;
+        lastname?: string | null;
+        balance?: number | null;
+        status?: string | null;
+      }
+    | {
+        id?: string;
+        email?: string | null;
+        username?: string | null;
+        firstname?: string | null;
+        lastname?: string | null;
+        balance?: number | null;
+        status?: string | null;
+      }[]
+    | null;
+};
+
+
 const CHILD_PANEL_PRICE = 349;
 
 function slugify(value: string) {
@@ -210,6 +256,62 @@ function getCustomerName(deposit: CustomerDeposit) {
   return fullName || customer.username || customer.email || "Customer";
 }
 
+function getOrderCustomer(order: CustomerOrder) {
+  const value = order.child_panel_customers;
+
+  if (Array.isArray(value)) {
+    return value[0] || null;
+  }
+
+  return value || null;
+}
+
+function getOrderCustomerName(order: CustomerOrder) {
+  const customer = getOrderCustomer(order);
+
+  if (!customer) return "Customer";
+
+  const fullName =
+    `${customer.firstname || ""} ${customer.lastname || ""}`.trim();
+
+  return fullName || customer.username || customer.email || "Customer";
+}
+
+function getOrderStatusStyle(status?: string | null) {
+  const clean = String(status || "pending").toLowerCase();
+
+  if (clean === "completed") {
+    return "bg-emerald-50 text-emerald-700 ring-emerald-100";
+  }
+
+  if (clean === "processing") {
+    return "bg-blue-50 text-blue-700 ring-blue-100";
+  }
+
+  if (clean === "partial") {
+    return "bg-purple-50 text-purple-700 ring-purple-100";
+  }
+
+  if (clean === "failed" || clean === "cancelled" || clean === "canceled") {
+    return "bg-red-50 text-red-700 ring-red-100";
+  }
+
+  return "bg-orange-50 text-orange-700 ring-orange-100";
+}
+
+function getOrderStatusText(status?: string | null) {
+  const clean = String(status || "pending").toLowerCase();
+
+  if (clean === "completed") return "Completed";
+  if (clean === "processing") return "Processing";
+  if (clean === "partial") return "Partial";
+  if (clean === "failed") return "Failed";
+  if (clean === "cancelled" || clean === "canceled") return "Cancelled";
+
+  return "Pending";
+}
+
+
 function validateLogoDimensions(file: File) {
   return new Promise<boolean>((resolve) => {
     const image = new Image();
@@ -294,6 +396,10 @@ export default function ChildPanelPage() {
     string | null
   >(null);
 
+  const [customerOrders, setCustomerOrders] = useState<CustomerOrder[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+
+
   const resellerRank = getResellerRank(profile?.reseller_level);
   const hasLevelPerk = resellerRank >= 3;
 
@@ -346,6 +452,32 @@ export default function ChildPanelPage() {
       return status === "approved" || status === "completed";
     }).length;
   }, [customerDeposits]);
+
+  const orderStats = useMemo(() => {
+    const total = customerOrders.length;
+
+    const active = customerOrders.filter((order) => {
+      const status = String(order.status || "pending").toLowerCase();
+      return status === "pending" || status === "processing" || status === "partial";
+    }).length;
+
+    const completed = customerOrders.filter(
+      (order) => String(order.status || "").toLowerCase() === "completed",
+    ).length;
+
+    const totalProfit = customerOrders.reduce(
+      (sum, order) => sum + Number(order.owner_profit || 0),
+      0,
+    );
+
+    return {
+      total,
+      active,
+      completed,
+      totalProfit,
+    };
+  }, [customerOrders]);
+
 
   async function loadCustomerDeposits() {
     setDepositsLoading(true);
@@ -400,6 +532,58 @@ export default function ChildPanelPage() {
     }
 
     setDepositsLoading(false);
+  }
+
+  async function loadCustomerOrders() {
+    setOrdersLoading(true);
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      setOrdersLoading(false);
+      showToast("Please login again to load customer orders.", "error");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/child-panel/owner/orders/list", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      const responseText = await response.text();
+
+      let result: any = null;
+
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        showToast(
+          `Customer orders API returned non-JSON response. Status: ${response.status}`,
+          "error",
+        );
+        setOrdersLoading(false);
+        return;
+      }
+
+      if (!response.ok || !result.success) {
+        showToast(result.message || "Failed to load customer orders.", "error");
+        setOrdersLoading(false);
+        return;
+      }
+
+      setCustomerOrders((result.orders || []) as CustomerOrder[]);
+    } catch (error) {
+      console.error("LOAD_CUSTOMER_ORDERS_ERROR:", error);
+      showToast("Failed to load customer orders.", "error");
+    }
+
+    setOrdersLoading(false);
   }
 
   async function loadData() {
@@ -465,6 +649,7 @@ export default function ChildPanelPage() {
 
     if (panelData) {
       await loadCustomerDeposits();
+      await loadCustomerOrders();
     }
   }
 
@@ -1480,9 +1665,239 @@ export default function ChildPanelPage() {
                   </table>
                 </div>
               </div>
+
+
+              <div className="rounded-[28px] border border-slate-200 bg-white shadow-sm">
+                <div className="flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-xl font-black text-slate-950">
+                      Customer Orders
+                    </h2>
+
+                    <p className="mt-1 text-sm font-semibold text-slate-500">
+                      View your child panel customer orders, pricing, markup profit, and linked main order IDs.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={loadCustomerOrders}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50 sm:w-fit"
+                  >
+                    <RefreshCw size={17} />
+                    Refresh Orders
+                  </button>
+                </div>
+
+                <div className="grid gap-4 border-b border-slate-100 p-5 sm:grid-cols-4">
+                  <div className="rounded-2xl bg-blue-50 p-4">
+                    <p className="text-xs font-black uppercase tracking-wide text-blue-600">
+                      Total Orders
+                    </p>
+                    <p className="mt-2 text-2xl font-black text-blue-700">
+                      {orderStats.total}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl bg-orange-50 p-4">
+                    <p className="text-xs font-black uppercase tracking-wide text-orange-600">
+                      Active
+                    </p>
+                    <p className="mt-2 text-2xl font-black text-orange-700">
+                      {orderStats.active}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl bg-emerald-50 p-4">
+                    <p className="text-xs font-black uppercase tracking-wide text-emerald-600">
+                      Completed
+                    </p>
+                    <p className="mt-2 text-2xl font-black text-emerald-700">
+                      {orderStats.completed}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl bg-purple-50 p-4">
+                    <p className="text-xs font-black uppercase tracking-wide text-purple-600">
+                      Total Profit
+                    </p>
+                    <p className="mt-2 text-2xl font-black text-purple-700">
+                      {formatMoney(orderStats.totalProfit)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[1250px] text-sm">
+                    <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                      <tr>
+                        <th className="px-5 py-4 text-left">Customer</th>
+                        <th className="px-5 py-4 text-left">Service</th>
+                        <th className="px-5 py-4 text-left">Quantity</th>
+                        <th className="px-5 py-4 text-left">Customer Paid</th>
+                        <th className="px-5 py-4 text-left">Base Cost</th>
+                        <th className="px-5 py-4 text-left">Profit</th>
+                        <th className="px-5 py-4 text-left">Status</th>
+                        <th className="px-5 py-4 text-left">Main Order</th>
+                        <th className="px-5 py-4 text-left">Date</th>
+                        <th className="px-5 py-4 text-left">Actions</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {ordersLoading ? (
+                        <tr>
+                          <td
+                            colSpan={10}
+                            className="px-5 py-12 text-center text-slate-500"
+                          >
+                            <Loader2
+                              className="mx-auto animate-spin"
+                              size={26}
+                            />
+                            <p className="mt-3 text-sm font-bold">
+                              Loading customer orders...
+                            </p>
+                          </td>
+                        </tr>
+                      ) : customerOrders.length <= 0 ? (
+                        <tr>
+                          <td
+                            colSpan={10}
+                            className="px-5 py-12 text-center text-sm font-semibold text-slate-500"
+                          >
+                            No customer orders yet.
+                          </td>
+                        </tr>
+                      ) : (
+                        customerOrders.map((order) => {
+                          const customer = getOrderCustomer(order);
+                          const hasComments =
+                            String(order.order_type || "").toLowerCase() ===
+                            "custom_comments";
+
+                          return (
+                            <tr
+                              key={order.id}
+                              className="border-t border-slate-100 transition hover:bg-slate-50"
+                            >
+                              <td className="px-5 py-5 align-top">
+                                <p className="font-black text-slate-900">
+                                  {getOrderCustomerName(order)}
+                                </p>
+                                <p className="mt-1 max-w-[180px] truncate text-xs font-semibold text-slate-500">
+                                  {customer?.email || "No email"}
+                                </p>
+                              </td>
+
+                              <td className="px-5 py-5 align-top">
+                                <p className="max-w-[260px] truncate font-black text-slate-900">
+                                  {order.service_name}
+                                </p>
+                                <a
+                                  href={order.link}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="mt-1 block max-w-[240px] truncate text-xs font-bold text-blue-600 hover:text-blue-700"
+                                >
+                                  {order.link}
+                                </a>
+                                {hasComments && (
+                                  <p className="mt-1 text-xs font-black text-purple-600">
+                                    Custom Comments
+                                  </p>
+                                )}
+                              </td>
+
+                              <td className="px-5 py-5 align-top font-black text-slate-700">
+                                {Number(order.quantity || 0).toLocaleString("en-PH")}
+                              </td>
+
+                              <td className="px-5 py-5 align-top font-black text-emerald-600">
+                                {formatMoney(order.customer_price)}
+                              </td>
+
+                              <td className="px-5 py-5 align-top font-black text-slate-700">
+                                {formatMoney(order.base_price)}
+                              </td>
+
+                              <td className="px-5 py-5 align-top">
+                                <p className="font-black text-purple-600">
+                                  {formatMoney(order.owner_profit)}
+                                </p>
+                                <p className="mt-1 text-xs font-semibold text-slate-400">
+                                  {Number(order.markup_percent || 0)}% markup
+                                </p>
+                              </td>
+
+                              <td className="px-5 py-5 align-top">
+                                <span
+                                  className={`inline-flex rounded-full px-3 py-1 text-xs font-black ring-1 ${getOrderStatusStyle(
+                                    order.status,
+                                  )}`}
+                                >
+                                  {getOrderStatusText(order.status)}
+                                </span>
+                              </td>
+
+                              <td className="px-5 py-5 align-top">
+                                <p className="max-w-[130px] truncate font-black text-slate-700">
+                                  {order.main_order_id
+                                    ? `#${String(order.main_order_id)
+                                        .slice(0, 8)
+                                        .toUpperCase()}`
+                                    : "—"}
+                                </p>
+                                <p className="mt-1 max-w-[130px] truncate text-xs font-semibold text-slate-400">
+                                  {order.provider_order_id
+                                    ? `Provider: ${order.provider_order_id}`
+                                    : order.provider_name || "No provider yet"}
+                                </p>
+                              </td>
+
+                              <td className="px-5 py-5 align-top">
+                                <p className="font-semibold text-slate-600">
+                                  {formatDateTime(order.created_at)}
+                                </p>
+                              </td>
+
+                              <td className="px-5 py-5 align-top">
+                                <div className="flex items-center gap-2">
+                                  <a
+                                    href={order.link}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50"
+                                    title="Open link"
+                                  >
+                                    <ExternalLink size={16} />
+                                  </a>
+
+                                  {hasComments && order.comments && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        alert(
+                                          `Custom comments:\n\n${order.comments}`,
+                                        )
+                                      }
+                                      className="inline-flex h-9 items-center justify-center rounded-xl border border-purple-100 bg-purple-50 px-3 text-xs font-black text-purple-700 transition hover:bg-purple-100"
+                                    >
+                                      Comments
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </>
-          )}
-        </div>
+          )}        </div>
       </DashboardLayout>
     </DashboardGuard>
   );

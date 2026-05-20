@@ -94,6 +94,43 @@ async function findProviderForOrder(order: any) {
   return null;
 }
 
+async function syncChildPanelOrder({
+  order,
+  nextStatus,
+  rawProviderStatus,
+  result,
+  nextStartCount,
+  nextCurrentCount,
+}: {
+  order: any;
+  nextStatus: string;
+  rawProviderStatus: string;
+  result: any;
+  nextStartCount: number;
+  nextCurrentCount: number;
+}) {
+  if (order.source !== "child_panel" || !order.child_panel_order_id) return;
+
+  const { error } = await supabaseAdmin
+    .from("child_panel_orders")
+    .update({
+      status: nextStatus,
+      provider_status: rawProviderStatus || nextStatus,
+      provider_response: result,
+      provider_order_id: order.provider_order_id || null,
+      provider_name: order.provider_name || null,
+      start_count: nextStartCount,
+      current_count: nextCurrentCount,
+      synced_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", order.child_panel_order_id);
+
+  if (error) {
+    console.error("CHILD_PANEL_ORDER_SYNC_LINK_ERROR:", error.message);
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const secret = req.headers.get("authorization");
@@ -242,6 +279,15 @@ export async function POST(req: Request) {
           errors.push(`Update failed for order ${order.id}: ${updateError.message}`);
           continue;
         }
+
+        await syncChildPanelOrder({
+          order,
+          nextStatus,
+          rawProviderStatus,
+          result,
+          nextStartCount,
+          nextCurrentCount,
+        });
 
         synced++;
       } catch (error) {
