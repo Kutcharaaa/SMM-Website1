@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Copy,
   ExternalLink,
+  Eye,
   Globe,
   Loader2,
   Lock,
@@ -64,22 +65,12 @@ type Subscription = {
   cancelled_at: string | null;
 };
 
-type ChildPanelCustomer = {
-  id: string;
-  email: string | null;
-  username: string | null;
-  firstname: string | null;
-  lastname: string | null;
-  balance: number | string | null;
-  status: string | null;
-};
-
-type ChildPanelDeposit = {
+type CustomerDeposit = {
   id: string;
   child_panel_id: string;
   owner_user_id: string;
   customer_id: string;
-  amount: number | string | null;
+  amount: number | null;
   method: string | null;
   reference_number: string | null;
   proof_url: string | null;
@@ -89,7 +80,13 @@ type ChildPanelDeposit = {
   rejected_at: string | null;
   created_at: string;
   updated_at: string | null;
-  child_panel_customers?: ChildPanelCustomer | null;
+  customer?: {
+    id?: string;
+    email?: string | null;
+    username?: string | null;
+    firstname?: string | null;
+    lastname?: string | null;
+  } | null;
 };
 
 const CHILD_PANEL_PRICE = 349;
@@ -149,7 +146,7 @@ function getResellerRank(level?: string | null) {
 function getStatusStyle(status?: string | null) {
   const clean = String(status || "pending").toLowerCase();
 
-  if (clean === "active" || clean === "approved" || clean === "completed") {
+  if (clean === "active") {
     return "bg-emerald-50 text-emerald-700 ring-emerald-100";
   }
 
@@ -157,8 +154,12 @@ function getStatusStyle(status?: string | null) {
     return "bg-orange-50 text-orange-700 ring-orange-100";
   }
 
-  if (clean === "suspended" || clean === "rejected" || clean === "failed") {
+  if (clean === "suspended") {
     return "bg-red-50 text-red-700 ring-red-100";
+  }
+
+  if (clean === "rejected") {
+    return "bg-slate-100 text-slate-700 ring-slate-200";
   }
 
   return "bg-blue-50 text-blue-700 ring-blue-100";
@@ -168,7 +169,6 @@ function getStatusText(status?: string | null) {
   const clean = String(status || "pending").toLowerCase();
 
   if (clean === "active") return "Active";
-  if (clean === "approved") return "Approved";
   if (clean === "pending") return "Pending Approval";
   if (clean === "suspended") return "Suspended";
   if (clean === "rejected") return "Rejected";
@@ -176,12 +176,36 @@ function getStatusText(status?: string | null) {
   return clean.charAt(0).toUpperCase() + clean.slice(1);
 }
 
-function getCustomerName(customer?: ChildPanelCustomer | null) {
-  if (!customer) return "Unknown Customer";
+function getDepositStatusStyle(status?: string | null) {
+  const clean = String(status || "pending").toLowerCase();
+
+  if (clean === "approved" || clean === "completed") {
+    return "bg-emerald-50 text-emerald-700 ring-emerald-100";
+  }
+
+  if (clean === "rejected") {
+    return "bg-red-50 text-red-700 ring-red-100";
+  }
+
+  return "bg-orange-50 text-orange-700 ring-orange-100";
+}
+
+function getDepositStatusText(status?: string | null) {
+  const clean = String(status || "pending").toLowerCase();
+
+  if (clean === "approved" || clean === "completed") return "Approved";
+  if (clean === "rejected") return "Rejected";
+  return "Pending";
+}
+
+function getCustomerName(deposit: CustomerDeposit) {
+  const customer = deposit.customer;
+
+  if (!customer) return "Customer";
 
   const fullName = `${customer.firstname || ""} ${customer.lastname || ""}`.trim();
 
-  return fullName || customer.username || customer.email || "Unknown Customer";
+  return fullName || customer.username || customer.email || "Customer";
 }
 
 function validateLogoDimensions(file: File) {
@@ -242,18 +266,6 @@ function InfoCard({
   );
 }
 
-function DepositStatusBadge({ status }: { status?: string | null }) {
-  return (
-    <span
-      className={`inline-flex rounded-full px-3 py-1 text-xs font-black ring-1 ${getStatusStyle(
-        status,
-      )}`}
-    >
-      {getStatusText(status)}
-    </span>
-  );
-}
-
 export default function ChildPanelPage() {
   const { showToast } = useToast();
 
@@ -271,10 +283,9 @@ export default function ChildPanelPage() {
   const [logoUploading, setLogoUploading] = useState(false);
   const [primaryColor, setPrimaryColor] = useState("#2563eb");
 
-  const [deposits, setDeposits] = useState<ChildPanelDeposit[]>([]);
+  const [customerDeposits, setCustomerDeposits] = useState<CustomerDeposit[]>([]);
   const [depositsLoading, setDepositsLoading] = useState(false);
-  const [updatingDepositId, setUpdatingDepositId] = useState<string | null>(null);
-  const [rejectReasons, setRejectReasons] = useState<Record<string, string>>({});
+  const [depositActionLoadingId, setDepositActionLoadingId] = useState<string | null>(null);
 
   const resellerRank = getResellerRank(profile?.reseller_level);
   const hasLevelPerk = resellerRank >= 3;
@@ -296,18 +307,19 @@ export default function ChildPanelPage() {
   }, [panelSlug]);
 
   const pendingDeposits = useMemo(() => {
-    return deposits.filter(
+    return customerDeposits.filter(
       (deposit) => String(deposit.status || "pending").toLowerCase() === "pending",
-    );
-  }, [deposits]);
+    ).length;
+  }, [customerDeposits]);
 
-  const approvedDepositsTotal = useMemo(() => {
-    return deposits
-      .filter((deposit) => String(deposit.status || "").toLowerCase() === "approved")
-      .reduce((sum, deposit) => sum + Number(deposit.amount || 0), 0);
-  }, [deposits]);
+  const approvedDeposits = useMemo(() => {
+    return customerDeposits.filter((deposit) => {
+      const status = String(deposit.status || "").toLowerCase();
+      return status === "approved" || status === "completed";
+    }).length;
+  }, [customerDeposits]);
 
-  async function loadOwnerDeposits() {
+  async function loadCustomerDeposits() {
     setDepositsLoading(true);
 
     const {
@@ -315,8 +327,8 @@ export default function ChildPanelPage() {
     } = await supabase.auth.getSession();
 
     if (!session?.access_token) {
-      setDeposits([]);
       setDepositsLoading(false);
+      showToast("Please login again to load customer deposits.", "error");
       return;
     }
 
@@ -329,22 +341,34 @@ export default function ChildPanelPage() {
         },
       });
 
-      const result = await response.json();
+      const responseText = await response.text();
 
-      if (!result.success) {
-        showToast(result.message || "Failed to load customer deposits.", "error");
-        setDeposits([]);
+      let result: any = null;
+
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        showToast(
+          `Customer deposits API returned non-JSON response. Status: ${response.status}`,
+          "error",
+        );
         setDepositsLoading(false);
         return;
       }
 
-      setDeposits((result.deposits || []) as ChildPanelDeposit[]);
-      setDepositsLoading(false);
-    } catch {
+      if (!response.ok || !result.success) {
+        showToast(result.message || "Failed to load customer deposits.", "error");
+        setDepositsLoading(false);
+        return;
+      }
+
+      setCustomerDeposits((result.deposits || []) as CustomerDeposit[]);
+    } catch (error) {
+      console.error("LOAD_CUSTOMER_DEPOSITS_ERROR:", error);
       showToast("Failed to load customer deposits.", "error");
-      setDeposits([]);
-      setDepositsLoading(false);
     }
+
+    setDepositsLoading(false);
   }
 
   async function loadData() {
@@ -405,9 +429,11 @@ export default function ChildPanelPage() {
       setSubscription(subscriptionData as Subscription);
     }
 
-    await loadOwnerDeposits();
-
     setLoading(false);
+
+    if (panelData) {
+      await loadCustomerDeposits();
+    }
   }
 
   useEffect(() => {
@@ -574,28 +600,31 @@ export default function ChildPanelPage() {
     }
 
     setSaving(false);
-    loadData();
+    await loadData();
   }
 
-  async function copyUrl() {
-    await navigator.clipboard.writeText(`https://${childPanelUrl}`);
-    showToast("Child Panel URL copied.", "success");
-  }
-
-  async function updateDepositStatus(
-    deposit: ChildPanelDeposit,
+  async function updateCustomerDeposit(
+    depositId: string,
     action: "approve" | "reject",
   ) {
-    if (updatingDepositId) return;
+    if (depositActionLoadingId) return;
 
-    const reason = rejectReasons[deposit.id] || "";
+    let rejectReason = "";
 
-    if (action === "reject" && !reason.trim()) {
-      showToast("Please enter a reject reason before rejecting.", "warning");
-      return;
+    if (action === "reject") {
+      const reason = window.prompt("Enter reject reason:");
+
+      if (reason === null) return;
+
+      rejectReason = reason.trim();
+
+      if (!rejectReason) {
+        showToast("Reject reason is required.", "warning");
+        return;
+      }
     }
 
-    setUpdatingDepositId(deposit.id);
+    setDepositActionLoadingId(depositId);
 
     const {
       data: { session },
@@ -603,7 +632,7 @@ export default function ChildPanelPage() {
 
     if (!session?.access_token) {
       showToast("Please login again.", "error");
-      setUpdatingDepositId(null);
+      setDepositActionLoadingId(null);
       return;
     }
 
@@ -615,28 +644,46 @@ export default function ChildPanelPage() {
           Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          depositId: deposit.id,
+          depositId,
           action,
-          rejectReason: reason,
+          rejectReason,
         }),
       });
 
-      const result = await response.json();
+      const responseText = await response.text();
 
-      if (!result.success) {
+      let result: any = null;
+
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        showToast(
+          `Update deposit API returned non-JSON response. Status: ${response.status}`,
+          "error",
+        );
+        setDepositActionLoadingId(null);
+        return;
+      }
+
+      if (!response.ok || !result.success) {
         showToast(result.message || "Failed to update deposit.", "error");
-        setUpdatingDepositId(null);
+        setDepositActionLoadingId(null);
         return;
       }
 
       showToast(result.message || "Deposit updated successfully.", "success");
-      setRejectReasons((current) => ({ ...current, [deposit.id]: "" }));
-      setUpdatingDepositId(null);
-      loadOwnerDeposits();
-    } catch {
+      await loadCustomerDeposits();
+    } catch (error) {
+      console.error("UPDATE_CUSTOMER_DEPOSIT_ERROR:", error);
       showToast("Failed to update deposit.", "error");
-      setUpdatingDepositId(null);
     }
+
+    setDepositActionLoadingId(null);
+  }
+
+  async function copyUrl() {
+    await navigator.clipboard.writeText(`https://${childPanelUrl}`);
+    showToast("Child Panel URL copied.", "success");
   }
 
   if (loading) {
@@ -728,9 +775,9 @@ export default function ChildPanelPage() {
 
             <InfoCard
               icon={Globe}
-              title="Pending Deposits"
-              value={String(pendingDeposits.length)}
-              subtitle={`${formatMoney(approvedDepositsTotal)} approved total`}
+              title="Panel URL"
+              value={panelSlug || "Not Set"}
+              subtitle="Your future child panel link"
               color="bg-orange-50 text-orange-700"
             />
           </div>
@@ -1095,138 +1142,175 @@ export default function ChildPanelPage() {
               <div className="rounded-[28px] border border-slate-200 bg-white shadow-sm">
                 <div className="flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h3 className="text-xl font-black text-slate-950">
+                    <h2 className="text-xl font-black text-slate-950">
                       Customer Add Funds Requests
-                    </h3>
+                    </h2>
+
                     <p className="mt-1 text-sm font-semibold text-slate-500">
-                      Approve or reject deposits submitted by customers from your child panel.
+                      Review, approve, or reject add funds requests from your child panel customers.
                     </p>
                   </div>
 
                   <button
                     type="button"
-                    onClick={loadOwnerDeposits}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 sm:w-fit"
+                    onClick={loadCustomerDeposits}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50 sm:w-fit"
                   >
                     <RefreshCw size={17} />
-                    Refresh Deposits
+                    Refresh Requests
                   </button>
                 </div>
 
-                {depositsLoading ? (
-                  <div className="p-10 text-center">
-                    <Loader2 className="mx-auto animate-spin text-blue-600" size={28} />
-                    <p className="mt-3 text-sm font-bold text-slate-500">
-                      Loading customer deposits...
+                <div className="grid gap-4 border-b border-slate-100 p-5 sm:grid-cols-3">
+                  <div className="rounded-2xl bg-orange-50 p-4">
+                    <p className="text-xs font-black uppercase tracking-wide text-orange-600">
+                      Pending
+                    </p>
+                    <p className="mt-2 text-2xl font-black text-orange-700">
+                      {pendingDeposits}
                     </p>
                   </div>
-                ) : deposits.length <= 0 ? (
-                  <div className="p-10 text-center">
-                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-3xl bg-blue-50 text-blue-600">
-                      <Wallet size={26} />
-                    </div>
-                    <h4 className="mt-4 text-lg font-black text-slate-950">
-                      No customer deposits yet
-                    </h4>
-                    <p className="mt-1 text-sm font-semibold text-slate-500">
-                      Add funds requests from your child panel customers will appear here.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[1050px] text-sm">
-                      <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                        <tr>
-                          <th className="px-5 py-4 text-left">Customer</th>
-                          <th className="px-5 py-4 text-left">Amount</th>
-                          <th className="px-5 py-4 text-left">Method</th>
-                          <th className="px-5 py-4 text-left">Reference</th>
-                          <th className="px-5 py-4 text-left">Proof</th>
-                          <th className="px-5 py-4 text-left">Status</th>
-                          <th className="px-5 py-4 text-left">Date</th>
-                          <th className="px-5 py-4 text-left">Action</th>
-                        </tr>
-                      </thead>
 
-                      <tbody>
-                        {deposits.map((deposit) => {
+                  <div className="rounded-2xl bg-emerald-50 p-4">
+                    <p className="text-xs font-black uppercase tracking-wide text-emerald-600">
+                      Approved
+                    </p>
+                    <p className="mt-2 text-2xl font-black text-emerald-700">
+                      {approvedDeposits}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl bg-blue-50 p-4">
+                    <p className="text-xs font-black uppercase tracking-wide text-blue-600">
+                      Total Requests
+                    </p>
+                    <p className="mt-2 text-2xl font-black text-blue-700">
+                      {customerDeposits.length}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[980px] text-sm">
+                    <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                      <tr>
+                        <th className="px-5 py-4 text-left">Customer</th>
+                        <th className="px-5 py-4 text-left">Amount</th>
+                        <th className="px-5 py-4 text-left">Method</th>
+                        <th className="px-5 py-4 text-left">Reference</th>
+                        <th className="px-5 py-4 text-left">Status</th>
+                        <th className="px-5 py-4 text-left">Date</th>
+                        <th className="px-5 py-4 text-left">Actions</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {depositsLoading ? (
+                        <tr>
+                          <td
+                            colSpan={7}
+                            className="px-5 py-12 text-center text-slate-500"
+                          >
+                            <Loader2 className="mx-auto animate-spin" size={26} />
+                            <p className="mt-3 text-sm font-bold">
+                              Loading customer deposits...
+                            </p>
+                          </td>
+                        </tr>
+                      ) : customerDeposits.length <= 0 ? (
+                        <tr>
+                          <td
+                            colSpan={7}
+                            className="px-5 py-12 text-center text-sm font-semibold text-slate-500"
+                          >
+                            No customer add funds requests yet.
+                          </td>
+                        </tr>
+                      ) : (
+                        customerDeposits.map((deposit) => {
                           const status = String(deposit.status || "pending").toLowerCase();
                           const pending = status === "pending";
+                          const updating = depositActionLoadingId === deposit.id;
 
                           return (
                             <tr
                               key={deposit.id}
-                              className="border-t border-slate-100 transition hover:bg-slate-50/70"
+                              className="border-t border-slate-100 transition hover:bg-slate-50"
                             >
                               <td className="px-5 py-5 align-top">
                                 <p className="font-black text-slate-900">
-                                  {getCustomerName(deposit.child_panel_customers)}
+                                  {getCustomerName(deposit)}
                                 </p>
-                                <p className="mt-1 max-w-[190px] truncate text-xs font-semibold text-slate-400">
-                                  {deposit.child_panel_customers?.email || deposit.customer_id}
-                                </p>
-                                <p className="mt-1 text-xs font-black text-blue-600">
-                                  Balance: {formatMoney(deposit.child_panel_customers?.balance)}
+                                <p className="mt-1 max-w-[220px] truncate text-xs font-semibold text-slate-500">
+                                  {deposit.customer?.email || "No email"}
                                 </p>
                               </td>
 
-                              <td className="px-5 py-5 align-top font-black text-emerald-600">
+                              <td className="px-5 py-5 align-top font-black text-slate-900">
                                 {formatMoney(deposit.amount)}
                               </td>
 
-                              <td className="px-5 py-5 align-top font-bold text-slate-700">
+                              <td className="px-5 py-5 align-top font-semibold text-slate-600">
                                 {deposit.method || "Manual Payment"}
                               </td>
 
                               <td className="px-5 py-5 align-top">
-                                <p className="max-w-[160px] truncate font-semibold text-slate-600">
+                                <p className="max-w-[180px] truncate font-semibold text-slate-600">
                                   {deposit.reference_number || "—"}
                                 </p>
                               </td>
 
                               <td className="px-5 py-5 align-top">
-                                {deposit.proof_url ? (
-                                  <a
-                                    href={deposit.proof_url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="inline-flex items-center gap-2 rounded-xl bg-blue-50 px-3 py-2 text-xs font-black text-blue-700 transition hover:bg-blue-100"
-                                  >
-                                    View Proof
-                                    <ExternalLink size={13} />
-                                  </a>
-                                ) : (
-                                  <span className="text-xs font-bold text-slate-400">No proof</span>
-                                )}
-                              </td>
+                                <span
+                                  className={`inline-flex rounded-full px-3 py-1 text-xs font-black ring-1 ${getDepositStatusStyle(
+                                    deposit.status,
+                                  )}`}
+                                >
+                                  {getDepositStatusText(deposit.status)}
+                                </span>
 
-                              <td className="px-5 py-5 align-top">
-                                <DepositStatusBadge status={deposit.status} />
                                 {deposit.reject_reason && (
-                                  <p className="mt-2 max-w-[180px] text-xs font-semibold text-red-500">
+                                  <p className="mt-2 max-w-[220px] truncate text-xs font-semibold text-red-500">
                                     {deposit.reject_reason}
                                   </p>
                                 )}
                               </td>
 
                               <td className="px-5 py-5 align-top">
-                                <p className="font-bold text-slate-700">
+                                <p className="font-semibold text-slate-600">
                                   {formatDateTime(deposit.created_at)}
                                 </p>
                               </td>
 
                               <td className="px-5 py-5 align-top">
-                                {pending ? (
-                                  <div className="min-w-[250px] space-y-3">
-                                    <div className="flex gap-2">
+                                <div className="flex items-center gap-2">
+                                  {deposit.proof_url && (
+                                    <a
+                                      href={deposit.proof_url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50"
+                                      title="View proof"
+                                    >
+                                      <Eye size={16} />
+                                    </a>
+                                  )}
+
+                                  {pending && (
+                                    <>
                                       <button
                                         type="button"
-                                        onClick={() => updateDepositStatus(deposit, "approve")}
-                                        disabled={updatingDepositId === deposit.id}
-                                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-black text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                        onClick={() =>
+                                          updateCustomerDeposit(deposit.id, "approve")
+                                        }
+                                        disabled={updating}
+                                        className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 text-xs font-black text-white transition hover:bg-emerald-700 disabled:opacity-50"
                                       >
-                                        {updatingDepositId === deposit.id ? (
-                                          <Loader2 size={14} className="animate-spin" />
+                                        {updating ? (
+                                          <Loader2
+                                            size={14}
+                                            className="animate-spin"
+                                          />
                                         ) : (
                                           <CheckCircle2 size={14} />
                                         )}
@@ -1235,44 +1319,26 @@ export default function ChildPanelPage() {
 
                                       <button
                                         type="button"
-                                        onClick={() => updateDepositStatus(deposit, "reject")}
-                                        disabled={updatingDepositId === deposit.id}
-                                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-600 px-3 py-2 text-xs font-black text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                        onClick={() =>
+                                          updateCustomerDeposit(deposit.id, "reject")
+                                        }
+                                        disabled={updating}
+                                        className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-red-600 px-3 text-xs font-black text-white transition hover:bg-red-700 disabled:opacity-50"
                                       >
                                         <XCircle size={14} />
                                         Reject
                                       </button>
-                                    </div>
-
-                                    <input
-                                      value={rejectReasons[deposit.id] || ""}
-                                      onChange={(event) =>
-                                        setRejectReasons((current) => ({
-                                          ...current,
-                                          [deposit.id]: event.target.value,
-                                        }))
-                                      }
-                                      placeholder="Reject reason required if rejecting"
-                                      className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 outline-none transition focus:border-red-300 focus:ring-4 focus:ring-red-50"
-                                    />
-                                  </div>
-                                ) : (
-                                  <span className="text-xs font-bold text-slate-400">
-                                    {status === "approved"
-                                      ? `Approved ${formatDateTime(deposit.approved_at)}`
-                                      : status === "rejected"
-                                        ? `Rejected ${formatDateTime(deposit.rejected_at)}`
-                                        : "No action"}
-                                  </span>
-                                )}
+                                    </>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </>
           )}
