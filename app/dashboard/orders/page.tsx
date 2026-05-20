@@ -935,10 +935,12 @@ export default function OrdersPage() {
       return;
     }
 
-    const { data: authData } = await supabase.auth.getUser();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-    if (!authData.user) {
-      showToast("User not authenticated.", "error");
+    if (!session?.access_token) {
+      showToast("Please login again before placing an order.", "error");
       setPlacingOrder(false);
       return;
     }
@@ -948,9 +950,9 @@ export default function OrdersPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          userId: authData.user.id,
           serviceId: selectedService.id,
           link,
           quantity: qty,
