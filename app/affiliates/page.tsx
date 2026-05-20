@@ -135,17 +135,17 @@ const comparisonRows = [
 const stats = [
   {
     label: "Active Affiliates",
-    value: "8,620+",
+    value: "100+",
     icon: Users,
   },
   {
     label: "Total Commission Paid",
-    value: "₱2.45M+",
+    value: "₱4,231+",
     icon: Wallet,
   },
   {
     label: "Total Referrals",
-    value: "45,680+",
+    value: "1,680+",
     icon: BarChart3,
   },
   {

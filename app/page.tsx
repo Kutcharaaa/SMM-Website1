@@ -258,8 +258,8 @@ export default function HomePage() {
 
               <div className="mt-6 grid gap-4 sm:grid-cols-3">
                 {[
-                  ["128.6K", "Orders Completed"],
-                  ["100+", "Active Platforms"],
+                  ["4,232", "Orders Completed"],
+                  ["12+", "Active Platforms"],
                   ["99.8%", "Success Rate"],
                 ].map(([value, label]) => (
                   <div

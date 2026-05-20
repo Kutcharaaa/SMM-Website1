@@ -12,6 +12,23 @@ function calculateMarkedUpPrice(basePrice: number, markupPercent: number) {
   return Number((basePrice + markupAmount).toFixed(6));
 }
 
+function detectPlatform(serviceName?: string | null, category?: string | null) {
+  const text = `${serviceName || ""} ${category || ""}`.toLowerCase();
+
+  if (text.includes("instagram") || text.includes(" ig ")) return "Instagram";
+  if (text.includes("tiktok") || text.includes("tik tok")) return "TikTok";
+  if (text.includes("youtube") || text.includes("yt ")) return "YouTube";
+  if (text.includes("facebook") || text.includes("fb ")) return "Facebook";
+  if (text.includes("telegram")) return "Telegram";
+  if (text.includes("spotify")) return "Spotify";
+  if (text.includes("twitter") || text.includes(" x ")) return "Twitter";
+  if (text.includes("twitch")) return "Twitch";
+  if (text.includes("discord")) return "Discord";
+  if (text.includes("website") || text.includes("review")) return "Website";
+
+  return "Other";
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -121,10 +138,9 @@ export async function POST(request: NextRequest) {
     const { data: services, error: servicesError } = await supabaseAdmin
       .from("services")
       .select(
-        "id, name, category, platform, description, price_per_1000, min_quantity, max_quantity, status",
+        "id, name, category, description, price_per_1000, min_quantity, max_quantity, status",
       )
       .eq("status", "active")
-      .order("platform", { ascending: true })
       .order("category", { ascending: true })
       .order("name", { ascending: true })
       .limit(1000);
@@ -148,6 +164,10 @@ export async function POST(request: NextRequest) {
 
       return {
         ...service,
+
+        // This is generated, not from your Supabase column
+        platform: detectPlatform(service.name, service.category),
+
         base_price_per_1000: basePrice,
         customer_price_per_1000: customerPrice,
         markup_percent: markupPercent,

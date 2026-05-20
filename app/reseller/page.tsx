@@ -145,12 +145,12 @@ const comparisonRows = [
 const stats = [
   {
     label: "Active Resellers",
-    value: "10K+",
+    value: "14",
     icon: Users,
   },
   {
     label: "Orders Completed",
-    value: "1M+",
+    value: "3.5K+",
     icon: BarChart3,
   },
   {
