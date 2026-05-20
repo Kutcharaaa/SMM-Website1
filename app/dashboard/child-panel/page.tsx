@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   Sparkles,
   Store,
+  Upload,
   Wallet,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -130,6 +131,26 @@ function getStatusText(status?: string | null) {
   return clean.charAt(0).toUpperCase() + clean.slice(1);
 }
 
+function validateLogoDimensions(file: File) {
+  return new Promise<boolean>((resolve) => {
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    image.onload = () => {
+      const valid = image.width === 512 && image.height === 512;
+      URL.revokeObjectURL(objectUrl);
+      resolve(valid);
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(false);
+    };
+
+    image.src = objectUrl;
+  });
+}
+
 function InfoCard({
   icon: Icon,
   title,
@@ -154,9 +175,11 @@ function InfoCard({
 
         <div className="min-w-0">
           <p className="text-sm font-bold text-slate-500">{title}</p>
+
           <h3 className="mt-1 truncate text-2xl font-black text-slate-950">
             {value}
           </h3>
+
           <p className="mt-1 text-sm font-semibold text-slate-500">
             {subtitle}
           </p>
@@ -180,10 +203,10 @@ export default function ChildPanelPage() {
   const [panelSlug, setPanelSlug] = useState("");
   const [supportEmail, setSupportEmail] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
+  const [logoUploading, setLogoUploading] = useState(false);
   const [primaryColor, setPrimaryColor] = useState("#2563eb");
 
   const resellerRank = getResellerRank(profile?.reseller_level);
-
   const hasLevelPerk = resellerRank >= 3;
 
   const hasPaidAccess =
@@ -275,6 +298,64 @@ export default function ChildPanelPage() {
     }
   }
 
+  async function uploadLogo(file: File) {
+    if (!file) return;
+
+    const allowedTypes = ["image/png", "image/jpeg", "image/webp"];
+
+    if (!allowedTypes.includes(file.type)) {
+      showToast("Logo must be PNG, JPG, or WEBP.", "error");
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      showToast("Logo file must be 2MB or smaller.", "error");
+      return;
+    }
+
+    const validSize = await validateLogoDimensions(file);
+
+    if (!validSize) {
+      showToast("Logo must be exactly 512 x 512 px.", "error");
+      return;
+    }
+
+    setLogoUploading(true);
+
+    const { data: authData } = await supabase.auth.getUser();
+
+    if (!authData.user) {
+      showToast("Please login again.", "error");
+      setLogoUploading(false);
+      return;
+    }
+
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${authData.user.id}/${Date.now()}-child-panel-logo.${fileExt}`;
+
+    const { error } = await supabase.storage
+      .from("child-panel-logos")
+      .upload(fileName, file, {
+        cacheControl: "3600",
+        upsert: true,
+      });
+
+    if (error) {
+      showToast(error.message, "error");
+      setLogoUploading(false);
+      return;
+    }
+
+    const { data } = supabase.storage
+      .from("child-panel-logos")
+      .getPublicUrl(fileName);
+
+    setLogoUrl(data.publicUrl);
+    setLogoUploading(false);
+
+    showToast("Logo uploaded successfully.", "success");
+  }
+
   async function savePanel() {
     if (saving) return;
 
@@ -299,7 +380,10 @@ export default function ChildPanelPage() {
     }
 
     if (!/^[a-z0-9-]+$/.test(panelSlug)) {
-      showToast("Panel slug can only use lowercase letters, numbers, and hyphen.", "warning");
+      showToast(
+        "Panel slug can only use lowercase letters, numbers, and hyphen.",
+        "warning",
+      );
       return;
     }
 
@@ -313,7 +397,11 @@ export default function ChildPanelPage() {
       return;
     }
 
-    const accessType = hasLevelPerk || hasFreeAccess ? "level_perk" : "paid_subscription";
+    const accessType =
+      hasLevelPerk || hasFreeAccess ? "level_perk" : "paid_subscription";
+
+    const subscriptionStatus =
+      hasLevelPerk || hasFreeAccess ? "free_lifetime" : "active";
 
     if (panel) {
       const { error } = await supabase
@@ -325,7 +413,7 @@ export default function ChildPanelPage() {
           logo_url: logoUrl.trim() || null,
           primary_color: primaryColor || "#2563eb",
           access_type: accessType,
-          subscription_status: hasLevelPerk || hasFreeAccess ? "free_lifetime" : "active",
+          subscription_status: subscriptionStatus,
           updated_at: new Date().toISOString(),
         })
         .eq("id", panel.id)
@@ -348,7 +436,7 @@ export default function ChildPanelPage() {
         primary_color: primaryColor || "#2563eb",
         status: "pending",
         access_type: accessType,
-        subscription_status: hasLevelPerk || hasFreeAccess ? "free_lifetime" : "active",
+        subscription_status: subscriptionStatus,
         monthly_price: hasLevelPerk || hasFreeAccess ? 0 : CHILD_PANEL_PRICE,
       });
 
@@ -423,15 +511,25 @@ export default function ChildPanelPage() {
               icon={hasAccess ? ShieldCheck : Lock}
               title="Access Status"
               value={hasAccess ? "Unlocked" : "Locked"}
-              subtitle={hasAccess ? "You can set up your panel" : "Subscribe or reach Level 3"}
-              color={hasAccess ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}
+              subtitle={
+                hasAccess
+                  ? "You can set up your panel"
+                  : "Subscribe or reach Level 3"
+              }
+              color={
+                hasAccess
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-red-50 text-red-700"
+              }
             />
 
             <InfoCard
               icon={Store}
               title="Panel Status"
               value={panel ? getStatusText(panel.status) : "Not Created"}
-              subtitle={panel ? "Current child panel status" : "Create your first panel"}
+              subtitle={
+                panel ? "Current child panel status" : "Create your first panel"
+              }
               color="bg-blue-50 text-blue-700"
             />
 
@@ -439,7 +537,11 @@ export default function ChildPanelPage() {
               icon={Wallet}
               title="Monthly Price"
               value={hasLevelPerk || hasFreeAccess ? "Free" : "₱349"}
-              subtitle={hasLevelPerk || hasFreeAccess ? "Lifetime reseller perk" : "Paid monthly subscription"}
+              subtitle={
+                hasLevelPerk || hasFreeAccess
+                  ? "Lifetime reseller perk"
+                  : "Paid monthly subscription"
+              }
               color="bg-purple-50 text-purple-700"
             />
 
@@ -465,7 +567,8 @@ export default function ChildPanelPage() {
                   </h3>
 
                   <p className="mt-2 text-sm font-semibold leading-6 text-red-600/80">
-                    You need an active ₱349/month Child Panel subscription or Level 3+ reseller status to use this feature.
+                    You need an active ₱349/month Child Panel subscription or
+                    Level 3+ reseller status to use this feature.
                   </p>
 
                   <a
@@ -494,7 +597,8 @@ export default function ChildPanelPage() {
                     </h2>
 
                     <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
-                      Fill in your panel information. New panels are marked pending until admin approval.
+                      Fill in your panel information. New panels are marked
+                      pending until admin approval.
                     </p>
                   </div>
                 </div>
@@ -507,7 +611,9 @@ export default function ChildPanelPage() {
 
                     <input
                       value={panelName}
-                      onChange={(event) => handlePanelNameChange(event.target.value)}
+                      onChange={(event) =>
+                        handlePanelNameChange(event.target.value)
+                      }
                       placeholder="Example: Kutchara Boost Panel"
                       className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
                     />
@@ -521,7 +627,9 @@ export default function ChildPanelPage() {
                     <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
                       <input
                         value={panelSlug}
-                        onChange={(event) => setPanelSlug(slugify(event.target.value))}
+                        onChange={(event) =>
+                          setPanelSlug(slugify(event.target.value))
+                        }
                         placeholder="your-panel-name"
                         className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
                       />
@@ -549,7 +657,9 @@ export default function ChildPanelPage() {
 
                       <input
                         value={supportEmail}
-                        onChange={(event) => setSupportEmail(event.target.value)}
+                        onChange={(event) =>
+                          setSupportEmail(event.target.value)
+                        }
                         placeholder="support@yourpanel.com"
                         className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
                       />
@@ -566,13 +676,17 @@ export default function ChildPanelPage() {
                         <input
                           type="color"
                           value={primaryColor}
-                          onChange={(event) => setPrimaryColor(event.target.value)}
+                          onChange={(event) =>
+                            setPrimaryColor(event.target.value)
+                          }
                           className="h-8 w-10 cursor-pointer border-0 bg-transparent p-0"
                         />
 
                         <input
                           value={primaryColor}
-                          onChange={(event) => setPrimaryColor(event.target.value)}
+                          onChange={(event) =>
+                            setPrimaryColor(event.target.value)
+                          }
                           className="min-w-0 flex-1 bg-transparent text-sm font-bold text-slate-800 outline-none"
                         />
                       </div>
@@ -581,19 +695,61 @@ export default function ChildPanelPage() {
 
                   <div>
                     <label className="mb-2 block text-sm font-black text-slate-700">
-                      Logo URL
+                      Upload Logo
                     </label>
 
-                    <input
-                      value={logoUrl}
-                      onChange={(event) => setLogoUrl(event.target.value)}
-                      placeholder="https://..."
-                      className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
-                    />
+                    <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-5">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                        <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                          {logoUrl ? (
+                            <img
+                              src={logoUrl}
+                              alt="Child Panel Logo"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <Store size={28} className="text-slate-400" />
+                          )}
+                        </div>
 
-                    <p className="mt-2 text-xs font-semibold text-slate-500">
-                      Upload logo support can be added later. For now, use an image URL.
-                    </p>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-black text-slate-800">
+                            Logo must be exactly 512 x 512 px
+                          </p>
+
+                          <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+                            Accepted formats: PNG, JPG, WEBP. Maximum file size:
+                            2MB.
+                          </p>
+
+                          <label className="mt-4 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700">
+                            {logoUploading ? (
+                              <>
+                                <Loader2 size={17} className="animate-spin" />
+                                Uploading...
+                              </>
+                            ) : (
+                              <>
+                                <Upload size={17} />
+                                Choose Logo
+                              </>
+                            )}
+
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp"
+                              disabled={logoUploading}
+                              onChange={(event) => {
+                                const file = event.target.files?.[0];
+                                if (file) uploadLogo(file);
+                                event.target.value = "";
+                              }}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   <button
@@ -602,8 +758,17 @@ export default function ChildPanelPage() {
                     disabled={saving}
                     className="inline-flex h-13 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-4 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-fit"
                   >
-                    {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                    {saving ? "Saving..." : panel ? "Save Settings" : "Create Child Panel"}
+                    {saving ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <Save size={18} />
+                    )}
+
+                    {saving
+                      ? "Saving..."
+                      : panel
+                        ? "Save Settings"
+                        : "Create Child Panel"}
                   </button>
                 </div>
               </div>
@@ -647,6 +812,7 @@ export default function ChildPanelPage() {
                         <h4 className="truncate text-lg font-black">
                           {panelName || "Your Panel Name"}
                         </h4>
+
                         <p className="truncate text-xs font-semibold text-white/80">
                           Powered by Ascend Service
                         </p>
@@ -657,6 +823,7 @@ export default function ChildPanelPage() {
                       <p className="text-xs font-black uppercase tracking-wide text-white/70">
                         Panel URL
                       </p>
+
                       <p className="mt-2 break-all text-sm font-black">
                         {childPanelUrl}
                       </p>
@@ -674,6 +841,7 @@ export default function ChildPanelPage() {
                       <span className="text-sm font-bold text-slate-500">
                         Reseller Level
                       </span>
+
                       <span className="text-right text-sm font-black text-slate-900">
                         {profile?.reseller_level || "New Reseller"}
                       </span>
@@ -683,8 +851,11 @@ export default function ChildPanelPage() {
                       <span className="text-sm font-bold text-slate-500">
                         Access Type
                       </span>
+
                       <span className="text-right text-sm font-black text-slate-900">
-                        {hasLevelPerk || hasFreeAccess ? "Free Lifetime" : "Paid Subscription"}
+                        {hasLevelPerk || hasFreeAccess
+                          ? "Free Lifetime"
+                          : "Paid Subscription"}
                       </span>
                     </div>
 
@@ -692,6 +863,7 @@ export default function ChildPanelPage() {
                       <span className="text-sm font-bold text-slate-500">
                         Expires At
                       </span>
+
                       <span className="text-right text-sm font-black text-slate-900">
                         {hasLevelPerk || hasFreeAccess
                           ? "Never"
@@ -707,14 +879,19 @@ export default function ChildPanelPage() {
                 {panel?.status === "pending" && (
                   <div className="rounded-[24px] border border-orange-100 bg-orange-50 p-5">
                     <div className="flex gap-3">
-                      <AlertTriangle className="mt-0.5 shrink-0 text-orange-600" size={20} />
+                      <AlertTriangle
+                        className="mt-0.5 shrink-0 text-orange-600"
+                        size={20}
+                      />
 
                       <div>
                         <h4 className="font-black text-orange-700">
                           Pending Admin Approval
                         </h4>
+
                         <p className="mt-1 text-sm font-semibold leading-6 text-orange-700/80">
-                          Your panel setup is saved. Admin approval is needed before the public child panel becomes active.
+                          Your panel setup is saved. Admin approval is needed
+                          before the public child panel becomes active.
                         </p>
                       </div>
                     </div>
