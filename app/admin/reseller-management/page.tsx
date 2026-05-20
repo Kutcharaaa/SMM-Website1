@@ -4,12 +4,9 @@ import AdminGuard from "@/components/AdminGuard";
 import AdminLayout from "@/components/AdminLayout";
 import { supabase } from "@/lib/supabase";
 import {
-  Activity,
-  CalendarDays,
   CheckCircle2,
   Crown,
   Download,
-  Edit3,
   Eye,
   Filter,
   Gift,
@@ -40,7 +37,6 @@ type ResellerProfile = {
   balance: number | null;
   created_at: string;
   avatar_url?: string | null;
-
   reseller_points?: number | null;
   reseller_level?: number | null;
   reseller_total_spend?: number | null;
@@ -63,6 +59,7 @@ const resellerLevels = [
     conversion: "$1 = 100 pts",
     pointValue: 1,
     childPanel: "Paid subscription only",
+    icon: Star,
     className: "bg-slate-100 text-slate-700 ring-slate-200",
   },
   {
@@ -73,6 +70,7 @@ const resellerLevels = [
     conversion: "$1 = 100 pts",
     pointValue: 1,
     childPanel: "Paid subscription only",
+    icon: Sparkles,
     className: "bg-emerald-50 text-emerald-700 ring-emerald-100",
   },
   {
@@ -83,6 +81,7 @@ const resellerLevels = [
     conversion: "$1.25 = 100 pts",
     pointValue: 1.25,
     childPanel: "Free Lifetime",
+    icon: ShieldCheck,
     className: "bg-blue-50 text-blue-700 ring-blue-100",
   },
   {
@@ -93,6 +92,7 @@ const resellerLevels = [
     conversion: "$1.50 = 100 pts",
     pointValue: 1.5,
     childPanel: "Free Lifetime",
+    icon: Crown,
     className: "bg-purple-50 text-purple-700 ring-purple-100",
   },
   {
@@ -103,6 +103,7 @@ const resellerLevels = [
     conversion: "$1.75 = 100 pts",
     pointValue: 1.75,
     childPanel: "Free Lifetime",
+    icon: Gift,
     className: "bg-amber-50 text-amber-700 ring-amber-100",
   },
   {
@@ -113,6 +114,7 @@ const resellerLevels = [
     conversion: "$2 = 100 pts",
     pointValue: 2,
     childPanel: "Free Lifetime",
+    icon: Crown,
     className: "bg-rose-50 text-rose-700 ring-rose-100",
   },
 ];
@@ -195,8 +197,14 @@ function getLevelInfo(level: number) {
 
 function getChildPanelAccessType(user: ResellerProfile) {
   const level = getLevelNumber(user);
-  const savedType = String(user.child_panel_access_type || "locked").toLowerCase().trim();
-  const subscriptionStatus = String(user.child_panel_subscription_status || "inactive").toLowerCase().trim();
+  const savedType = String(user.child_panel_access_type || "locked")
+    .toLowerCase()
+    .trim();
+  const subscriptionStatus = String(
+    user.child_panel_subscription_status || "inactive",
+  )
+    .toLowerCase()
+    .trim();
 
   if (level >= 3) return "free";
   if (savedType === "manual") return "manual";
@@ -230,11 +238,24 @@ function hasChildPanelAccess(user: ResellerProfile) {
   return getChildPanelAccessType(user) !== "locked";
 }
 
+function escapeHtml(value: string) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function UserAvatar({ user }: { user: ResellerProfile }) {
   return (
     <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-emerald-50 font-black text-emerald-700 ring-1 ring-emerald-100">
       {user.avatar_url ? (
-        <img src={user.avatar_url} alt={getDisplayName(user)} className="h-full w-full object-cover" />
+        <img
+          src={user.avatar_url}
+          alt={getDisplayName(user)}
+          className="h-full w-full object-cover"
+        />
       ) : (
         getInitial(user)
       )}
@@ -246,7 +267,9 @@ function LevelBadge({ level }: { level: number }) {
   const info = getLevelInfo(level);
 
   return (
-    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-black ring-1 ${info.className}`}>
+    <span
+      className={`inline-flex rounded-full px-3 py-1 text-xs font-black ring-1 ${info.className}`}
+    >
       Level {level} · {info.badge}
     </span>
   );
@@ -257,7 +280,11 @@ function ChildPanelBadge({ user }: { user: ResellerProfile }) {
   const Icon = type === "locked" ? Lock : type === "free" ? Gift : Unlock;
 
   return (
-    <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-black ring-1 ${getChildPanelBadgeClass(user)}`}>
+    <span
+      className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-black ring-1 ${getChildPanelBadgeClass(
+        user,
+      )}`}
+    >
       <Icon size={13} />
       {getChildPanelLabel(user)}
     </span>
@@ -265,7 +292,9 @@ function ChildPanelBadge({ user }: { user: ResellerProfile }) {
 }
 
 function SubscriptionBadge({ user }: { user: ResellerProfile }) {
-  const status = String(user.child_panel_subscription_status || "inactive").toLowerCase().trim();
+  const status = String(user.child_panel_subscription_status || "inactive")
+    .toLowerCase()
+    .trim();
   const active = status === "active";
 
   return (
@@ -276,7 +305,11 @@ function SubscriptionBadge({ user }: { user: ResellerProfile }) {
           : "bg-slate-100 text-slate-600 ring-slate-200"
       }`}
     >
-      <span className={`h-2 w-2 rounded-full ${active ? "bg-emerald-500" : "bg-slate-400"}`} />
+      <span
+        className={`h-2 w-2 rounded-full ${
+          active ? "bg-emerald-500" : "bg-slate-400"
+        }`}
+      />
       {active ? "Active" : "Inactive"}
     </span>
   );
@@ -303,16 +336,22 @@ function StatCard({
   }[tone];
 
   return (
-    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <div className="flex items-start gap-4">
-        <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-3xl ring-1 ${toneClass}`}>
+    <div className="min-w-0 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+      <div className="flex min-w-0 items-start gap-4">
+        <div
+          className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-3xl ring-1 ${toneClass}`}
+        >
           {icon}
         </div>
 
-        <div className="min-w-0">
-          <p className="text-sm font-bold text-slate-500">{title}</p>
-          <h3 className="mt-1 text-3xl font-black tracking-tight text-slate-950">{value}</h3>
-          <p className="mt-1 text-sm font-semibold text-slate-500">{subtitle}</p>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-bold text-slate-500">{title}</p>
+          <h3 className="mt-1 min-w-0 truncate text-3xl font-black tracking-tight text-slate-950">
+            {value}
+          </h3>
+          <p className="mt-1 line-clamp-2 text-sm font-semibold text-slate-500">
+            {subtitle}
+          </p>
         </div>
       </div>
     </div>
@@ -329,28 +368,72 @@ function InfoBlock({
   valueClassName?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-      <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">{label}</p>
-      <div className={`mt-2 text-sm font-black ${valueClassName}`}>{value}</div>
+    <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+      <p className="truncate text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+        {label}
+      </p>
+      <div
+        className={`mt-2 min-w-0 break-words text-sm font-black ${valueClassName}`}
+      >
+        {value}
+      </div>
     </div>
   );
 }
 
-function escapeHtml(value: string) {
-  return String(value || "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+function ModalShell({
+  title,
+  subtitle,
+  children,
+  footer,
+  onClose,
+}: {
+  title: string;
+  subtitle: string;
+  children: ReactNode;
+  footer?: ReactNode;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-3 backdrop-blur-sm sm:p-4 lg:items-center">
+      <div className="my-4 flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl sm:my-8">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 sm:p-6">
+          <div className="min-w-0">
+            <h3 className="text-xl font-black text-slate-950 sm:text-2xl">
+              {title}
+            </h3>
+            <p className="mt-1 text-sm font-semibold text-slate-500">
+              {subtitle}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="min-h-0 overflow-y-auto p-5 sm:p-6">{children}</div>
+
+        {footer && (
+          <div className="border-t border-slate-200 p-5 sm:p-6">{footer}</div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function AdminResellerManagementPage() {
   const [resellers, setResellers] = useState<ResellerProfile[]>([]);
   const [search, setSearch] = useState("");
   const [levelFilter, setLevelFilter] = useState<LevelFilter>("all");
-  const [childPanelFilter, setChildPanelFilter] = useState<ChildPanelFilter>("all");
-  const [selectedReseller, setSelectedReseller] = useState<ResellerProfile | null>(null);
+  const [childPanelFilter, setChildPanelFilter] =
+    useState<ChildPanelFilter>("all");
+  const [selectedReseller, setSelectedReseller] =
+    useState<ResellerProfile | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -360,8 +443,10 @@ export default function AdminResellerManagementPage() {
   const [editPoints, setEditPoints] = useState("0");
   const [editTotalSpend, setEditTotalSpend] = useState("0");
   const [editChildPanelType, setEditChildPanelType] = useState("locked");
-  const [editSubscriptionStatus, setEditSubscriptionStatus] = useState("inactive");
-  const [editSubscriptionExpiresAt, setEditSubscriptionExpiresAt] = useState("");
+  const [editSubscriptionStatus, setEditSubscriptionStatus] =
+    useState("inactive");
+  const [editSubscriptionExpiresAt, setEditSubscriptionExpiresAt] =
+    useState("");
 
   async function loadResellers() {
     setLoading(true);
@@ -427,17 +512,35 @@ export default function AdminResellerManagementPage() {
 
   const stats = useMemo(() => {
     const proPlus = resellers.filter((user) => getLevelNumber(user) >= 3).length;
-    const paidChildPanels = resellers.filter((user) => getChildPanelAccessType(user) === "paid").length;
-    const totalPoints = resellers.reduce((sum, user) => sum + Number(user.reseller_points || 0), 0);
-    const freeLifetime = resellers.filter((user) => getChildPanelAccessType(user) === "free").length;
-    const locked = resellers.filter((user) => getChildPanelAccessType(user) === "locked").length;
+    const paidChildPanels = resellers.filter(
+      (user) => getChildPanelAccessType(user) === "paid",
+    ).length;
+    const totalPoints = resellers.reduce(
+      (sum, user) => sum + Number(user.reseller_points || 0),
+      0,
+    );
+    const totalSpend = resellers.reduce(
+      (sum, user) => sum + Number(user.reseller_total_spend || 0),
+      0,
+    );
+    const freeLifetime = resellers.filter(
+      (user) => getChildPanelAccessType(user) === "free",
+    ).length;
+    const manualUnlock = resellers.filter(
+      (user) => getChildPanelAccessType(user) === "manual",
+    ).length;
+    const locked = resellers.filter(
+      (user) => getChildPanelAccessType(user) === "locked",
+    ).length;
 
     return {
       total: resellers.length,
       proPlus,
       paidChildPanels,
       totalPoints,
+      totalSpend,
       freeLifetime,
+      manualUnlock,
       locked,
     };
   }, [resellers]);
@@ -456,10 +559,14 @@ export default function AdminResellerManagementPage() {
     setEditPoints(String(user.reseller_points || 0));
     setEditTotalSpend(String(user.reseller_total_spend || 0));
     setEditChildPanelType(level >= 3 ? "free" : type);
-    setEditSubscriptionStatus(String(user.child_panel_subscription_status || "inactive"));
+    setEditSubscriptionStatus(
+      String(user.child_panel_subscription_status || "inactive"),
+    );
     setEditSubscriptionExpiresAt(
       user.child_panel_subscription_expires_at
-        ? new Date(user.child_panel_subscription_expires_at).toISOString().slice(0, 16)
+        ? new Date(user.child_panel_subscription_expires_at)
+            .toISOString()
+            .slice(0, 16)
         : "",
     );
     setModalMode("manage");
@@ -476,7 +583,10 @@ export default function AdminResellerManagementPage() {
     const level = Number(editLevel || 1);
     const childType = level >= 3 ? "level_perk" : editChildPanelType;
     const childAccess =
-      level >= 3 || childType === "paid" || childType === "manual" || editSubscriptionStatus === "active";
+      level >= 3 ||
+      childType === "paid" ||
+      childType === "manual" ||
+      editSubscriptionStatus === "active";
 
     setSaving(true);
 
@@ -623,12 +733,14 @@ export default function AdminResellerManagementPage() {
     printWindow.document.close();
   }
 
+  const selectedLevelInfo = getLevelInfo(Number(editLevel));
+
   return (
     <AdminGuard allowedRoles={["head_admin", "super_admin"]}>
       <AdminLayout>
-        <div className="space-y-6">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-            <div>
+        <div className="min-w-0 space-y-6">
+          <div className="flex min-w-0 flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+            <div className="min-w-0">
               <h2 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
                 Reseller Management
               </h2>
@@ -638,11 +750,11 @@ export default function AdminResellerManagementPage() {
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="grid w-full grid-cols-1 gap-3 sm:w-auto sm:grid-cols-2 xl:flex xl:flex-wrap xl:items-center">
               <button
                 type="button"
                 onClick={loadResellers}
-                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50"
               >
                 <RefreshCw size={17} />
                 Refresh
@@ -651,7 +763,7 @@ export default function AdminResellerManagementPage() {
               <button
                 type="button"
                 onClick={exportResellersToPDF}
-                className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-emerald-700"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-emerald-700"
               >
                 <Download size={17} />
                 Export PDF
@@ -665,7 +777,7 @@ export default function AdminResellerManagementPage() {
             </div>
           )}
 
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
               title="Total Resellers"
               value={formatNumber(stats.total)}
@@ -699,12 +811,12 @@ export default function AdminResellerManagementPage() {
             />
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
-            <div className="space-y-5">
+          <div className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="min-w-0 space-y-5">
               <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="grid gap-4 xl:grid-cols-[1fr_230px_260px_auto]">
-                  <div className="flex h-12 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 shadow-sm">
-                    <Search size={18} className="text-slate-400" />
+                <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[1fr_230px_260px_auto]">
+                  <div className="flex h-12 min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 shadow-sm">
+                    <Search size={18} className="shrink-0 text-slate-400" />
                     <input
                       type="text"
                       placeholder="Search by name, username, email..."
@@ -716,8 +828,10 @@ export default function AdminResellerManagementPage() {
 
                   <select
                     value={levelFilter}
-                    onChange={(event) => setLevelFilter(event.target.value as LevelFilter)}
-                    className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
+                    onChange={(event) =>
+                      setLevelFilter(event.target.value as LevelFilter)
+                    }
+                    className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
                   >
                     {levelOptions.map((item) => (
                       <option key={item.value} value={item.value}>
@@ -728,8 +842,10 @@ export default function AdminResellerManagementPage() {
 
                   <select
                     value={childPanelFilter}
-                    onChange={(event) => setChildPanelFilter(event.target.value as ChildPanelFilter)}
-                    className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
+                    onChange={(event) =>
+                      setChildPanelFilter(event.target.value as ChildPanelFilter)
+                    }
+                    className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
                   >
                     {childPanelOptions.map((item) => (
                       <option key={item.value} value={item.value}>
@@ -745,7 +861,7 @@ export default function AdminResellerManagementPage() {
                       setLevelFilter("all");
                       setChildPanelFilter("all");
                     }}
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50"
+                    className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50 xl:w-auto"
                   >
                     <Filter size={17} />
                     Clear
@@ -753,11 +869,13 @@ export default function AdminResellerManagementPage() {
                 </div>
               </div>
 
-              <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+              <div className="min-w-0 overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
                 <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-2">
-                    <Users size={18} className="text-emerald-600" />
-                    <h3 className="text-lg font-black text-slate-950">Reseller Directory</h3>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Users size={18} className="shrink-0 text-emerald-600" />
+                    <h3 className="min-w-0 truncate text-lg font-black text-slate-950">
+                      Reseller Directory
+                    </h3>
                   </div>
 
                   <p className="text-sm font-semibold text-slate-500">
@@ -786,7 +904,10 @@ export default function AdminResellerManagementPage() {
                         const levelInfo = getLevelInfo(level);
 
                         return (
-                          <tr key={user.id} className="border-t border-slate-100 transition hover:bg-slate-50/70">
+                          <tr
+                            key={user.id}
+                            className="border-t border-slate-100 transition hover:bg-slate-50/70"
+                          >
                             <td className="px-5 py-5 align-top">
                               <div className="flex items-center gap-3">
                                 <UserAvatar user={user} />
@@ -807,7 +928,7 @@ export default function AdminResellerManagementPage() {
 
                             <td className="px-5 py-5 align-top">
                               <LevelBadge level={level} />
-                              <p className="mt-2 text-xs font-semibold text-slate-500">
+                              <p className="mt-2 max-w-[160px] truncate text-xs font-semibold text-slate-500">
                                 {levelInfo.name}
                               </p>
                             </td>
@@ -821,7 +942,9 @@ export default function AdminResellerManagementPage() {
                             </td>
 
                             <td className="px-5 py-5 align-top">
-                              <p className="font-black text-slate-800">{levelInfo.discount}%</p>
+                              <p className="font-black text-slate-800">
+                                {levelInfo.discount}%
+                              </p>
                               <p className="mt-1 text-xs font-semibold text-slate-500">
                                 {levelInfo.conversion}
                               </p>
@@ -890,8 +1013,15 @@ export default function AdminResellerManagementPage() {
 
                 <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 text-sm font-semibold text-slate-500 sm:flex-row sm:items-center sm:justify-between">
                   <p>
-                    Showing <span className="font-black text-slate-800">{filteredResellers.length}</span>{" "}
-                    of <span className="font-black text-slate-800">{resellers.length}</span> resellers
+                    Showing{" "}
+                    <span className="font-black text-slate-800">
+                      {filteredResellers.length}
+                    </span>{" "}
+                    of{" "}
+                    <span className="font-black text-slate-800">
+                      {resellers.length}
+                    </span>{" "}
+                    resellers
                   </p>
 
                   <p>{loading ? "Loading reseller data..." : "Reseller data loaded"}</p>
@@ -899,380 +1029,187 @@ export default function AdminResellerManagementPage() {
               </div>
             </div>
 
-            <aside className="space-y-5">
+            <aside className="min-w-0 space-y-5">
               <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="mb-5 flex items-center gap-2">
                   <ShieldCheck size={18} className="text-emerald-600" />
-                  <h3 className="text-lg font-black text-slate-950">Level Rules</h3>
+                  <h3 className="text-lg font-black text-slate-950">
+                    Level Rules
+                  </h3>
                 </div>
 
                 <div className="space-y-3">
-                  {resellerLevels.map((level) => (
-                    <div key={level.level} className="rounded-2xl border border-slate-100 bg-slate-50/70 p-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className={`rounded-full px-3 py-1 text-xs font-black ring-1 ${level.className}`}>
-                          Level {level.level}
-                        </span>
-                        <span className="text-xs font-black text-slate-700">
-                          {level.discount}% Discount
-                        </span>
-                      </div>
-                      <p className="mt-2 text-sm font-black text-slate-800">{level.name}</p>
-                      <p className="mt-1 text-xs font-semibold text-slate-500">
-                        Point Conversion: {level.conversion}
-                      </p>
-                    </div>
-                  ))}
+                  {resellerLevels.map((level) => {
+                    const Icon = level.icon;
 
-                  <p className="rounded-2xl bg-emerald-50 p-3 text-xs font-bold leading-5 text-emerald-700">
-                    Note: Benefits upgrade automatically with higher levels.
-                  </p>
+                    return (
+                      <div
+                        key={level.level}
+                        className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ring-1 ${level.className}`}>
+                            <Icon size={18} />
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-3">
+                              <p className="min-w-0 truncate text-sm font-black text-slate-900">
+                                Level {level.level} · {level.name}
+                              </p>
+                              <p className="shrink-0 text-sm font-black text-emerald-600">
+                                {level.discount}%
+                              </p>
+                            </div>
+
+                            <p className="mt-1 text-xs font-semibold text-slate-500">
+                              {level.conversion} · {level.childPanel}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
               <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="mb-5 flex items-center gap-2">
-                  <Laptop size={18} className="text-emerald-600" />
-                  <h3 className="text-lg font-black text-slate-950">Child Panel Rules</h3>
+                  <Laptop size={18} className="text-blue-600" />
+                  <h3 className="text-lg font-black text-slate-950">
+                    Child Panel Summary
+                  </h3>
                 </div>
 
-                <div className="space-y-4">
-                  <div className="flex gap-3 rounded-2xl border border-red-100 bg-red-50 p-4">
-                    <Lock size={20} className="mt-0.5 shrink-0 text-red-600" />
-                    <div>
-                      <p className="font-black text-slate-900">Level 1 and Level 2</p>
-                      <p className="mt-1 text-sm font-semibold leading-5 text-slate-600">
-                        Child panel is locked unless paid subscription is active.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
-                    <Gift size={20} className="mt-0.5 shrink-0 text-emerald-600" />
-                    <div>
-                      <p className="font-black text-slate-900">Level 3 and above</p>
-                      <p className="mt-1 text-sm font-semibold leading-5 text-slate-600">
-                        Child panel access becomes free lifetime.
-                      </p>
-                    </div>
-                  </div>
+                <div className="space-y-3">
+                  <SummaryMetric label="Free Lifetime" value={stats.freeLifetime} tone="blue" />
+                  <SummaryMetric label="Paid Active" value={stats.paidChildPanels} tone="green" />
+                  <SummaryMetric label="Manual Unlock" value={stats.manualUnlock} tone="purple" />
+                  <SummaryMetric label="Locked" value={stats.locked} tone="slate" />
                 </div>
               </div>
 
               <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="mb-5 flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-2">
-                    <Activity size={18} className="text-emerald-600" />
-                    <h3 className="text-lg font-black text-slate-950">Quick Filters</h3>
-                  </div>
+                <div className="mb-5 flex items-center gap-2">
+                  <TrendingUp size={18} className="text-orange-600" />
+                  <h3 className="text-lg font-black text-slate-950">
+                    Quick Insights
+                  </h3>
                 </div>
 
                 <div className="space-y-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLevelFilter("3");
-                      setChildPanelFilter("all");
-                    }}
-                    className="flex w-full items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-100"
-                  >
-                    Pro Resellers
-                    <span>{formatNumber(resellers.filter((user) => getLevelNumber(user) === 3).length)}</span>
-                  </button>
+                  <div className="rounded-2xl bg-emerald-50 p-4">
+                    <p className="text-sm font-black text-emerald-700">
+                      Total Reseller Spend
+                    </p>
+                    <p className="mt-1 min-w-0 break-words text-xl font-black text-slate-950">
+                      {formatMoney(stats.totalSpend)}
+                    </p>
+                  </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLevelFilter("all");
-                      setChildPanelFilter("free");
-                    }}
-                    className="flex w-full items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-100"
-                  >
-                    Free Lifetime
-                    <span>{formatNumber(stats.freeLifetime)}</span>
-                  </button>
+                  <div className="rounded-2xl bg-purple-50 p-4">
+                    <p className="text-sm font-black text-purple-700">
+                      Total Points Issued
+                    </p>
+                    <p className="mt-1 text-xl font-black text-slate-950">
+                      {formatNumber(stats.totalPoints)} pts
+                    </p>
+                  </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLevelFilter("all");
-                      setChildPanelFilter("paid");
-                    }}
-                    className="flex w-full items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-100"
-                  >
-                    Paid Child Panels
-                    <span>{formatNumber(stats.paidChildPanels)}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setLevelFilter("all");
-                      setChildPanelFilter("locked");
-                    }}
-                    className="flex w-full items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-100"
-                  >
-                    Locked Child Panels
-                    <span>{formatNumber(stats.locked)}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearch("");
-                      setLevelFilter("all");
-                      setChildPanelFilter("all");
-                    }}
-                    className="mt-2 flex w-full items-center justify-center rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-black text-emerald-700 transition hover:bg-emerald-50"
-                  >
-                    Clear Quick Filters
-                  </button>
+                  <div className="rounded-2xl bg-orange-50 p-4">
+                    <p className="text-sm font-black text-orange-700">
+                      Child Panel Price
+                    </p>
+                    <p className="mt-1 text-xl font-black text-slate-950">
+                      ₱349/month
+                    </p>
+                  </div>
                 </div>
               </div>
             </aside>
           </div>
         </div>
 
-        {modalMode === "view" && selectedReseller && (
-          <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm lg:items-center">
-            <div className="my-8 w-full max-w-4xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
-              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
-                <div>
-                  <h3 className="text-2xl font-black text-slate-950">Reseller Details</h3>
-                  <p className="mt-1 text-sm font-semibold text-slate-500">
-                    Review reseller progress, points, and child panel access.
-                  </p>
-                </div>
-
+        {selectedReseller && modalMode === "view" && (
+          <ModalShell
+            title="Reseller Details"
+            subtitle="Review reseller level, points, spend, and child panel access."
+            onClose={closeModal}
+            footer={
+              <div className="flex flex-col-reverse justify-end gap-3 sm:flex-row">
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 sm:w-auto"
                 >
-                  <X size={20} />
+                  Close
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const current = selectedReseller;
+                    closeModal();
+                    openManageModal(current);
+                  }}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white transition hover:bg-emerald-700 sm:w-auto"
+                >
+                  <MoreHorizontal size={17} />
+                  Manage Reseller
                 </button>
               </div>
+            }
+          >
+            <div className="space-y-6">
+              <div className="flex min-w-0 flex-col gap-4 rounded-3xl border border-slate-200 bg-slate-50/70 p-5 sm:flex-row sm:items-start">
+                <UserAvatar user={selectedReseller} />
 
-              <div className="space-y-6 p-6">
-                <div className="flex items-start gap-4 rounded-3xl border border-slate-200 bg-slate-50/70 p-5">
-                  <UserAvatar user={selectedReseller} />
-
-                  <div className="min-w-0 flex-1">
-                    <h4 className="text-xl font-black text-slate-950">{getFullName(selectedReseller)}</h4>
-                    <p className="mt-1 text-sm font-black text-emerald-600">@{getDisplayName(selectedReseller)}</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-500">{selectedReseller.email || "No email"}</p>
-
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <LevelBadge level={getLevelNumber(selectedReseller)} />
-                      <ChildPanelBadge user={selectedReseller} />
-                    </div>
-                  </div>
-
-                  <p className="shrink-0 text-2xl font-black text-emerald-600">
-                    {formatNumber(selectedReseller.reseller_points)} pts
+                <div className="min-w-0 flex-1">
+                  <h4 className="line-clamp-2 text-xl font-black text-slate-950">
+                    {getFullName(selectedReseller)}
+                  </h4>
+                  <p className="mt-1 break-all text-sm font-semibold text-slate-500">
+                    {selectedReseller.email || "No email"}
                   </p>
-                </div>
 
-                <div className="grid gap-4 md:grid-cols-3">
-                  <InfoBlock label="Reseller Level" value={getLevelInfo(getLevelNumber(selectedReseller)).name} />
-                  <InfoBlock label="Discount" value={`${getLevelInfo(getLevelNumber(selectedReseller)).discount}%`} />
-                  <InfoBlock label="Point Conversion" value={getLevelInfo(getLevelNumber(selectedReseller)).conversion} />
-                  <InfoBlock label="Total Spend" value={formatMoney(selectedReseller.reseller_total_spend)} />
-                  <InfoBlock label="Available Points" value={formatNumber(selectedReseller.reseller_points)} valueClassName="text-emerald-600" />
-                  <InfoBlock label="Wallet Balance" value={formatMoney(selectedReseller.balance)} />
-                  <InfoBlock label="Child Panel" value={<ChildPanelBadge user={selectedReseller} />} />
-                  <InfoBlock label="Subscription" value={<SubscriptionBadge user={selectedReseller} />} />
-                  <InfoBlock label="Registered" value={`${formatDate(selectedReseller.created_at)} · ${formatTime(selectedReseller.created_at)}`} />
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <LevelBadge level={getLevelNumber(selectedReseller)} />
+                    <ChildPanelBadge user={selectedReseller} />
+                    <SubscriptionBadge user={selectedReseller} />
+                  </div>
                 </div>
+              </div>
 
-                <div className="flex justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const current = selectedReseller;
-                      closeModal();
-                      openManageModal(current);
-                    }}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white transition hover:bg-emerald-700"
-                  >
-                    <Edit3 size={17} />
-                    Manage Reseller
-                  </button>
-                </div>
+              <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+                <InfoBlock label="User ID" value={selectedReseller.id} />
+                <InfoBlock label="Username" value={`@${getDisplayName(selectedReseller)}`} />
+                <InfoBlock label="Role" value={selectedReseller.role || "user"} />
+                <InfoBlock label="Wallet Balance" value={formatMoney(selectedReseller.balance)} valueClassName="text-emerald-600" />
+                <InfoBlock label="Total Spend" value={formatMoney(selectedReseller.reseller_total_spend)} />
+                <InfoBlock label="Available Points" value={`${formatNumber(selectedReseller.reseller_points)} pts`} />
+                <InfoBlock label="Discount" value={`${getLevelInfo(getLevelNumber(selectedReseller)).discount}%`} />
+                <InfoBlock label="Point Conversion" value={getLevelInfo(getLevelNumber(selectedReseller)).conversion} />
+                <InfoBlock label="Child Panel" value={<ChildPanelBadge user={selectedReseller} />} />
+                <InfoBlock label="Subscription" value={<SubscriptionBadge user={selectedReseller} />} />
+                <InfoBlock label="Expires At" value={formatDate(selectedReseller.child_panel_subscription_expires_at)} />
+                <InfoBlock label="Registered" value={`${formatDate(selectedReseller.created_at)} · ${formatTime(selectedReseller.created_at)}`} />
               </div>
             </div>
-          </div>
+          </ModalShell>
         )}
 
-        {modalMode === "manage" && selectedReseller && (
-          <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm lg:items-center">
-            <div className="my-8 w-full max-w-5xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
-              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
-                <div>
-                  <h3 className="text-2xl font-black text-slate-950">Manage Reseller</h3>
-                  <p className="mt-1 text-sm font-semibold text-slate-500">
-                    Adjust reseller level, points, total spend, and child panel access.
-                  </p>
-                </div>
-
+        {selectedReseller && modalMode === "manage" && (
+          <ModalShell
+            title="Manage Reseller"
+            subtitle="Update reseller level, points, spending, and child panel access."
+            onClose={closeModal}
+            footer={
+              <div className="flex flex-col-reverse justify-end gap-3 sm:flex-row">
                 <button
                   type="button"
                   onClick={closeModal}
                   disabled={saving}
-                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950 disabled:opacity-50"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              <div className="grid max-h-[75vh] overflow-y-auto lg:grid-cols-[1fr_360px]">
-                <div className="space-y-5 p-6">
-                  <div className="flex items-center gap-4 rounded-3xl border border-slate-200 bg-slate-50/70 p-5">
-                    <UserAvatar user={selectedReseller} />
-                    <div className="min-w-0">
-                      <h4 className="text-xl font-black text-slate-950">{getFullName(selectedReseller)}</h4>
-                      <p className="mt-1 text-sm font-semibold text-slate-500">{selectedReseller.email || "No email"}</p>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <div>
-                      <label className="mb-2 block text-sm font-black text-slate-700">
-                        Reseller Level
-                      </label>
-
-                      <select
-                        value={editLevel}
-                        onChange={(event) => {
-                          setEditLevel(event.target.value);
-                          if (Number(event.target.value) >= 3) {
-                            setEditChildPanelType("free");
-                            setEditSubscriptionStatus("inactive");
-                          }
-                        }}
-                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 shadow-sm outline-none focus:border-emerald-300 focus:ring-4 focus:ring-emerald-50"
-                      >
-                        {resellerLevels.map((level) => (
-                          <option key={level.level} value={level.level}>
-                            Level {level.level} — {level.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="mb-2 block text-sm font-black text-slate-700">
-                        Available Points
-                      </label>
-
-                      <input
-                        type="number"
-                        value={editPoints}
-                        onChange={(event) => setEditPoints(event.target.value)}
-                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 shadow-sm outline-none focus:border-emerald-300 focus:ring-4 focus:ring-emerald-50"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="mb-2 block text-sm font-black text-slate-700">
-                        Total Spend
-                      </label>
-
-                      <input
-                        type="number"
-                        value={editTotalSpend}
-                        onChange={(event) => setEditTotalSpend(event.target.value)}
-                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 shadow-sm outline-none focus:border-emerald-300 focus:ring-4 focus:ring-emerald-50"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm font-bold leading-6 text-emerald-700">
-                    Level {editLevel}: {getLevelInfo(Number(editLevel)).discount}% discount · {getLevelInfo(Number(editLevel)).conversion}
-                    {Number(editLevel) >= 3 ? " · Child Panel Free Lifetime" : " · Child Panel requires paid subscription"}
-                  </div>
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="mb-2 block text-sm font-black text-slate-700">
-                        Child Panel Access Type
-                      </label>
-
-                      <select
-                        value={editChildPanelType}
-                        onChange={(event) => setEditChildPanelType(event.target.value)}
-                        disabled={Number(editLevel) >= 3}
-                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 shadow-sm outline-none disabled:bg-slate-50 disabled:text-slate-400 focus:border-emerald-300 focus:ring-4 focus:ring-emerald-50"
-                      >
-                        <option value="locked">Locked</option>
-                        <option value="paid">Paid Active</option>
-                        <option value="manual">Manual Unlock</option>
-                        <option value="free">Free Lifetime</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="mb-2 block text-sm font-black text-slate-700">
-                        Subscription Status
-                      </label>
-
-                      <select
-                        value={editSubscriptionStatus}
-                        onChange={(event) => setEditSubscriptionStatus(event.target.value)}
-                        disabled={Number(editLevel) >= 3}
-                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 shadow-sm outline-none disabled:bg-slate-50 disabled:text-slate-400 focus:border-emerald-300 focus:ring-4 focus:ring-emerald-50"
-                      >
-                        <option value="inactive">Inactive</option>
-                        <option value="active">Active</option>
-                        <option value="expired">Expired</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-sm font-black text-slate-700">
-                      Subscription Expires At
-                    </label>
-
-                    <input
-                      type="datetime-local"
-                      value={editSubscriptionExpiresAt}
-                      onChange={(event) => setEditSubscriptionExpiresAt(event.target.value)}
-                      disabled={Number(editLevel) >= 3}
-                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 shadow-sm outline-none disabled:bg-slate-50 disabled:text-slate-400 focus:border-emerald-300 focus:ring-4 focus:ring-emerald-50"
-                    />
-                  </div>
-                </div>
-
-                <div className="border-t border-slate-200 bg-slate-50/70 p-6 lg:border-l lg:border-t-0">
-                  <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-                    <p className="text-sm font-black text-slate-700">Reseller Preview</p>
-                    <p className="mt-1 text-xs font-semibold text-slate-500">
-                      Current settings preview before saving.
-                    </p>
-
-                    <div className="mt-5 space-y-3">
-                      <InfoBlock label="Level" value={`Level ${editLevel} — ${getLevelInfo(Number(editLevel)).name}`} />
-                      <InfoBlock label="Discount" value={`${getLevelInfo(Number(editLevel)).discount}%`} />
-                      <InfoBlock label="Point Conversion" value={getLevelInfo(Number(editLevel)).conversion} />
-                      <InfoBlock label="Points" value={formatNumber(editPoints)} valueClassName="text-emerald-600" />
-                      <InfoBlock label="Total Spend" value={formatMoney(editTotalSpend)} />
-                      <InfoBlock
-                        label="Child Panel"
-                        value={Number(editLevel) >= 3 ? "Free Lifetime" : editChildPanelType}
-                        valueClassName={Number(editLevel) >= 3 ? "text-blue-600" : "text-slate-950"}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-col justify-end gap-3 border-t border-slate-200 p-5 sm:flex-row">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  disabled={saving}
-                  className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 >
                   Cancel
                 </button>
@@ -1281,16 +1218,210 @@ export default function AdminResellerManagementPage() {
                   type="button"
                   onClick={saveResellerSettings}
                   disabled={saving}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 >
-                  {saving ? <Loader2 size={17} className="animate-spin" /> : <CheckCircle2 size={17} />}
+                  {saving ? (
+                    <Loader2 size={17} className="animate-spin" />
+                  ) : (
+                    <CheckCircle2 size={17} />
+                  )}
                   {saving ? "Saving..." : "Save Reseller"}
                 </button>
               </div>
+            }
+          >
+            <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+              <div className="min-w-0 space-y-5">
+                <div className="flex min-w-0 flex-col gap-4 rounded-3xl border border-slate-200 bg-slate-50/70 p-5 sm:flex-row sm:items-center">
+                  <UserAvatar user={selectedReseller} />
+
+                  <div className="min-w-0 flex-1">
+                    <h4 className="line-clamp-2 text-lg font-black text-slate-950">
+                      {getFullName(selectedReseller)}
+                    </h4>
+                    <p className="mt-1 break-all text-sm font-semibold text-slate-500">
+                      {selectedReseller.email || "No email"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <div>
+                    <label className="mb-2 block text-sm font-black text-slate-700">
+                      Reseller Level
+                    </label>
+                    <select
+                      value={editLevel}
+                      onChange={(event) => {
+                        setEditLevel(event.target.value);
+                        if (Number(event.target.value) >= 3) {
+                          setEditChildPanelType("free");
+                          setEditSubscriptionStatus("inactive");
+                        }
+                      }}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 shadow-sm outline-none focus:border-emerald-300 focus:ring-4 focus:ring-emerald-50"
+                    >
+                      {resellerLevels.map((level) => (
+                        <option key={level.level} value={level.level}>
+                          Level {level.level} — {level.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-black text-slate-700">
+                      Available Points
+                    </label>
+                    <input
+                      type="number"
+                      value={editPoints}
+                      onChange={(event) => setEditPoints(event.target.value)}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 shadow-sm outline-none focus:border-emerald-300 focus:ring-4 focus:ring-emerald-50"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-black text-slate-700">
+                      Total Spend
+                    </label>
+                    <input
+                      type="number"
+                      value={editTotalSpend}
+                      onChange={(event) => setEditTotalSpend(event.target.value)}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 shadow-sm outline-none focus:border-emerald-300 focus:ring-4 focus:ring-emerald-50"
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm font-bold leading-6 text-emerald-700">
+                  Level {editLevel}: {selectedLevelInfo.discount}% discount · {selectedLevelInfo.conversion}
+                  {Number(editLevel) >= 3
+                    ? " · Child Panel Free Lifetime"
+                    : " · Child Panel requires paid subscription"}
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block text-sm font-black text-slate-700">
+                      Child Panel Access Type
+                    </label>
+                    <select
+                      value={editChildPanelType}
+                      onChange={(event) => setEditChildPanelType(event.target.value)}
+                      disabled={Number(editLevel) >= 3}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 shadow-sm outline-none disabled:bg-slate-50 disabled:text-slate-400 focus:border-emerald-300 focus:ring-4 focus:ring-emerald-50"
+                    >
+                      <option value="locked">Locked</option>
+                      <option value="paid">Paid Active</option>
+                      <option value="manual">Manual Unlock</option>
+                      <option value="free">Free Lifetime</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-black text-slate-700">
+                      Subscription Status
+                    </label>
+                    <select
+                      value={editSubscriptionStatus}
+                      onChange={(event) => setEditSubscriptionStatus(event.target.value)}
+                      disabled={Number(editLevel) >= 3}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 shadow-sm outline-none disabled:bg-slate-50 disabled:text-slate-400 focus:border-emerald-300 focus:ring-4 focus:ring-emerald-50"
+                    >
+                      <option value="inactive">Inactive</option>
+                      <option value="active">Active</option>
+                      <option value="expired">Expired</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-black text-slate-700">
+                    Subscription Expires At
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={editSubscriptionExpiresAt}
+                    onChange={(event) => setEditSubscriptionExpiresAt(event.target.value)}
+                    disabled={Number(editLevel) >= 3}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 shadow-sm outline-none disabled:bg-slate-50 disabled:text-slate-400 focus:border-emerald-300 focus:ring-4 focus:ring-emerald-50"
+                  />
+                </div>
+              </div>
+
+              <div className="min-w-0 rounded-[24px] border border-slate-200 bg-slate-50/70 p-5">
+                <p className="text-sm font-black text-slate-700">
+                  Reseller Preview
+                </p>
+                <p className="mt-1 text-xs font-semibold text-slate-500">
+                  Current settings preview before saving.
+                </p>
+
+                <div className="mt-5 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="flex min-w-0 items-center gap-4">
+                    <UserAvatar user={selectedReseller} />
+                    <div className="min-w-0">
+                      <h4 className="truncate text-lg font-black text-slate-950">
+                        {getFullName(selectedReseller)}
+                      </h4>
+                      <p className="mt-1 truncate text-xs font-semibold text-slate-400">
+                        @{getDisplayName(selectedReseller)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 grid gap-3">
+                    <InfoBlock label="Level" value={`Level ${editLevel} · ${selectedLevelInfo.name}`} />
+                    <InfoBlock label="Discount" value={`${selectedLevelInfo.discount}%`} />
+                    <InfoBlock label="Points" value={`${formatNumber(editPoints)} pts`} />
+                    <InfoBlock label="Total Spend" value={formatMoney(editTotalSpend)} />
+                    <InfoBlock
+                      label="Child Panel"
+                      value={Number(editLevel) >= 3 ? "Free Lifetime" : editChildPanelType}
+                      valueClassName={Number(editLevel) >= 3 ? "text-blue-600" : "text-slate-950"}
+                    />
+                    <InfoBlock
+                      label="Subscription"
+                      value={Number(editLevel) >= 3 ? "Not required" : editSubscriptionStatus}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          </ModalShell>
         )}
       </AdminLayout>
     </AdminGuard>
+  );
+}
+
+function SummaryMetric({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: "blue" | "green" | "purple" | "slate";
+}) {
+  const toneClass = {
+    blue: "bg-blue-50 text-blue-700",
+    green: "bg-emerald-50 text-emerald-700",
+    purple: "bg-purple-50 text-purple-700",
+    slate: "bg-slate-100 text-slate-700",
+  }[tone];
+
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-2xl bg-slate-50 p-4">
+      <span className="min-w-0 truncate text-sm font-bold text-slate-600">
+        {label}
+      </span>
+      <span
+        className={`shrink-0 rounded-full px-3 py-1 text-sm font-black ${toneClass}`}
+      >
+        {formatNumber(value)}
+      </span>
+    </div>
   );
 }

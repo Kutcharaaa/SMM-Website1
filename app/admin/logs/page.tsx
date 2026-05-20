@@ -7,8 +7,6 @@ import {
   Activity,
   AlertTriangle,
   CalendarDays,
-  CheckCircle2,
-  Clock3,
   Database,
   Download,
   Eye,
@@ -120,16 +118,41 @@ function formatAction(action?: string | null) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function getActionCategory(action?: string | null, targetType?: string | null): ActionFilter {
+function getActionCategory(
+  action?: string | null,
+  targetType?: string | null,
+): ActionFilter {
   const text = `${action || ""} ${targetType || ""}`.toLowerCase();
 
-  if (text.includes("deposit") || text.includes("payment") || text.includes("add_fund")) return "deposit";
+  if (
+    text.includes("deposit") ||
+    text.includes("payment") ||
+    text.includes("add_fund")
+  ) {
+    return "deposit";
+  }
+
   if (text.includes("ticket")) return "ticket";
   if (text.includes("live_chat") || text.includes("chat")) return "live_chat";
   if (text.includes("setting")) return "settings";
-  if (text.includes("user") || text.includes("profile") || text.includes("role")) return "user";
+  if (
+    text.includes("user") ||
+    text.includes("profile") ||
+    text.includes("role")
+  ) {
+    return "user";
+  }
+
   if (text.includes("service")) return "service";
-  if (text.includes("wallet") || text.includes("balance") || text.includes("adjustment")) return "wallet";
+
+  if (
+    text.includes("wallet") ||
+    text.includes("balance") ||
+    text.includes("adjustment")
+  ) {
+    return "wallet";
+  }
+
   if (text.includes("affiliate")) return "affiliate";
   if (text.includes("child_panel")) return "child_panel";
   if (text.includes("order")) return "order";
@@ -138,14 +161,26 @@ function getActionCategory(action?: string | null, targetType?: string | null): 
 }
 
 function getActionTone(category: ActionFilter) {
-  if (category === "deposit") return "bg-emerald-50 text-emerald-700 ring-emerald-100";
+  if (category === "deposit") {
+    return "bg-emerald-50 text-emerald-700 ring-emerald-100";
+  }
+
   if (category === "ticket") return "bg-blue-50 text-blue-700 ring-blue-100";
   if (category === "live_chat") return "bg-cyan-50 text-cyan-700 ring-cyan-100";
-  if (category === "settings") return "bg-purple-50 text-purple-700 ring-purple-100";
+  if (category === "settings") {
+    return "bg-purple-50 text-purple-700 ring-purple-100";
+  }
+
   if (category === "user") return "bg-indigo-50 text-indigo-700 ring-indigo-100";
-  if (category === "wallet") return "bg-orange-50 text-orange-700 ring-orange-100";
+  if (category === "wallet") {
+    return "bg-orange-50 text-orange-700 ring-orange-100";
+  }
+
   if (category === "affiliate") return "bg-pink-50 text-pink-700 ring-pink-100";
-  if (category === "child_panel") return "bg-violet-50 text-violet-700 ring-violet-100";
+  if (category === "child_panel") {
+    return "bg-violet-50 text-violet-700 ring-violet-100";
+  }
+
   if (category === "order") return "bg-lime-50 text-lime-700 ring-lime-100";
   if (category === "service") return "bg-teal-50 text-teal-700 ring-teal-100";
 
@@ -153,9 +188,17 @@ function getActionTone(category: ActionFilter) {
 }
 
 function getRoleBadgeClass(role?: string | null) {
-  if (role === "super_admin") return "bg-purple-50 text-purple-700 ring-purple-100";
-  if (role === "head_admin") return "bg-orange-50 text-orange-700 ring-orange-100";
-  if (role === "admin") return "bg-emerald-50 text-emerald-700 ring-emerald-100";
+  if (role === "super_admin") {
+    return "bg-purple-50 text-purple-700 ring-purple-100";
+  }
+
+  if (role === "head_admin") {
+    return "bg-orange-50 text-orange-700 ring-orange-100";
+  }
+
+  if (role === "admin") {
+    return "bg-emerald-50 text-emerald-700 ring-emerald-100";
+  }
 
   return "bg-slate-100 text-slate-700 ring-slate-200";
 }
@@ -198,20 +241,22 @@ function StatCard({
   }[tone];
 
   return (
-    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <div className="flex items-center gap-4">
+    <div className="min-w-0 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+      <div className="flex min-w-0 items-center gap-4">
         <div
           className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-3xl ring-1 ${toneClass}`}
         >
           {icon}
         </div>
 
-        <div className="min-w-0">
-          <p className="text-sm font-bold text-slate-500">{title}</p>
-          <h3 className="mt-1 text-3xl font-black tracking-tight text-slate-950">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-bold text-slate-500">{title}</p>
+
+          <h3 className="mt-1 min-w-0 truncate text-3xl font-black tracking-tight text-slate-950">
             {value}
           </h3>
-          <p className="mt-1 text-sm font-semibold text-slate-500">
+
+          <p className="mt-1 line-clamp-2 text-sm font-semibold text-slate-500">
             {subtitle}
           </p>
         </div>
@@ -230,10 +275,28 @@ function SummaryRow({
   dotClass: string;
 }) {
   return (
-    <div className="flex items-center gap-3">
-      <span className={`h-2.5 w-2.5 rounded-full ${dotClass}`} />
-      <p className="flex-1 text-sm font-black text-slate-700">{label}</p>
-      <p className="text-sm font-black text-slate-950">{value}</p>
+    <div className="flex min-w-0 items-center gap-3">
+      <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${dotClass}`} />
+
+      <p className="min-w-0 flex-1 truncate text-sm font-black text-slate-700">
+        {label}
+      </p>
+
+      <p className="shrink-0 text-sm font-black text-slate-950">{value}</p>
+    </div>
+  );
+}
+
+function DetailBox({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <p className="truncate text-xs font-black uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+
+      <p className="mt-2 break-words text-sm font-black text-slate-900">
+        {value}
+      </p>
     </div>
   );
 }
@@ -488,23 +551,24 @@ export default function AdminActivityLogsPage() {
   return (
     <AdminGuard allowedRoles={["admin", "head_admin", "super_admin"]}>
       <AdminLayout>
-        <div className="space-y-6">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-            <div>
+        <div className="min-w-0 space-y-6">
+          <div className="flex min-w-0 flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+            <div className="min-w-0">
               <h2 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
                 Activity Logs
               </h2>
 
               <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
-                Monitor admin actions, system changes, user updates, payments, support actions, and security events.
+                Monitor admin actions, system changes, user updates, payments,
+                support actions, and security events.
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="grid w-full grid-cols-1 gap-3 sm:w-auto sm:grid-cols-2 xl:flex xl:flex-wrap xl:items-center">
               <button
                 type="button"
                 onClick={loadLogs}
-                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50"
               >
                 <RefreshCw size={17} />
                 Refresh
@@ -513,7 +577,7 @@ export default function AdminActivityLogsPage() {
               <button
                 type="button"
                 onClick={exportLogsToPDF}
-                className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-emerald-700"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-emerald-700"
               >
                 <Download size={17} />
                 Export PDF
@@ -527,7 +591,7 @@ export default function AdminActivityLogsPage() {
             </div>
           )}
 
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
               title="Total Logs"
               value={String(stats.total)}
@@ -561,12 +625,12 @@ export default function AdminActivityLogsPage() {
             />
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
-            <div className="space-y-5">
-              <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="grid gap-4 xl:grid-cols-[1fr_190px_190px_170px_auto]">
-                  <div className="flex h-12 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 shadow-sm">
-                    <Search size={18} className="text-slate-400" />
+          <div className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="min-w-0 space-y-5">
+              <div className="min-w-0 rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[1fr_190px_190px_170px_auto]">
+                  <div className="flex h-12 min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 shadow-sm">
+                    <Search size={18} className="shrink-0 text-slate-400" />
 
                     <input
                       value={search}
@@ -578,8 +642,10 @@ export default function AdminActivityLogsPage() {
 
                   <select
                     value={actionFilter}
-                    onChange={(event) => setActionFilter(event.target.value as ActionFilter)}
-                    className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
+                    onChange={(event) =>
+                      setActionFilter(event.target.value as ActionFilter)
+                    }
+                    className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
                   >
                     {actionFilters.map((item) => (
                       <option key={item.value} value={item.value}>
@@ -590,8 +656,10 @@ export default function AdminActivityLogsPage() {
 
                   <select
                     value={roleFilter}
-                    onChange={(event) => setRoleFilter(event.target.value as RoleFilter)}
-                    className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
+                    onChange={(event) =>
+                      setRoleFilter(event.target.value as RoleFilter)
+                    }
+                    className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
                   >
                     {roleFilters.map((item) => (
                       <option key={item.value} value={item.value}>
@@ -603,7 +671,7 @@ export default function AdminActivityLogsPage() {
                   <select
                     value={dateFilter}
                     onChange={(event) => setDateFilter(event.target.value)}
-                    className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
+                    className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
                   >
                     <option value="all">All Time</option>
                     <option value="today">Today</option>
@@ -619,7 +687,7 @@ export default function AdminActivityLogsPage() {
                       setRoleFilter("all");
                       setDateFilter("all");
                     }}
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50"
+                    className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50 xl:w-auto"
                   >
                     <Filter size={17} />
                     Clear
@@ -627,7 +695,7 @@ export default function AdminActivityLogsPage() {
                 </div>
               </div>
 
-              <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+              <div className="min-w-0 overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[1180px] text-sm">
                     <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -644,7 +712,10 @@ export default function AdminActivityLogsPage() {
 
                     <tbody>
                       {filteredLogs.map((log) => {
-                        const category = getActionCategory(log.action, log.target_type);
+                        const category = getActionCategory(
+                          log.action,
+                          log.target_type,
+                        );
 
                         return (
                           <tr
@@ -655,6 +726,7 @@ export default function AdminActivityLogsPage() {
                               <p className="font-black text-slate-900">
                                 {formatDate(log.created_at)}
                               </p>
+
                               <p className="mt-1 text-xs font-semibold text-slate-500">
                                 {formatTime(log.created_at)}
                               </p>
@@ -662,7 +734,7 @@ export default function AdminActivityLogsPage() {
 
                             <td className="px-5 py-5 align-top">
                               <div className="flex items-center gap-3">
-                                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
+                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
                                   <User size={18} />
                                 </div>
 
@@ -670,6 +742,7 @@ export default function AdminActivityLogsPage() {
                                   <p className="max-w-[210px] truncate font-black text-slate-950">
                                     {log.actor_email || "Unknown Actor"}
                                   </p>
+
                                   <p className="mt-1 max-w-[210px] truncate text-xs font-semibold text-slate-500">
                                     {log.actor_id || "No actor ID"}
                                   </p>
@@ -701,6 +774,7 @@ export default function AdminActivityLogsPage() {
                               <p className="font-black text-slate-800">
                                 {log.target_type || "—"}
                               </p>
+
                               <p className="mt-1 max-w-[170px] truncate text-xs font-semibold text-slate-500">
                                 {log.target_id || "No target ID"}
                               </p>
@@ -732,7 +806,10 @@ export default function AdminActivityLogsPage() {
                             <div className="mx-auto flex max-w-sm flex-col items-center">
                               <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-slate-50 text-slate-400 ring-1 ring-slate-100">
                                 {loading ? (
-                                  <RefreshCw size={26} className="animate-spin" />
+                                  <RefreshCw
+                                    size={26}
+                                    className="animate-spin"
+                                  />
                                 ) : (
                                   <Activity size={26} />
                                 )}
@@ -773,10 +850,11 @@ export default function AdminActivityLogsPage() {
               </div>
             </div>
 
-            <aside className="space-y-5">
+            <aside className="min-w-0 space-y-5">
               <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="mb-5 flex items-center gap-2">
                   <Activity size={18} className="text-emerald-600" />
+
                   <h3 className="text-lg font-black text-slate-950">
                     Action Summary
                   </h3>
@@ -819,30 +897,35 @@ export default function AdminActivityLogsPage() {
               <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="mb-4 flex items-center gap-2">
                   <AlertTriangle size={18} className="text-orange-500" />
+
                   <h3 className="text-lg font-black text-slate-950">
                     Logging Status
                   </h3>
                 </div>
 
                 <p className="text-sm font-semibold leading-6 text-slate-500">
-                  This page is ready. Logs will appear after we connect each admin action to the activity_logs table.
+                  This page is ready. Logs will appear after we connect each
+                  admin action to the activity_logs table.
                 </p>
 
                 <div className="mt-4 rounded-2xl border border-orange-100 bg-orange-50 p-4 text-sm font-bold leading-6 text-orange-700">
-                  Next step: connect log insertion to Settings, Payments, Tickets, Live Chat, and Users.
+                  Next step: connect log insertion to Settings, Payments,
+                  Tickets, Live Chat, and Users.
                 </div>
               </div>
 
               <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="mb-4 flex items-center gap-2">
                   <FileJson size={18} className="text-emerald-600" />
+
                   <h3 className="text-lg font-black text-slate-950">
                     Metadata Support
                   </h3>
                 </div>
 
                 <p className="text-sm font-semibold leading-6 text-slate-500">
-                  Each log can store JSON metadata, target IDs, IP address, user agent, and actor information for audit tracking.
+                  Each log can store JSON metadata, target IDs, IP address, user
+                  agent, and actor information for audit tracking.
                 </p>
               </div>
             </aside>
@@ -850,11 +933,11 @@ export default function AdminActivityLogsPage() {
         </div>
 
         {selectedLog && (
-          <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm lg:items-center">
-            <div className="my-8 w-full max-w-4xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
-              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
-                <div>
-                  <h3 className="text-2xl font-black text-slate-950">
+          <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-3 backdrop-blur-sm sm:p-4 lg:items-center">
+            <div className="my-4 flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl sm:my-8">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 sm:p-6">
+                <div className="min-w-0">
+                  <h3 className="text-xl font-black text-slate-950 sm:text-2xl">
                     Log Details
                   </h3>
 
@@ -866,36 +949,67 @@ export default function AdminActivityLogsPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedLog(null)}
-                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
                 >
                   <X size={20} />
                 </button>
               </div>
 
-              <div className="grid gap-5 p-6 md:grid-cols-2">
-                <DetailBox label="Date & Time" value={formatDateTime(selectedLog.created_at)} />
-                <DetailBox label="Actor Email" value={selectedLog.actor_email || "Unknown"} />
-                <DetailBox label="Actor Role" value={formatRole(selectedLog.actor_role)} />
-                <DetailBox label="Actor ID" value={selectedLog.actor_id || "—"} />
-                <DetailBox label="Action" value={formatAction(selectedLog.action)} />
-                <DetailBox label="Target Type" value={selectedLog.target_type || "—"} />
-                <DetailBox label="Target ID" value={selectedLog.target_id || "—"} />
-                <DetailBox label="IP Address" value={selectedLog.ip_address || "—"} />
-                <div className="md:col-span-2">
-                  <DetailBox label="Description" value={selectedLog.description || "No description"} />
-                </div>
+              <div className="min-h-0 overflow-y-auto p-5 sm:p-6">
+                <div className="grid min-w-0 grid-cols-1 gap-5 md:grid-cols-2">
+                  <DetailBox
+                    label="Date & Time"
+                    value={formatDateTime(selectedLog.created_at)}
+                  />
+                  <DetailBox
+                    label="Actor Email"
+                    value={selectedLog.actor_email || "Unknown"}
+                  />
+                  <DetailBox
+                    label="Actor Role"
+                    value={formatRole(selectedLog.actor_role)}
+                  />
+                  <DetailBox label="Actor ID" value={selectedLog.actor_id || "—"} />
+                  <DetailBox
+                    label="Action"
+                    value={formatAction(selectedLog.action)}
+                  />
+                  <DetailBox
+                    label="Target Type"
+                    value={selectedLog.target_type || "—"}
+                  />
+                  <DetailBox
+                    label="Target ID"
+                    value={selectedLog.target_id || "—"}
+                  />
+                  <DetailBox
+                    label="IP Address"
+                    value={selectedLog.ip_address || "—"}
+                  />
 
-                <div className="md:col-span-2">
-                  <p className="mb-2 text-sm font-black text-slate-700">
-                    Metadata
-                  </p>
-                  <pre className="max-h-[340px] overflow-auto rounded-2xl border border-slate-200 bg-slate-950 p-4 text-xs font-semibold leading-6 text-slate-100">
-                    {safeJson(selectedLog.metadata)}
-                  </pre>
-                </div>
+                  <div className="md:col-span-2">
+                    <DetailBox
+                      label="Description"
+                      value={selectedLog.description || "No description"}
+                    />
+                  </div>
 
-                <div className="md:col-span-2">
-                  <DetailBox label="User Agent" value={selectedLog.user_agent || "—"} />
+                  <div className="min-w-0 md:col-span-2">
+                    <p className="mb-2 text-sm font-black text-slate-700">
+                      Metadata
+                    </p>
+
+                    <pre className="max-h-[340px] max-w-full overflow-auto rounded-2xl border border-slate-200 bg-slate-950 p-4 text-xs font-semibold leading-6 text-slate-100">
+                      {safeJson(selectedLog.metadata)}
+                    </pre>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <DetailBox
+                      label="User Agent"
+                      value={selectedLog.user_agent || "—"}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -903,18 +1017,5 @@ export default function AdminActivityLogsPage() {
         )}
       </AdminLayout>
     </AdminGuard>
-  );
-}
-
-function DetailBox({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-      <p className="text-xs font-black uppercase tracking-wide text-slate-400">
-        {label}
-      </p>
-      <p className="mt-2 break-words text-sm font-black text-slate-900">
-        {value}
-      </p>
-    </div>
   );
 }

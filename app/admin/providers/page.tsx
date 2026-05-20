@@ -223,16 +223,16 @@ function StatCard({
   }[tone];
 
   return (
-    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <div className="flex items-start gap-4">
+    <div className="min-w-0 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+      <div className="flex min-w-0 items-start gap-4">
         <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-3xl ring-1 ${toneClass}`}>
           {icon}
         </div>
 
-        <div className="min-w-0">
-          <p className="text-sm font-bold text-slate-500">{title}</p>
-          <h3 className="mt-1 text-3xl font-black tracking-tight text-slate-950">{value}</h3>
-          <p className="mt-1 text-sm font-semibold text-slate-500">{subtitle}</p>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-bold text-slate-500">{title}</p>
+          <h3 className="mt-1 truncate text-3xl font-black tracking-tight text-slate-950">{value}</h3>
+          <p className="mt-1 line-clamp-2 text-sm font-semibold text-slate-500">{subtitle}</p>
         </div>
       </div>
     </div>
@@ -266,7 +266,7 @@ function ActionButton({
       title={title}
       onClick={onClick}
       disabled={disabled}
-      className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border bg-white transition disabled:cursor-not-allowed disabled:opacity-50 ${toneClass}`}
+      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border bg-white transition disabled:cursor-not-allowed disabled:opacity-50 ${toneClass}`}
     >
       {children}
     </button>
@@ -283,9 +283,9 @@ function InfoBlock({
   valueClassName?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-      <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">{label}</p>
-      <div className={`mt-2 text-sm font-black ${valueClassName}`}>{value}</div>
+    <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+      <p className="truncate text-xs font-black uppercase tracking-[0.12em] text-slate-400">{label}</p>
+      <div className={`mt-2 min-w-0 break-words text-sm font-black ${valueClassName}`}>{value}</div>
     </div>
   );
 }
@@ -840,9 +840,9 @@ useEffect(() => {
   return (
     <AdminGuard allowedRoles={["head_admin", "super_admin"]}>
       <AdminLayout>
-        <div className="space-y-6">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-            <div>
+        <div className="min-w-0 space-y-6">
+          <div className="flex min-w-0 flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+            <div className="min-w-0">
               <h2 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
                 Providers
               </h2>
@@ -852,7 +852,7 @@ useEffect(() => {
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="grid w-full grid-cols-1 gap-3 sm:w-auto sm:grid-cols-2 xl:flex xl:flex-wrap xl:items-center">
               <button
                 type="button"
                 onClick={() => {
@@ -860,7 +860,7 @@ useEffect(() => {
                   loadPanelServices();
                   loadUsdMarketRate();
                 }}
-                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50"
               >
                 <RefreshCw size={17} />
                 Refresh
@@ -869,7 +869,7 @@ useEffect(() => {
               <button
                 type="button"
                 onClick={openAddModal}
-                className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-blue-700"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-blue-700"
               >
                 <Plus size={17} />
                 Add Provider
@@ -883,7 +883,7 @@ useEffect(() => {
             </div>
           )}
 
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
               title="Total Providers"
               value={formatNumber(stats.total)}
@@ -917,11 +917,11 @@ useEffect(() => {
             />
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
-            <div className="space-y-5">
-              <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
-                <div className="grid gap-4 border-b border-slate-100 p-5 md:grid-cols-[1.1fr_0.75fr_0.75fr_auto]">
-                  <div className="flex h-12 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 shadow-sm">
+          <div className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="min-w-0 space-y-5">
+              <div className="min-w-0 overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+                <div className="grid min-w-0 grid-cols-1 gap-4 border-b border-slate-100 p-5 md:grid-cols-[1.1fr_0.75fr_0.75fr_auto]">
+                  <div className="flex h-12 min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 shadow-sm">
                     <Search size={18} className="text-slate-400" />
 
                     <input
@@ -935,7 +935,7 @@ useEffect(() => {
                   <select
                     value={statusFilter}
                     onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
-                    className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
+                    className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
                   >
                     {statusOptions.map((item) => (
                       <option key={item.value} value={item.value}>
@@ -947,7 +947,7 @@ useEffect(() => {
                   <select
                     value={modeFilter}
                     onChange={(event) => setModeFilter(event.target.value as ModeFilter)}
-                    className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
+                    className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
                   >
                     {modeOptions.map((item) => (
                       <option key={item.value} value={item.value}>
@@ -963,7 +963,7 @@ useEffect(() => {
                       setStatusFilter("all");
                       setModeFilter("all");
                     }}
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50"
+                    className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50 md:w-auto"
                   >
                     <Filter size={17} />
                     Filters
@@ -1148,7 +1148,7 @@ useEffect(() => {
                       setStatusFilter("all");
                       setModeFilter("auto");
                     }}
-                    className="inline-flex items-center gap-2 font-black"
+                    className="inline-flex shrink-0 items-center justify-center gap-2 font-black"
                   >
                     View Auto Providers
                     <Settings size={15} />
@@ -1157,7 +1157,7 @@ useEffect(() => {
               </div>
             </div>
 
-            <aside className="space-y-5">
+            <aside className="min-w-0 space-y-5">
               <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="mb-5 flex items-center gap-2">
                   <Activity size={18} className="text-blue-600" />
@@ -1293,11 +1293,11 @@ useEffect(() => {
         </div>
 
         {(modalMode === "add" || modalMode === "edit") && (
-          <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm lg:items-center">
-            <div className="my-8 w-full max-w-5xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
-              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
-                <div>
-                  <h3 className="text-2xl font-black text-slate-950">
+          <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-3 backdrop-blur-sm sm:p-4 lg:items-center">
+            <div className="my-4 flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl sm:my-8">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 sm:p-6">
+                <div className="min-w-0">
+                  <h3 className="text-xl font-black text-slate-950 sm:text-2xl">
                     {modalMode === "edit" ? "Manage Provider" : "Add Provider"}
                   </h3>
 
@@ -1310,14 +1310,14 @@ useEffect(() => {
                   type="button"
                   onClick={closeModal}
                   disabled={loading}
-                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <X size={20} />
                 </button>
               </div>
 
-              <div className="grid max-h-[75vh] overflow-y-auto lg:grid-cols-[1fr_340px]">
-                <div className="space-y-5 p-6">
+              <div className="grid min-h-0 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_340px]">
+                <div className="min-w-0 space-y-5 p-5 sm:p-6">
                   <div>
                     <h4 className="text-lg font-black text-slate-950">Provider Information</h4>
                     <p className="mt-1 text-sm font-semibold text-slate-500">
@@ -1464,7 +1464,7 @@ useEffect(() => {
                   <button
                     type="button"
                     onClick={() => setAutoDisableLowBalance((current) => !current)}
-                    className={`flex w-full items-center justify-between rounded-2xl border p-4 text-left transition ${
+                    className={`flex w-full items-center justify-between gap-4 rounded-2xl border p-4 text-left transition ${
                       autoDisableLowBalance
                         ? "border-orange-300 bg-orange-50 ring-4 ring-orange-50"
                         : "border-slate-200 bg-white hover:bg-slate-50"
@@ -1481,7 +1481,7 @@ useEffect(() => {
                   </button>
                 </div>
 
-                <div className="border-t border-slate-200 bg-slate-50/70 p-6 lg:border-l lg:border-t-0">
+                <div className="min-w-0 border-t border-slate-200 bg-slate-50/70 p-5 sm:p-6 lg:border-l lg:border-t-0">
                   <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                     <p className="text-sm font-black text-slate-700">Provider Preview</p>
                     <p className="mt-1 text-xs font-semibold text-slate-500">
@@ -1516,12 +1516,12 @@ useEffect(() => {
                 </div>
               </div>
 
-              <div className="flex flex-col justify-end gap-3 border-t border-slate-200 p-5 sm:flex-row">
+              <div className="flex flex-col-reverse justify-end gap-3 border-t border-slate-200 p-5 sm:flex-row">
                 <button
                   type="button"
                   onClick={closeModal}
                   disabled={loading}
-                  className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 >
                   Cancel
                 </button>
@@ -1530,7 +1530,7 @@ useEffect(() => {
                   type="button"
                   onClick={modalMode === "edit" ? updateProvider : addProvider}
                   disabled={loading}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 >
                   {loading ? <Loader2 size={17} className="animate-spin" /> : <Save size={17} />}
                   {loading ? "Saving..." : modalMode === "edit" ? "Save Changes" : "Save Provider"}
@@ -1543,9 +1543,9 @@ useEffect(() => {
         {modalMode === "view" && selectedProvider && (
           <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm lg:items-center">
             <div className="my-8 w-full max-w-4xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
-              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
-                <div>
-                  <h3 className="text-2xl font-black text-slate-950">Provider Details</h3>
+              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 sm:p-6">
+                <div className="min-w-0">
+                  <h3 className="text-xl font-black text-slate-950 sm:text-2xl">Provider Details</h3>
                   <p className="mt-1 text-sm font-semibold text-slate-500">
                     Review API, balance, automation, and import status.
                   </p>
@@ -1554,18 +1554,18 @@ useEffect(() => {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
                 >
                   <X size={20} />
                 </button>
               </div>
 
               <div className="space-y-6 p-6">
-                <div className="flex items-start gap-4 rounded-3xl border border-slate-200 bg-slate-50/70 p-5">
+                <div className="flex min-w-0 flex-col gap-4 rounded-3xl border border-slate-200 bg-slate-50/70 p-5 sm:flex-row sm:items-start">
                   <ProviderAvatar name={selectedProvider.name} />
 
                   <div className="min-w-0 flex-1">
-                    <h4 className="text-xl font-black text-slate-950">{selectedProvider.name}</h4>
+                    <h4 className="line-clamp-2 text-xl font-black text-slate-950">{selectedProvider.name}</h4>
                     <a
                       href={selectedProvider.api_url || "#"}
                       target="_blank"
@@ -1581,12 +1581,12 @@ useEffect(() => {
                     </div>
                   </div>
 
-                  <p className="shrink-0 text-2xl font-black text-emerald-600">
+                  <p className="shrink-0 text-left text-2xl font-black text-emerald-600 sm:text-right">
                     {formatMoney(selectedProvider.balance)}
                   </p>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
                   <InfoBlock label="Provider ID" value={shortProviderId(selectedProvider.id)} />
                   <InfoBlock label="Balance" value={formatMoney(selectedProvider.balance)} valueClassName="text-emerald-600" />
                   <InfoBlock label="Imported Services" value={formatNumber(getImportedCount(selectedProvider))} />
@@ -1600,7 +1600,7 @@ useEffect(() => {
                     type="button"
                     onClick={() => testProvider(selectedProvider)}
                     disabled={Boolean(actionLoadingId)}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-white px-5 py-3 text-sm font-black text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-50"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-white px-5 py-3 text-sm font-black text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-50 sm:w-auto"
                   >
                     {actionLoadingId === selectedProvider.id ? <Loader2 size={17} className="animate-spin" /> : <Activity size={17} />}
                     Test API
@@ -1610,7 +1610,7 @@ useEffect(() => {
                     type="button"
                     onClick={() => importServices(selectedProvider)}
                     disabled={Boolean(actionLoadingId)}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-purple-200 bg-white px-5 py-3 text-sm font-black text-purple-700 transition hover:bg-purple-50 disabled:opacity-50"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-purple-200 bg-white px-5 py-3 text-sm font-black text-purple-700 transition hover:bg-purple-50 disabled:opacity-50 sm:w-auto"
                   >
                     {actionLoadingId === selectedProvider.id ? <Loader2 size={17} className="animate-spin" /> : <Download size={17} />}
                     Import Services
@@ -1623,7 +1623,7 @@ useEffect(() => {
                       closeModal();
                       openEditModal(current);
                     }}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700 sm:w-auto"
                   >
                     <Edit3 size={17} />
                     Edit Provider
@@ -1636,10 +1636,10 @@ useEffect(() => {
 
         {importModal && importProvider && (
           <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm lg:items-center">
-            <div className="my-8 w-full max-w-7xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
-              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
-                <div>
-                  <h3 className="text-2xl font-black text-slate-950">Import Services</h3>
+            <div className="my-4 flex max-h-[92vh] w-full max-w-7xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl sm:my-8">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 sm:p-6">
+                <div className="min-w-0">
+                  <h3 className="text-xl font-black text-slate-950 sm:text-2xl">Import Services</h3>
                   <p className="mt-1 text-sm font-semibold text-slate-500">
                     {importProvider.name} · {importedServices.length} services fetched · {selectedServices.length} selected
                   </p>
@@ -1649,15 +1649,15 @@ useEffect(() => {
                   type="button"
                   onClick={() => setImportModal(false)}
                   disabled={importing}
-                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <X size={20} />
                 </button>
               </div>
 
               <div className="border-b border-slate-100 p-5">
-                <div className="grid gap-4 lg:grid-cols-[1fr_180px_180px_auto]">
-                  <div className="flex h-12 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 shadow-sm">
+                <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-[1fr_180px_180px_auto]">
+                  <div className="flex h-12 min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 shadow-sm">
                     <Search size={18} className="text-slate-400" />
 
                     <input
@@ -1680,13 +1680,13 @@ useEffect(() => {
                     value={markupPercent}
                     onChange={(event) => setMarkupPercent(event.target.value)}
                     placeholder="Markup %"
-                    className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
+                    className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
                   />
 
                   <button
                     type="button"
                     onClick={toggleSelectAllVisible}
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-blue-200 bg-white px-5 text-sm font-black text-blue-700 shadow-sm transition hover:bg-blue-50"
+                    className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-blue-200 bg-white px-5 text-sm font-black text-blue-700 shadow-sm transition hover:bg-blue-50 lg:w-auto"
                   >
                     {allVisibleSelected ? "Unselect Visible" : "Select Visible"}
                     <ChevronDown size={16} />
@@ -1694,7 +1694,7 @@ useEffect(() => {
                 </div>
               </div>
 
-              <div className="max-h-[58vh] overflow-auto">
+              <div className="min-h-0 overflow-auto">
                 <table className="w-full min-w-[1180px] text-sm">
                   <thead className="sticky top-0 z-10 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                     <tr>
@@ -1801,12 +1801,12 @@ useEffect(() => {
                 </table>
               </div>
 
-              <div className="flex flex-col justify-end gap-3 border-t border-slate-200 p-5 sm:flex-row">
+              <div className="flex flex-col-reverse justify-end gap-3 border-t border-slate-200 p-5 sm:flex-row">
                 <button
                   type="button"
                   onClick={() => setImportModal(false)}
                   disabled={importing}
-                  className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 >
                   Cancel
                 </button>
@@ -1815,7 +1815,7 @@ useEffect(() => {
                   type="button"
                   onClick={bulkImportSelectedServices}
                   disabled={importing || selectedServices.length <= 0}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 >
                   {importing ? <Loader2 size={17} className="animate-spin" /> : <Download size={17} />}
                   {importing ? "Importing..." : `Import ${selectedServices.length} Selected`}

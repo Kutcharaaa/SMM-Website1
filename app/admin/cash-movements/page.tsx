@@ -299,9 +299,9 @@ function StatCard({
   }[tone];
 
   return (
-    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+    <div className="min-w-0 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
       <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-4">
+        <div className="flex min-w-0 items-start gap-4">
           <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-3xl ring-1 ${toneClass}`}>
             {icon}
           </div>
@@ -309,7 +309,7 @@ function StatCard({
           <div className="min-w-0">
             <p className="text-sm font-bold text-slate-500">{title}</p>
             <h3 className="mt-1 text-3xl font-black tracking-tight text-slate-950">{value}</h3>
-            <p className="mt-1 text-sm font-semibold text-slate-500">{subtitle}</p>
+            <p className="mt-1 line-clamp-2 text-sm font-semibold text-slate-500">{subtitle}</p>
           </div>
         </div>
 
@@ -349,8 +349,8 @@ function InfoBlock({
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-      <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">{label}</p>
-      <div className={`mt-2 text-sm font-black ${valueClassName}`}>{value}</div>
+      <p className="truncate text-xs font-black uppercase tracking-[0.12em] text-slate-400">{label}</p>
+      <div className={`mt-2 min-w-0 break-words text-sm font-black ${valueClassName}`}>{value}</div>
     </div>
   );
 }
@@ -675,9 +675,9 @@ export default function AdminCashMovementsPage() {
   return (
     <AdminGuard allowedRoles={["head_admin", "super_admin"]}>
       <AdminLayout>
-        <div className="space-y-6">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-            <div>
+        <div className="min-w-0 space-y-6">
+          <div className="flex min-w-0 flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+            <div className="min-w-0">
               <h2 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
                 Cash Movements
               </h2>
@@ -687,14 +687,14 @@ export default function AdminCashMovementsPage() {
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="grid w-full grid-cols-1 gap-3 sm:w-auto sm:grid-cols-2 xl:flex xl:flex-wrap xl:items-center">
               <button
                 type="button"
                 onClick={() => {
                   loadMovements();
                   loadCashAccounts();
                 }}
-                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50"
               >
                 <RefreshCw size={17} />
                 Refresh
@@ -703,7 +703,7 @@ export default function AdminCashMovementsPage() {
               <button
                 type="button"
                 onClick={exportMovementsToPDF}
-                className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-blue-700"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-blue-700"
               >
                 <Download size={17} />
                 Export PDF
@@ -717,25 +717,25 @@ export default function AdminCashMovementsPage() {
             </div>
           )}
 
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard title="Total Inflow" value={formatMoney(stats.inflow)} subtitle="All time money in" icon={<TrendingUp size={26} />} tone="green" />
             <StatCard title="Total Outflow" value={formatMoney(stats.outflow)} subtitle="All time money out" icon={<TrendingDown size={26} />} tone="red" />
             <StatCard title="Net Movement" value={`${stats.net < 0 ? "-" : ""}${formatMoney(stats.net)}`} subtitle="Inflow minus outflow" icon={<Activity size={26} />} tone="blue" />
             <StatCard title="Total Transactions" value={formatNumber(stats.total)} subtitle="All cash movement records" icon={<FileText size={26} />} tone="purple" />
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
-            <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+          <div className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="min-w-0 overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
               <div className="flex flex-col gap-4 border-b border-slate-100 p-5">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                  <div>
+                <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="min-w-0">
                     <h3 className="text-xl font-black text-slate-950">All Cash Movements</h3>
-                    <p className="mt-1 text-sm font-semibold text-slate-500">
+                    <p className="mt-1 line-clamp-2 text-sm font-semibold text-slate-500">
                       Showing {filteredMovements.length} of {movements.length} entries.
                     </p>
                   </div>
 
-                  <div className="flex h-11 w-full items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 shadow-sm lg:w-[340px]">
+                  <div className="flex h-11 w-full min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 shadow-sm lg:w-[340px]">
                     <Search size={18} className="text-slate-400" />
 
                     <input
@@ -747,11 +747,11 @@ export default function AdminCashMovementsPage() {
                   </div>
                 </div>
 
-                <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto_auto]">
+                <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_auto_auto]">
                   <select
                     value={typeFilter}
                     onChange={(event) => setTypeFilter(event.target.value as TypeFilter)}
-                    className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
+                    className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
                   >
                     {typeFilters.map((item) => (
                       <option key={item.value} value={item.value}>
@@ -763,7 +763,7 @@ export default function AdminCashMovementsPage() {
                   <select
                     value={cashAccountFilter}
                     onChange={(event) => setCashAccountFilter(event.target.value)}
-                    className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
+                    className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
                   >
                     <option value="all">All Accounts</option>
                     {cashAccounts.map((account) => (
@@ -780,7 +780,7 @@ export default function AdminCashMovementsPage() {
                       setTypeFilter("all");
                       setCashAccountFilter("all");
                     }}
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50"
+                    className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50 md:w-auto"
                   >
                     <Filter size={17} />
                     Filters
@@ -792,7 +792,7 @@ export default function AdminCashMovementsPage() {
                       loadMovements();
                       loadCashAccounts();
                     }}
-                    className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-slate-700 shadow-sm transition hover:bg-slate-50"
+                    className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-slate-700 shadow-sm transition hover:bg-slate-50 md:w-auto"
                     title="Refresh"
                   >
                     <RefreshCw size={17} />
@@ -902,7 +902,7 @@ export default function AdminCashMovementsPage() {
                               No cash movements found
                             </h3>
 
-                            <p className="mt-1 text-sm font-semibold text-slate-500">
+                            <p className="mt-1 line-clamp-2 text-sm font-semibold text-slate-500">
                               Try clearing your search or filters.
                             </p>
                           </div>
@@ -923,7 +923,7 @@ export default function AdminCashMovementsPage() {
               </div>
             </div>
 
-            <aside className="space-y-5">
+            <aside className="min-w-0 space-y-5">
               <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="mb-5 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
@@ -1067,12 +1067,12 @@ export default function AdminCashMovementsPage() {
         </div>
 
         {selectedMovement && (
-          <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm lg:items-center">
-            <div className="my-8 w-full max-w-4xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
-              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
-                <div>
-                  <h3 className="text-2xl font-black text-slate-950">Cash Movement Details</h3>
-                  <p className="mt-1 text-sm font-semibold text-slate-500">
+          <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-3 backdrop-blur-sm sm:p-4 lg:items-center">
+            <div className="my-4 flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl sm:my-8">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 sm:p-6">
+                <div className="min-w-0">
+                  <h3 className="text-xl font-black text-slate-950 sm:text-2xl">Cash Movement Details</h3>
+                  <p className="mt-1 line-clamp-2 text-sm font-semibold text-slate-500">
                     Review transaction information, reference details, and related cash account.
                   </p>
                 </div>
@@ -1080,22 +1080,22 @@ export default function AdminCashMovementsPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedMovement(null)}
-                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
                 >
                   <X size={20} />
                 </button>
               </div>
 
-              <div className="space-y-6 p-6">
-                <div className="flex items-start gap-4 rounded-3xl border border-slate-200 bg-slate-50/70 p-5">
+              <div className="min-h-0 space-y-6 overflow-y-auto p-5 sm:p-6">
+                <div className="flex min-w-0 flex-col gap-4 rounded-3xl border border-slate-200 bg-slate-50/70 p-5 sm:flex-row sm:items-start">
                   <MovementIcon type={selectedMovement.type} amount={selectedMovement.amount} />
 
                   <div className="min-w-0 flex-1">
-                    <h4 className="text-xl font-black text-slate-950">
+                    <h4 className="line-clamp-2 text-xl font-black text-slate-950">
                       {selectedMovement.description || getTypeLabel(selectedMovement.type)}
                     </h4>
 
-                    <p className="mt-1 text-sm font-semibold text-slate-500">
+                    <p className="mt-1 line-clamp-2 text-sm font-semibold text-slate-500">
                       {selectedMovement.cash_accounts?.name || getAccountName(selectedMovement.cash_account_id)}
                     </p>
 
@@ -1105,7 +1105,7 @@ export default function AdminCashMovementsPage() {
                   </div>
 
                   <p
-                    className={`shrink-0 text-2xl font-black ${
+                    className={`shrink-0 text-left text-2xl font-black sm:text-right ${
                       isInflow(selectedMovement.type, selectedMovement.amount)
                         ? "text-emerald-600"
                         : isOutflow(selectedMovement.type, selectedMovement.amount)
@@ -1117,7 +1117,7 @@ export default function AdminCashMovementsPage() {
                   </p>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
                   <InfoBlock label="Movement ID" value={shortMovementId(selectedMovement.id)} />
                   <InfoBlock label="Cash Account" value={selectedMovement.cash_accounts?.name || getAccountName(selectedMovement.cash_account_id)} />
                   <InfoBlock
@@ -1140,7 +1140,7 @@ export default function AdminCashMovementsPage() {
                 </div>
 
                 <div className="rounded-2xl border border-slate-200 bg-white p-5">
-                  <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                  <p className="truncate text-xs font-black uppercase tracking-[0.12em] text-slate-400">
                     Description
                   </p>
 
@@ -1153,7 +1153,7 @@ export default function AdminCashMovementsPage() {
                   <button
                     type="button"
                     onClick={() => setSelectedMovement(null)}
-                    className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50"
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 sm:w-auto"
                   >
                     Close
                   </button>
@@ -1183,7 +1183,7 @@ function SummaryItem({
   iconClassName: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4">
+    <div className="flex min-w-0 items-center justify-between gap-4">
       <div className="flex min-w-0 items-center gap-3">
         <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${iconClassName}`}>
           {icon}
@@ -1195,7 +1195,7 @@ function SummaryItem({
         </div>
       </div>
 
-      <p className={`shrink-0 text-right font-black ${valueClassName}`}>{value}</p>
+      <p className={`min-w-0 max-w-[140px] truncate text-right font-black ${valueClassName}`}>{value}</p>
     </div>
   );
 }

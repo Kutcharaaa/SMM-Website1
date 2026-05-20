@@ -242,16 +242,16 @@ function StatCard({
   }[tone];
 
   return (
-    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <div className="flex items-start gap-4">
+    <div className="min-w-0 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+      <div className="flex min-w-0 items-start gap-4">
         <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-3xl ring-1 ${toneClass}`}>
           {icon}
         </div>
 
-        <div className="min-w-0">
-          <p className="text-sm font-bold text-slate-500">{title}</p>
-          <h3 className="mt-1 text-3xl font-black tracking-tight text-slate-950">{value}</h3>
-          <p className="mt-1 text-sm font-semibold text-slate-500">{subtitle}</p>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-bold text-slate-500">{title}</p>
+          <h3 className="mt-1 min-w-0 truncate text-3xl font-black tracking-tight text-slate-950">{value}</h3>
+          <p className="mt-1 line-clamp-2 text-sm font-semibold text-slate-500">{subtitle}</p>
         </div>
       </div>
     </div>
@@ -283,7 +283,7 @@ function ActionButton({
       title={title}
       onClick={onClick}
       disabled={disabled}
-      className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border bg-white transition disabled:cursor-not-allowed disabled:opacity-50 ${toneClass}`}
+      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border bg-white transition disabled:cursor-not-allowed disabled:opacity-50 ${toneClass}`}
     >
       {children}
     </button>
@@ -300,9 +300,9 @@ function InfoBlock({
   valueClassName?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-      <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">{label}</p>
-      <div className={`mt-2 text-sm font-black ${valueClassName}`}>{value}</div>
+    <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+      <p className="truncate text-xs font-black uppercase tracking-[0.12em] text-slate-400">{label}</p>
+      <div className={`mt-2 min-w-0 break-words text-sm font-black ${valueClassName}`}>{value}</div>
     </div>
   );
 }
@@ -842,9 +842,9 @@ async function loadServices() {
   return (
     <AdminGuard allowedRoles={["head_admin", "super_admin"]}>
       <AdminLayout>
-        <div className="space-y-6">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-            <div>
+        <div className="min-w-0 space-y-6">
+          <div className="flex min-w-0 flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+            <div className="min-w-0">
               <h2 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
                 Services
               </h2>
@@ -854,14 +854,14 @@ async function loadServices() {
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="grid w-full grid-cols-1 gap-3 sm:w-auto sm:grid-cols-3 xl:flex xl:flex-wrap xl:items-center">
               <button
                 type="button"
                 onClick={() => {
                   loadServices();
                   loadProviders();
                 }}
-                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50"
               >
                 <RefreshCw size={17} />
                 Refresh
@@ -870,7 +870,7 @@ async function loadServices() {
               <button
                 type="button"
                 onClick={() => setShowBulkImportModal(true)}
-                className="inline-flex items-center gap-2 rounded-2xl border border-blue-200 bg-white px-5 py-3 text-sm font-black text-blue-700 shadow-sm transition hover:bg-blue-50"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-blue-200 bg-white px-5 py-3 text-sm font-black text-blue-700 shadow-sm transition hover:bg-blue-50"
               >
                 <Import size={17} />
                 Bulk Import
@@ -879,7 +879,7 @@ async function loadServices() {
               <button
                 type="button"
                 onClick={openAddModal}
-                className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-blue-700"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-blue-700"
               >
                 <Plus size={17} />
                 Add Service
@@ -893,7 +893,7 @@ async function loadServices() {
             </div>
           )}
 
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
               title="Total Services"
               value={formatNumber(stats.total)}
@@ -927,10 +927,10 @@ async function loadServices() {
             />
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
-            <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
-              <div className="grid gap-4 border-b border-slate-100 p-5 xl:grid-cols-[1.2fr_0.65fr_0.65fr_0.55fr_0.55fr_auto]">
-                <div className="flex h-12 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 shadow-sm">
+          <div className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="min-w-0 overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+              <div className="grid min-w-0 grid-cols-1 gap-4 border-b border-slate-100 p-5 xl:grid-cols-[1.2fr_0.65fr_0.65fr_0.55fr_0.55fr_auto]">
+                <div className="flex h-12 min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 shadow-sm">
                   <Search size={18} className="text-slate-400" />
                   <input
                     value={search}
@@ -943,7 +943,7 @@ async function loadServices() {
                 <select
                   value={providerFilter}
                   onChange={(event) => setProviderFilter(event.target.value)}
-                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
                 >
                   <option value="all">All Providers</option>
                   <option value="manual">Manual</option>
@@ -957,7 +957,7 @@ async function loadServices() {
                 <select
                   value={categoryFilter}
                   onChange={(event) => setCategoryFilter(event.target.value)}
-                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
                 >
                   <option value="all">All Categories</option>
                   {categoryOptions.map((item) => (
@@ -970,7 +970,7 @@ async function loadServices() {
                 <select
                   value={statusFilter}
                   onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
-                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
                 >
                   {statusOptions.map((item) => (
                     <option key={item.value} value={item.value}>
@@ -982,7 +982,7 @@ async function loadServices() {
                 <select
                   value={autoOrderFilter}
                   onChange={(event) => setAutoOrderFilter(event.target.value as AutoOrderFilter)}
-                  className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
                 >
                   {autoOrderOptions.map((item) => (
                     <option key={item.value} value={item.value}>
@@ -1000,7 +1000,7 @@ async function loadServices() {
                     setStatusFilter("all");
                     setAutoOrderFilter("all");
                   }}
-                  className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50"
+                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50 xl:w-auto"
                 >
                   <Filter size={17} />
                 </button>
@@ -1010,12 +1010,12 @@ async function loadServices() {
                 <div className="flex flex-col gap-3 border-b border-orange-100 bg-orange-50 px-5 py-4 text-sm font-bold text-orange-700 sm:flex-row sm:items-center sm:justify-between">
                   <p>{selectedIds.length} services selected.</p>
 
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
                     <button
                       type="button"
                       onClick={deleteSelectedServices}
                       disabled={deletingServices}
-                      className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-xs font-black text-white transition hover:bg-red-700 disabled:opacity-50"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-xs font-black text-white transition hover:bg-red-700 disabled:opacity-50 sm:w-auto"
                     >
                       {deletingServices ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                       Delete Selected
@@ -1024,7 +1024,7 @@ async function loadServices() {
                     <button
                       type="button"
                       onClick={() => setSelectedIds([])}
-                      className="rounded-xl border border-orange-200 bg-white px-4 py-2 text-xs font-black text-orange-700 transition hover:bg-orange-50"
+                      className="w-full rounded-xl border border-orange-200 bg-white px-4 py-2 text-xs font-black text-orange-700 transition hover:bg-orange-50 sm:w-auto"
                     >
                       Clear Selection
                     </button>
@@ -1163,12 +1163,12 @@ async function loadServices() {
                   of <span className="font-black text-slate-800">{services.length}</span> services
                 </p>
 
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="grid w-full grid-cols-1 gap-3 sm:w-auto sm:grid-cols-3 xl:flex xl:flex-wrap xl:items-center">
                   <button
                     type="button"
                     onClick={deleteAllServices}
                     disabled={deletingServices || services.length <= 0}
-                    className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2 text-xs font-black text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2 text-xs font-black text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                   >
                     {deletingServices ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                     Delete All
@@ -1179,11 +1179,11 @@ async function loadServices() {
               </div>
             </div>
 
-            <aside className="space-y-5">
+            <aside className="min-w-0 space-y-5">
               <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="text-lg font-black text-slate-950">Services Summary</h3>
 
-                <div className="mt-5 flex items-center gap-5">
+                <div className="mt-5 flex flex-col gap-5 sm:flex-row sm:items-center">
                   <div
                     className="relative flex h-32 w-32 shrink-0 items-center justify-center rounded-full"
                     style={{
@@ -1197,7 +1197,7 @@ async function loadServices() {
                   </div>
 
                   <div className="min-w-0 flex-1 space-y-3">
-                    <div className="flex items-center justify-between gap-3 text-sm">
+                    <div className="flex min-w-0 items-center justify-between gap-3 text-sm">
                       <span className="flex items-center gap-2 font-bold text-slate-600">
                         <span className="h-3 w-3 rounded-full bg-emerald-500" />
                         Active
@@ -1207,7 +1207,7 @@ async function loadServices() {
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between gap-3 text-sm">
+                    <div className="flex min-w-0 items-center justify-between gap-3 text-sm">
                       <span className="flex items-center gap-2 font-bold text-slate-600">
                         <span className="h-3 w-3 rounded-full bg-red-500" />
                         Inactive
@@ -1231,7 +1231,7 @@ async function loadServices() {
                         <p className="truncate text-sm font-black text-slate-800">{item.category}</p>
                       </div>
 
-                      <p className="font-black text-slate-700">{formatNumber(item.count)}</p>
+                      <p className="shrink-0 font-black text-slate-700">{formatNumber(item.count)}</p>
                     </div>
                   ))}
 
@@ -1249,17 +1249,17 @@ async function loadServices() {
                 <div className="mt-5 space-y-3">
                   <div className="rounded-2xl bg-emerald-50 p-4">
                     <p className="text-sm font-black text-emerald-700">Average Price / 1000</p>
-                    <p className="mt-1 text-xl font-black text-slate-950">{formatMoney(stats.averagePrice)}</p>
+                    <p className="mt-1 truncate text-xl font-black text-slate-950">{formatMoney(stats.averagePrice)}</p>
                   </div>
 
                   <div className="rounded-2xl bg-blue-50 p-4">
                     <p className="text-sm font-black text-blue-700">Most Used Provider</p>
-                    <p className="mt-1 text-xl font-black text-slate-950">{stats.mostUsedProvider}</p>
+                    <p className="mt-1 truncate text-xl font-black text-slate-950">{stats.mostUsedProvider}</p>
                   </div>
 
                   <div className="rounded-2xl bg-orange-50 p-4">
                     <p className="text-sm font-black text-orange-700">Auto Order Rate</p>
-                    <p className="mt-1 text-xl font-black text-slate-950">{stats.autoPercent.toFixed(2)}%</p>
+                    <p className="mt-1 truncate text-xl font-black text-slate-950">{stats.autoPercent.toFixed(2)}%</p>
                   </div>
                 </div>
               </div>
@@ -1268,11 +1268,11 @@ async function loadServices() {
         </div>
 
         {(modalMode === "add" || modalMode === "edit") && (
-          <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm lg:items-center">
-            <div className="my-8 w-full max-w-6xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
-              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
-                <div>
-                  <h3 className="text-2xl font-black text-slate-950">
+          <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-3 backdrop-blur-sm sm:p-4 lg:items-center">
+            <div className="my-4 flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl sm:my-8">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 sm:p-6">
+                <div className="min-w-0">
+                  <h3 className="text-xl font-black text-slate-950 sm:text-2xl">
                     {modalMode === "edit" ? "Manage Service" : "Add Service"}
                   </h3>
                   <p className="mt-1 text-sm font-semibold text-slate-500">
@@ -1283,15 +1283,15 @@ async function loadServices() {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
                   disabled={savingService}
                 >
                   <X size={20} />
                 </button>
               </div>
 
-              <div className="grid max-h-[75vh] overflow-y-auto lg:grid-cols-[1fr_360px]">
-                <div className="space-y-5 p-6">
+              <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_360px]">
+                <div className="min-w-0 space-y-5 p-5 sm:p-6">
                   <div>
                     <h4 className="text-lg font-black text-slate-950">Service Information</h4>
                     <p className="mt-1 text-sm font-semibold text-slate-500">
@@ -1487,7 +1487,7 @@ async function loadServices() {
                   </div>
                 </div>
 
-                <div className="border-t border-slate-200 bg-slate-50/70 p-6 lg:border-l lg:border-t-0">
+                <div className="min-w-0 border-t border-slate-200 bg-slate-50/70 p-5 sm:p-6 lg:border-l lg:border-t-0">
                   <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                     <p className="text-sm font-black text-slate-700">Service Preview</p>
                     <p className="mt-1 text-xs font-semibold text-slate-500">
@@ -1498,7 +1498,7 @@ async function loadServices() {
                       <div className="flex items-start gap-4">
                         <PlatformIcon service={`${name} ${category}`} />
                         <div className="min-w-0">
-                          <h4 className="text-lg font-black text-slate-950">
+                          <h4 className="line-clamp-2 text-lg font-black text-slate-950">
                             {name || "Service Name"}
                           </h4>
                           <div className="mt-2">
@@ -1520,12 +1520,12 @@ async function loadServices() {
                 </div>
               </div>
 
-              <div className="flex flex-col justify-end gap-3 border-t border-slate-200 p-5 sm:flex-row">
+              <div className="flex flex-col-reverse justify-end gap-3 border-t border-slate-200 p-5 sm:flex-row">
                 <button
                   type="button"
                   onClick={closeModal}
                   disabled={savingService}
-                  className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 sm:w-auto"
                 >
                   Cancel
                 </button>
@@ -1534,7 +1534,7 @@ async function loadServices() {
                   type="button"
                   onClick={modalMode === "edit" ? updateService : addService}
                   disabled={savingService}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700 disabled:opacity-50"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700 disabled:opacity-50 sm:w-auto"
                 >
                   {savingService ? <Loader2 size={17} className="animate-spin" /> : <Plus size={17} />}
                   {savingService ? "Saving..." : modalMode === "edit" ? "Save Changes" : "Save Service"}
@@ -1545,11 +1545,11 @@ async function loadServices() {
         )}
 
         {modalMode === "view" && selectedService && (
-          <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm lg:items-center">
-            <div className="my-8 w-full max-w-4xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
-              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
-                <div>
-                  <h3 className="text-2xl font-black text-slate-950">Service Details</h3>
+          <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-3 backdrop-blur-sm sm:p-4 lg:items-center">
+            <div className="my-4 flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl sm:my-8">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 sm:p-6">
+                <div className="min-w-0">
+                  <h3 className="text-xl font-black text-slate-950 sm:text-2xl">Service Details</h3>
                   <p className="mt-1 text-sm font-semibold text-slate-500">
                     Review service pricing, provider settings, and order rules.
                   </p>
@@ -1558,18 +1558,18 @@ async function loadServices() {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
                 >
                   <X size={20} />
                 </button>
               </div>
 
-              <div className="space-y-6 p-6">
-                <div className="flex items-start gap-4 rounded-3xl border border-slate-200 bg-slate-50/70 p-5">
+              <div className="min-h-0 space-y-6 overflow-y-auto p-5 sm:p-6">
+                <div className="flex min-w-0 flex-col gap-4 rounded-3xl border border-slate-200 bg-slate-50/70 p-5 sm:flex-row sm:items-start">
                   <PlatformIcon service={`${selectedService.name} ${selectedService.category}`} />
                   <div className="min-w-0 flex-1">
-                    <h4 className="text-xl font-black text-slate-950">{selectedService.name}</h4>
-                    <p className="mt-1 text-sm font-semibold text-slate-500">{selectedService.description || "No description added."}</p>
+                    <h4 className="line-clamp-2 text-xl font-black text-slate-950">{selectedService.name}</h4>
+                    <p className="mt-1 line-clamp-3 text-sm font-semibold text-slate-500">{selectedService.description || "No description added."}</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <CategoryBadge category={selectedService.category} />
                       <StatusBadge status={selectedService.status} />
@@ -1577,7 +1577,7 @@ async function loadServices() {
                   </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
                   <InfoBlock label="Service ID" value={selectedService.id} />
                   <InfoBlock label="Price / 1000" value={formatMoney(selectedService.price_per_1000)} valueClassName="text-blue-600" />
                   <InfoBlock label="Min / Max" value={`${formatNumber(selectedService.min_quantity)} / ${formatNumber(selectedService.max_quantity)}`} />
@@ -1597,7 +1597,7 @@ async function loadServices() {
                       closeModal();
                       openManage(current);
                     }}
-                    className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700 sm:w-auto"
                   >
                     <Edit3 size={17} />
                     Edit Service
@@ -1609,11 +1609,11 @@ async function loadServices() {
         )}
 
         {showBulkImportModal && (
-          <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm lg:items-center">
-            <div className="my-8 w-full max-w-xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
-              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
-                <div>
-                  <h3 className="text-2xl font-black text-slate-950">Bulk Import Services</h3>
+          <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-3 backdrop-blur-sm sm:p-4 lg:items-center">
+            <div className="my-4 flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl sm:my-8">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 sm:p-6">
+                <div className="min-w-0">
+                  <h3 className="text-xl font-black text-slate-950 sm:text-2xl">Bulk Import Services</h3>
                   <p className="mt-1 text-sm font-semibold text-slate-500">
                     Import services from your provider API.
                   </p>
@@ -1622,14 +1622,14 @@ async function loadServices() {
                 <button
                   type="button"
                   onClick={() => setShowBulkImportModal(false)}
-                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
                   disabled={importingServices}
                 >
                   <X size={20} />
                 </button>
               </div>
 
-              <div className="space-y-5 p-6">
+              <div className="min-h-0 space-y-5 overflow-y-auto p-5 sm:p-6">
                 <div>
                   <label className="mb-2 block text-sm font-black text-slate-700">Provider</label>
                   <select
@@ -1652,12 +1652,12 @@ async function loadServices() {
                 </div>
               </div>
 
-              <div className="flex flex-col justify-end gap-3 border-t border-slate-200 p-5 sm:flex-row">
+              <div className="flex flex-col-reverse justify-end gap-3 border-t border-slate-200 p-5 sm:flex-row">
                 <button
                   type="button"
                   onClick={() => setShowBulkImportModal(false)}
                   disabled={importingServices}
-                  className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 sm:w-auto"
                 >
                   Cancel
                 </button>
@@ -1666,7 +1666,7 @@ async function loadServices() {
                   type="button"
                   onClick={bulkImportServices}
                   disabled={importingServices}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700 disabled:opacity-50"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700 disabled:opacity-50 sm:w-auto"
                 >
                   {importingServices ? <Loader2 size={17} className="animate-spin" /> : <Import size={17} />}
                   {importingServices ? "Importing..." : "Start Import"}

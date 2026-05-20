@@ -143,18 +143,15 @@ function formatTime(value?: string | null) {
 
 function getTicketCode(ticket: Ticket) {
   if (ticket.ticket_code) return ticket.ticket_code;
-
   return `TK-${ticket.id.slice(0, 6).toUpperCase()}`;
 }
 
 function getDisplayName(profile?: Profile | null) {
   if (!profile) return "User";
-
   if (profile.username) return profile.username;
   if (profile.full_name) return profile.full_name;
 
   const fullName = `${profile.firstname || ""} ${profile.lastname || ""}`.trim();
-
   return fullName || "User";
 }
 
@@ -162,7 +159,6 @@ function getFullName(profile?: Profile | null) {
   if (!profile) return "User";
 
   const fullName = `${profile.firstname || ""} ${profile.lastname || ""}`.trim();
-
   return fullName || profile.full_name || profile.username || "User";
 }
 
@@ -220,8 +216,16 @@ function getAverageResponse(replies: TicketReply[], tickets: Ticket[]) {
   const remainingMinutes = minutes % 60;
 
   if (hours <= 0) return `${remainingMinutes}m`;
-
   return `${hours}h ${remainingMinutes}m`;
+}
+
+function escapeHtml(value: string) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -273,7 +277,9 @@ function PriorityBadge({ priority }: { priority: string }) {
           : "bg-emerald-50 text-emerald-700 ring-emerald-100";
 
   return (
-    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-black ring-1 ${className}`}>
+    <span
+      className={`inline-flex rounded-full px-3 py-1 text-xs font-black ring-1 ${className}`}
+    >
       {clean}
     </span>
   );
@@ -317,20 +323,22 @@ function StatCard({
   }[tone];
 
   return (
-    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <div className="flex items-start gap-4">
+    <div className="min-w-0 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+      <div className="flex min-w-0 items-start gap-4">
         <div
           className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-3xl ring-1 ${toneClass}`}
         >
           {icon}
         </div>
 
-        <div className="min-w-0">
-          <p className="text-sm font-bold text-slate-500">{title}</p>
-          <h3 className="mt-1 text-3xl font-black tracking-tight text-slate-950">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-bold text-slate-500">{title}</p>
+
+          <h3 className="mt-1 min-w-0 truncate text-3xl font-black tracking-tight text-slate-950">
             {value}
           </h3>
-          <p className="mt-1 text-sm font-semibold text-slate-500">
+
+          <p className="mt-1 line-clamp-2 text-sm font-semibold text-slate-500">
             {subtitle}
           </p>
         </div>
@@ -351,22 +359,20 @@ function SummaryRow({
   percent?: string;
 }) {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex min-w-0 items-center gap-3">
       <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${dotClass}`} />
-      <p className="flex-1 text-sm font-black text-slate-700">{label}</p>
-      {percent && <p className="text-xs font-bold text-slate-400">{percent}</p>}
-      <p className="text-sm font-black text-slate-950">{value}</p>
+
+      <p className="min-w-0 flex-1 truncate text-sm font-black text-slate-700">
+        {label}
+      </p>
+
+      {percent && (
+        <p className="shrink-0 text-xs font-bold text-slate-400">{percent}</p>
+      )}
+
+      <p className="shrink-0 text-sm font-black text-slate-950">{value}</p>
     </div>
   );
-}
-
-function escapeHtml(value: string) {
-  return String(value || "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
 }
 
 export default function AdminTicketsPage() {
@@ -458,7 +464,7 @@ export default function AdminTicketsPage() {
       const matchesSearch =
         !query ||
         getTicketCode(ticket).toLowerCase().includes(query) ||
-        ticket.subject.toLowerCase().includes(query) ||
+        String(ticket.subject || "").toLowerCase().includes(query) ||
         String(ticket.category || "").toLowerCase().includes(query) ||
         getDisplayName(userProfile).toLowerCase().includes(query) ||
         getUserEmail(userProfile).toLowerCase().includes(query);
@@ -537,11 +543,13 @@ export default function AdminTicketsPage() {
   async function updateTicketStatus(ticket: Ticket, nextStatus: TicketStatus) {
     setMessage("");
 
+    const now = new Date().toISOString();
+
     const { error } = await supabase
       .from("tickets")
       .update({
         status: nextStatus,
-        updated_at: new Date().toISOString(),
+        updated_at: now,
       })
       .eq("id", ticket.id);
 
@@ -553,14 +561,14 @@ export default function AdminTicketsPage() {
     setTickets((current) =>
       current.map((item) =>
         item.id === ticket.id
-          ? { ...item, status: nextStatus, updated_at: new Date().toISOString() }
+          ? { ...item, status: nextStatus, updated_at: now }
           : item,
       ),
     );
 
     setSelectedTicket((current) =>
       current?.id === ticket.id
-        ? { ...current, status: nextStatus, updated_at: new Date().toISOString() }
+        ? { ...current, status: nextStatus, updated_at: now }
         : current,
     );
 
@@ -623,6 +631,7 @@ export default function AdminTicketsPage() {
     }
 
     setReplies((current) => [...current, newReply as TicketReply]);
+
     setTickets((current) =>
       current.map((item) =>
         item.id === selectedTicket.id
@@ -630,6 +639,7 @@ export default function AdminTicketsPage() {
           : item,
       ),
     );
+
     setSelectedTicket((current) =>
       current ? { ...current, status: "Answered", updated_at: now } : current,
     );
@@ -765,9 +775,9 @@ export default function AdminTicketsPage() {
   return (
     <AdminGuard allowedRoles={["admin", "head_admin", "super_admin"]}>
       <AdminLayout>
-        <div className="space-y-6">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-            <div>
+        <div className="min-w-0 space-y-6">
+          <div className="flex min-w-0 flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+            <div className="min-w-0">
               <h2 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
                 Tickets
               </h2>
@@ -777,11 +787,11 @@ export default function AdminTicketsPage() {
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="grid w-full grid-cols-1 gap-3 sm:w-auto sm:grid-cols-2 xl:flex xl:flex-wrap xl:items-center">
               <button
                 type="button"
                 onClick={loadTickets}
-                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50"
               >
                 <RefreshCw size={17} />
                 Refresh
@@ -790,7 +800,7 @@ export default function AdminTicketsPage() {
               <button
                 type="button"
                 onClick={exportTicketsToPDF}
-                className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-emerald-700"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-emerald-700"
               >
                 <Download size={17} />
                 Export PDF
@@ -804,7 +814,7 @@ export default function AdminTicketsPage() {
             </div>
           )}
 
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
+          <div className="grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-5">
             <StatCard
               title="Total Tickets"
               value={String(stats.total)}
@@ -846,12 +856,12 @@ export default function AdminTicketsPage() {
             />
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
-            <div className="space-y-5">
+          <div className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="min-w-0 space-y-5">
               <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="grid gap-4 xl:grid-cols-[1fr_190px_220px_190px_auto]">
-                  <div className="flex h-12 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 shadow-sm">
-                    <Search size={18} className="text-slate-400" />
+                <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[1fr_190px_220px_190px_auto]">
+                  <div className="flex h-12 min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 shadow-sm">
+                    <Search size={18} className="shrink-0 text-slate-400" />
 
                     <input
                       type="text"
@@ -865,7 +875,7 @@ export default function AdminTicketsPage() {
                   <select
                     value={statusFilter}
                     onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
-                    className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
+                    className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
                   >
                     {statusFilters.map((item) => (
                       <option key={item.value} value={item.value}>
@@ -877,7 +887,7 @@ export default function AdminTicketsPage() {
                   <select
                     value={categoryFilter}
                     onChange={(event) => setCategoryFilter(event.target.value as CategoryFilter)}
-                    className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
+                    className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
                   >
                     {categoryFilters.map((item) => (
                       <option key={item.value} value={item.value}>
@@ -889,7 +899,7 @@ export default function AdminTicketsPage() {
                   <select
                     value={priorityFilter}
                     onChange={(event) => setPriorityFilter(event.target.value as PriorityFilter)}
-                    className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
+                    className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
                   >
                     {priorityFilters.map((item) => (
                       <option key={item.value} value={item.value}>
@@ -906,7 +916,7 @@ export default function AdminTicketsPage() {
                       setCategoryFilter("all");
                       setPriorityFilter("all");
                     }}
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50"
+                    className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50 xl:w-auto"
                   >
                     <Filter size={17} />
                     Clear
@@ -914,7 +924,7 @@ export default function AdminTicketsPage() {
                 </div>
               </div>
 
-              <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+              <div className="min-w-0 overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[1160px] text-sm">
                     <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
@@ -932,86 +942,21 @@ export default function AdminTicketsPage() {
                     </thead>
 
                     <tbody>
-                      {filteredTickets.map((ticket) => {
-                        const userProfile = profileMap.get(ticket.user_id);
-                        const replyCount = replies.filter((reply) => reply.ticket_id === ticket.id).length;
-                        const lastUpdate = getLastUpdate(ticket, replies);
-
-                        return (
-                          <tr key={ticket.id} className="border-t border-slate-100 transition hover:bg-slate-50/70">
-                            <td className="px-5 py-5 align-top">
-                              <p className="font-black text-slate-950">
-                                {getTicketCode(ticket)}
-                              </p>
-                            </td>
-
-                            <td className="px-5 py-5 align-top">
-                              <div className="flex items-center gap-3">
-                                <UserAvatar profile={userProfile} />
-
-                                <div className="min-w-0">
-                                  <p className="max-w-[160px] truncate font-black text-slate-950">
-                                    {getFullName(userProfile)}
-                                  </p>
-                                  <p className="mt-1 max-w-[160px] truncate text-xs font-semibold text-slate-500">
-                                    {getUserEmail(userProfile)}
-                                  </p>
-                                </div>
+                      {loading ? (
+                        <tr>
+                          <td colSpan={9} className="px-5 py-16 text-center">
+                            <div className="mx-auto flex max-w-sm flex-col items-center">
+                              <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-slate-50 text-slate-400 ring-1 ring-slate-100">
+                                <RefreshCw size={26} className="animate-spin" />
                               </div>
-                            </td>
 
-                            <td className="px-5 py-5 align-top">
-                              <p className="max-w-[230px] truncate font-black text-slate-950">
-                                {ticket.subject}
-                              </p>
-                              <p className="mt-1 text-xs font-semibold text-slate-500">
-                                Created {formatDate(ticket.created_at)}
-                              </p>
-                            </td>
-
-                            <td className="px-5 py-5 align-top font-black text-slate-700">
-                              {ticket.category || "General Question"}
-                            </td>
-
-                            <td className="px-5 py-5 align-top">
-                              <PriorityBadge priority={ticket.priority} />
-                            </td>
-
-                            <td className="px-5 py-5 align-top">
-                              <StatusBadge status={ticket.status} />
-                            </td>
-
-                            <td className="px-5 py-5 align-top font-black text-slate-800">
-                              {replyCount}
-                            </td>
-
-                            <td className="px-5 py-5 align-top">
-                              <p className="font-black text-slate-800">
-                                {formatDate(lastUpdate)}
-                              </p>
-                              <p className="mt-1 text-xs font-semibold text-slate-500">
-                                {formatTime(lastUpdate)}
-                              </p>
-                            </td>
-
-                            <td className="px-5 py-5 align-top">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setSelectedTicket(ticket);
-                                  setReplyMessage("");
-                                }}
-                                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50"
-                                title="View ticket"
-                              >
-                                <Eye size={16} />
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-
-                      {filteredTickets.length <= 0 && (
+                              <h3 className="mt-4 text-lg font-black text-slate-950">
+                                Loading tickets...
+                              </h3>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : filteredTickets.length <= 0 ? (
                         <tr>
                           <td colSpan={9} className="px-5 py-16 text-center">
                             <div className="mx-auto flex max-w-sm flex-col items-center">
@@ -1029,6 +974,92 @@ export default function AdminTicketsPage() {
                             </div>
                           </td>
                         </tr>
+                      ) : (
+                        filteredTickets.map((ticket) => {
+                          const userProfile = profileMap.get(ticket.user_id);
+                          const replyCount = replies.filter(
+                            (reply) => reply.ticket_id === ticket.id,
+                          ).length;
+                          const lastUpdate = getLastUpdate(ticket, replies);
+
+                          return (
+                            <tr
+                              key={ticket.id}
+                              className="border-t border-slate-100 transition hover:bg-slate-50/70"
+                            >
+                              <td className="px-5 py-5 align-top">
+                                <p className="font-black text-slate-950">
+                                  {getTicketCode(ticket)}
+                                </p>
+                              </td>
+
+                              <td className="px-5 py-5 align-top">
+                                <div className="flex items-center gap-3">
+                                  <UserAvatar profile={userProfile} />
+
+                                  <div className="min-w-0">
+                                    <p className="max-w-[160px] truncate font-black text-slate-950">
+                                      {getFullName(userProfile)}
+                                    </p>
+                                    <p className="mt-1 max-w-[160px] truncate text-xs font-semibold text-slate-500">
+                                      {getUserEmail(userProfile)}
+                                    </p>
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td className="px-5 py-5 align-top">
+                                <p className="max-w-[230px] truncate font-black text-slate-950">
+                                  {ticket.subject}
+                                </p>
+                                <p className="mt-1 text-xs font-semibold text-slate-500">
+                                  Created {formatDate(ticket.created_at)}
+                                </p>
+                              </td>
+
+                              <td className="px-5 py-5 align-top font-black text-slate-700">
+                                <span className="block max-w-[180px] truncate">
+                                  {ticket.category || "General Question"}
+                                </span>
+                              </td>
+
+                              <td className="px-5 py-5 align-top">
+                                <PriorityBadge priority={ticket.priority} />
+                              </td>
+
+                              <td className="px-5 py-5 align-top">
+                                <StatusBadge status={ticket.status} />
+                              </td>
+
+                              <td className="px-5 py-5 align-top font-black text-slate-800">
+                                {replyCount}
+                              </td>
+
+                              <td className="px-5 py-5 align-top">
+                                <p className="font-black text-slate-800">
+                                  {formatDate(lastUpdate)}
+                                </p>
+                                <p className="mt-1 text-xs font-semibold text-slate-500">
+                                  {formatTime(lastUpdate)}
+                                </p>
+                              </td>
+
+                              <td className="px-5 py-5 align-top">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedTicket(ticket);
+                                    setReplyMessage("");
+                                  }}
+                                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50"
+                                  title="View ticket"
+                                >
+                                  <Eye size={16} />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
                       )}
                     </tbody>
                   </table>
@@ -1036,8 +1067,15 @@ export default function AdminTicketsPage() {
 
                 <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 text-sm font-semibold text-slate-500 sm:flex-row sm:items-center sm:justify-between">
                   <p>
-                    Showing <span className="font-black text-slate-800">{filteredTickets.length}</span>{" "}
-                    of <span className="font-black text-slate-800">{tickets.length}</span> tickets
+                    Showing{" "}
+                    <span className="font-black text-slate-800">
+                      {filteredTickets.length}
+                    </span>{" "}
+                    of{" "}
+                    <span className="font-black text-slate-800">
+                      {tickets.length}
+                    </span>{" "}
+                    tickets
                   </p>
 
                   <p>{loading ? "Loading tickets..." : "Ticket data loaded"}</p>
@@ -1045,7 +1083,7 @@ export default function AdminTicketsPage() {
               </div>
             </div>
 
-            <aside className="space-y-5">
+            <aside className="min-w-0 space-y-5">
               <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="mb-5 flex items-center gap-2">
                   <ShieldCheck size={18} className="text-emerald-600" />
@@ -1103,20 +1141,19 @@ export default function AdminTicketsPage() {
                 <div className="space-y-4">
                   {recentActivity.length <= 0 ? (
                     <p className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold text-slate-500">
-                      No recent ticket activity.
+                      No recent activity yet.
                     </p>
                   ) : (
                     recentActivity.map((item) => (
-                      <div key={item.id} className="flex items-start gap-3">
+                      <div key={item.id} className="flex min-w-0 items-start gap-3">
                         <span
-                          className={`mt-1 h-2.5 w-2.5 rounded-full ${
-                            String(item.role).toLowerCase() === "user"
+                          className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${
+                            String(item.role || "").toLowerCase() === "user"
                               ? "bg-orange-500"
                               : "bg-emerald-500"
                           }`}
                         />
-
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0">
                           <p className="truncate text-sm font-black text-slate-800">
                             {item.title}
                           </p>
@@ -1134,11 +1171,11 @@ export default function AdminTicketsPage() {
         </div>
 
         {selectedTicket && (
-          <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm lg:items-center">
-            <div className="my-8 w-full max-w-6xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
-              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
-                <div>
-                  <h3 className="text-2xl font-black text-slate-950">
+          <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-3 backdrop-blur-sm sm:p-4 lg:items-center">
+            <div className="my-4 flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl sm:my-8">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 sm:p-6">
+                <div className="min-w-0">
+                  <h3 className="line-clamp-2 text-xl font-black text-slate-950 sm:text-2xl">
                     {getTicketCode(selectedTicket)} · {selectedTicket.subject}
                   </h3>
 
@@ -1150,18 +1187,18 @@ export default function AdminTicketsPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedTicket(null)}
-                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
                 >
                   <X size={20} />
                 </button>
               </div>
 
-              <div className="grid max-h-[78vh] overflow-hidden xl:grid-cols-[1fr_340px]">
-                <div className="overflow-y-auto p-6">
-                  <div className="mb-5 grid gap-4 md:grid-cols-4">
+              <div className="grid min-h-0 flex-1 overflow-hidden xl:grid-cols-[minmax(0,1fr)_340px]">
+                <div className="min-w-0 overflow-y-auto p-5 sm:p-6">
+                  <div className="mb-5 grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
                     <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
                       <p className="text-xs font-black uppercase tracking-wide text-slate-400">Category</p>
-                      <p className="mt-2 text-sm font-black text-slate-900">{selectedTicket.category || "General Question"}</p>
+                      <p className="mt-2 break-words text-sm font-black text-slate-900">{selectedTicket.category || "General Question"}</p>
                     </div>
 
                     <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
@@ -1182,7 +1219,7 @@ export default function AdminTicketsPage() {
                     </div>
                   </div>
 
-                  <div className="space-y-4 rounded-3xl border border-slate-200 bg-slate-50/60 p-5">
+                  <div className="space-y-4 rounded-3xl border border-slate-200 bg-slate-50/60 p-4 sm:p-5">
                     {selectedReplies.length <= 0 ? (
                       <p className="rounded-2xl bg-white p-5 text-center text-sm font-semibold text-slate-500">
                         No replies yet.
@@ -1201,13 +1238,13 @@ export default function AdminTicketsPage() {
                             className={`flex ${isAdmin ? "justify-end" : "justify-start"}`}
                           >
                             <div
-                              className={`max-w-[78%] rounded-3xl px-5 py-4 shadow-sm ${
+                              className={`max-w-[92%] break-words rounded-3xl px-4 py-4 shadow-sm sm:max-w-[78%] sm:px-5 ${
                                 isAdmin
                                   ? "bg-emerald-600 text-white"
                                   : "border border-slate-200 bg-white text-slate-800"
                               }`}
                             >
-                              <div className="mb-2 flex items-center gap-2">
+                              <div className="mb-2 flex flex-wrap items-center gap-2">
                                 <span
                                   className={`text-xs font-black uppercase tracking-wide ${
                                     isAdmin ? "text-emerald-50" : "text-slate-500"
@@ -1225,7 +1262,7 @@ export default function AdminTicketsPage() {
                                 </span>
                               </div>
 
-                              <p className="whitespace-pre-wrap text-sm font-semibold leading-6">
+                              <p className="whitespace-pre-wrap break-words text-sm font-semibold leading-6">
                                 {reply.message || "No message content."}
                               </p>
                             </div>
@@ -1235,24 +1272,25 @@ export default function AdminTicketsPage() {
                     )}
                   </div>
 
-                  <div className="mt-5 rounded-3xl border border-slate-200 bg-white p-5">
-                    <label className="block text-sm font-black text-slate-700">
-                      Reply as Admin
-                    </label>
+                  <div className="mt-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="mb-3 flex items-center gap-2">
+                      <Reply size={18} className="text-emerald-600" />
+                      <h4 className="text-lg font-black text-slate-950">Admin Reply</h4>
+                    </div>
 
                     <textarea
                       value={replyMessage}
                       onChange={(event) => setReplyMessage(event.target.value)}
-                      placeholder="Type your reply to the customer..."
                       rows={5}
-                      className="mt-3 w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-emerald-300 focus:ring-4 focus:ring-emerald-50"
+                      placeholder="Write your reply to the customer..."
+                      className="w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold leading-6 text-slate-800 outline-none transition focus:border-emerald-300 focus:ring-4 focus:ring-emerald-50"
                     />
 
-                    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-end">
+                    <div className="mt-4 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                       <button
                         type="button"
                         onClick={() => updateTicketStatus(selectedTicket, "Pending")}
-                        className="rounded-2xl border border-orange-200 bg-white px-5 py-3 text-sm font-black text-orange-600 transition hover:bg-orange-50"
+                        className="w-full rounded-2xl border border-orange-200 bg-white px-5 py-3 text-sm font-black text-orange-600 transition hover:bg-orange-50 sm:w-auto"
                       >
                         Mark Pending
                       </button>
@@ -1261,7 +1299,7 @@ export default function AdminTicketsPage() {
                         type="button"
                         onClick={sendAdminReply}
                         disabled={replying || !replyMessage.trim()}
-                        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                       >
                         {replying ? <RefreshCw size={17} className="animate-spin" /> : <Send size={17} />}
                         {replying ? "Sending..." : "Send Reply"}
@@ -1270,7 +1308,7 @@ export default function AdminTicketsPage() {
                   </div>
                 </div>
 
-                <aside className="overflow-y-auto border-t border-slate-200 bg-slate-50/70 p-6 xl:border-l xl:border-t-0">
+                <aside className="min-w-0 overflow-y-auto border-t border-slate-200 bg-slate-50/70 p-5 sm:p-6 xl:border-l xl:border-t-0">
                   <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                     <h4 className="text-lg font-black text-slate-950">Customer</h4>
 

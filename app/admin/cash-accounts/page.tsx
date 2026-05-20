@@ -144,16 +144,16 @@ function StatCard({
   }[tone];
 
   return (
-    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <div className="flex items-start gap-4">
-        <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-3xl ring-1 ${toneClass}`}>
+    <div className="min-w-0 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+      <div className="flex min-w-0 items-start gap-4">
+        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ring-1 sm:h-14 sm:w-14 sm:rounded-3xl ${toneClass}`}>
           {icon}
         </div>
 
-        <div className="min-w-0">
-          <p className="text-sm font-bold text-slate-500">{title}</p>
-          <h3 className="mt-1 text-3xl font-black tracking-tight text-slate-950">{value}</h3>
-          <p className="mt-1 text-sm font-semibold text-slate-500">{subtitle}</p>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-bold text-slate-500">{title}</p>
+          <h3 className="mt-1 min-w-0 truncate text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">{value}</h3>
+          <p className="mt-1 line-clamp-2 text-sm font-semibold text-slate-500">{subtitle}</p>
         </div>
       </div>
     </div>
@@ -193,7 +193,7 @@ function StatusBadge({ status }: { status?: string | null }) {
 
   return (
     <span
-      className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-black ring-1 ${
+      className={`inline-flex shrink-0 items-center gap-2 rounded-full px-3 py-1 text-xs font-black ring-1 ${
         active
           ? "bg-emerald-50 text-emerald-700 ring-emerald-100"
           : "bg-red-50 text-red-700 ring-red-100"
@@ -218,7 +218,7 @@ function TypeBadge({ type }: { type?: string | null }) {
           : "bg-slate-100 text-slate-700 ring-slate-200";
 
   return (
-    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-black ring-1 ${className}`}>
+    <span className={`inline-flex shrink-0 rounded-full px-3 py-1 text-xs font-black ring-1 ${className}`}>
       {getTypeLabel(type)}
     </span>
   );
@@ -302,7 +302,7 @@ function PreviewAccountCard({
   const displayDescription = description || "This is a short description of the account.";
 
   return (
-    <div className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="min-w-0 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
       <p className="text-sm font-black text-slate-700">Live Preview</p>
       <p className="mt-1 text-xs font-semibold text-slate-500">This is how the account will appear.</p>
 
@@ -311,20 +311,20 @@ function PreviewAccountCard({
           <AccountIcon iconUrl={iconUrl} name={displayName} size="lg" />
         </div>
 
-        <h4 className="mt-5 text-2xl font-black text-slate-950">{displayName}</h4>
-        <p className="mt-1 text-sm font-semibold text-slate-500">{displayProvider}</p>
+        <h4 className="mt-5 min-w-0 truncate text-xl font-black text-slate-950 sm:text-2xl">{displayName}</h4>
+        <p className="mt-1 min-w-0 truncate text-sm font-semibold text-slate-500">{displayProvider}</p>
 
         <div className="my-5 border-t border-slate-100" />
 
         <p className="text-sm font-bold text-slate-500">Balance</p>
-        <p className="mt-1 text-3xl font-black text-slate-950">{formatMoney(balance)}</p>
+        <p className="mt-1 min-w-0 truncate text-2xl font-black text-slate-950 sm:text-3xl">{formatMoney(balance)}</p>
 
-        <div className="mt-4 flex justify-center gap-2">
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
           <TypeBadge type={type} />
           <StatusBadge status={status} />
         </div>
 
-        <p className="mt-5 text-sm font-semibold leading-6 text-slate-500">{displayDescription}</p>
+        <p className="mt-5 break-words text-sm font-semibold leading-6 text-slate-500">{displayDescription}</p>
         <p className="mt-4 text-sm font-black text-slate-500">{currency || "PHP"} (₱)</p>
       </div>
     </div>
@@ -349,13 +349,13 @@ function DonutChart({ accounts, total }: { accounts: CashAccount[]; total: numbe
           .join(", ");
 
   return (
-    <div className="flex items-center gap-6">
+    <div className="flex min-w-0 flex-col items-center gap-6 sm:flex-row">
       <div
-        className="relative flex h-40 w-40 shrink-0 items-center justify-center rounded-full"
+        className="relative flex h-36 w-36 shrink-0 items-center justify-center rounded-full sm:h-40 sm:w-40"
         style={{ background: `conic-gradient(${gradient})` }}
       >
-        <div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-white shadow-inner">
-          <p className="text-base font-black text-slate-950">{formatMoney(total)}</p>
+        <div className="flex h-24 w-24 flex-col items-center justify-center rounded-full bg-white px-2 text-center shadow-inner">
+          <p className="max-w-[88px] truncate text-sm font-black text-slate-950 sm:text-base">{formatMoney(total)}</p>
           <p className="text-xs font-bold text-slate-500">Total Balance</p>
         </div>
       </div>
@@ -374,7 +374,7 @@ function DonutChart({ accounts, total }: { accounts: CashAccount[]; total: numbe
                   <span className={`h-3 w-3 shrink-0 rounded-full ${colors[index]}`} />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-black text-slate-800">{account.name}</p>
-                    <p className="text-xs font-semibold text-slate-500">{formatMoney(account.balance)}</p>
+                    <p className="truncate text-xs font-semibold text-slate-500">{formatMoney(account.balance)}</p>
                   </div>
                 </div>
 
@@ -646,14 +646,14 @@ export default function AdminCashAccountsPage() {
   return (
     <AdminGuard allowedRoles={["head_admin", "super_admin"]}>
       <AdminLayout>
-        <div className="space-y-6">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-            <div className="flex items-start gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-purple-600 text-white shadow-sm">
+        <div className="min-w-0 space-y-6">
+          <div className="flex min-w-0 flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+            <div className="flex min-w-0 items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-3xl bg-purple-600 text-white shadow-sm sm:h-14 sm:w-14">
                 <Landmark size={25} />
               </div>
 
-              <div>
+              <div className="min-w-0">
                 <h2 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
                   Cash Accounts
                 </h2>
@@ -667,7 +667,7 @@ export default function AdminCashAccountsPage() {
             <button
               type="button"
               onClick={openAddModal}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-blue-700"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-blue-700 sm:w-auto"
             >
               <Plus size={18} />
               Add Cash Account
@@ -680,7 +680,7 @@ export default function AdminCashAccountsPage() {
             </div>
           )}
 
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
               title="Total Balance"
               value={formatMoney(stats.totalBalance)}
@@ -714,18 +714,18 @@ export default function AdminCashAccountsPage() {
             />
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-[1fr_430px]">
-            <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
-              <div className="flex flex-col gap-4 border-b border-slate-100 p-5 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <h3 className="text-xl font-black text-slate-950">Cash Accounts</h3>
+          <div className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_430px]">
+            <div className="min-w-0 overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+              <div className="flex min-w-0 flex-col gap-4 border-b border-slate-100 p-5 lg:flex-row lg:items-center lg:justify-between">
+                <div className="min-w-0">
+                  <h3 className="truncate text-xl font-black text-slate-950">Cash Accounts</h3>
                   <p className="mt-1 text-sm font-semibold text-slate-500">
                     Showing {filteredAccounts.length} of {accounts.length} accounts.
                   </p>
                 </div>
 
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <div className="flex h-11 min-w-[260px] items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 shadow-sm">
+                <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:w-auto lg:grid-cols-[minmax(260px,1fr)_auto_auto]">
+                  <div className="flex h-11 min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 shadow-sm">
                     <Search size={18} className="text-slate-400" />
                     <input
                       value={search}
@@ -738,7 +738,7 @@ export default function AdminCashAccountsPage() {
                   <select
                     value={statusFilter}
                     onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
-                    className="h-11 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
+                    className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
                   >
                     {statusOptions.map((item) => (
                       <option key={item.value} value={item.value}>
@@ -753,7 +753,7 @@ export default function AdminCashAccountsPage() {
                       loadAccounts();
                       loadMovements();
                     }}
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50"
+                    className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50 lg:w-auto"
                   >
                     <RefreshCw size={17} />
                     Refresh
@@ -783,11 +783,11 @@ export default function AdminCashAccountsPage() {
                         </td>
 
                         <td className="px-5 py-5 align-top">
-                          <div className="flex items-start gap-4">
+                          <div className="flex min-w-0 items-start gap-4">
                             <AccountIcon iconUrl={account.icon_url} name={account.name} size="md" />
 
                             <div className="min-w-0">
-                              <p className="font-black text-slate-950">{account.name}</p>
+                              <p className="max-w-[250px] truncate font-black text-slate-950">{account.name}</p>
                               <p className="mt-1 max-w-[250px] truncate text-sm font-semibold text-slate-500">
                                 {account.description || "No description added."}
                               </p>
@@ -800,14 +800,14 @@ export default function AdminCashAccountsPage() {
                         </td>
 
                         <td className="px-5 py-5 align-top">
-                          <p className="font-black text-slate-950">{formatMoney(account.balance)}</p>
+                          <p className="whitespace-nowrap font-black text-slate-950">{formatMoney(account.balance)}</p>
                           <p className="mt-1 text-xs font-semibold text-slate-400">
                             Available balance
                           </p>
                         </td>
 
                         <td className="px-5 py-5 align-top">
-                          <p className="font-black text-slate-800">
+                          <p className="max-w-[180px] truncate font-black text-slate-800">
                             {account.account_number || account.currency || "—"}
                           </p>
                           <p className="mt-1 text-xs font-semibold text-slate-400">
@@ -885,9 +885,9 @@ export default function AdminCashAccountsPage() {
               </div>
             </div>
 
-            <aside className="space-y-5">
+            <aside className="min-w-0 space-y-5">
               <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="text-xl font-black text-slate-950">Account Summary</h3>
+                <h3 className="truncate text-xl font-black text-slate-950">Account Summary</h3>
 
                 <div className="mt-6">
                   <DonutChart accounts={accounts} total={stats.totalBalance} />
@@ -896,20 +896,20 @@ export default function AdminCashAccountsPage() {
 
               <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="mb-5 flex items-center justify-between gap-4">
-                  <h3 className="text-xl font-black text-slate-950">Recent Cash Movements</h3>
+                  <h3 className="min-w-0 truncate text-xl font-black text-slate-950">Recent Cash Movements</h3>
 
-                  <button className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-black text-blue-700 transition hover:bg-slate-50">
+                  <button className="shrink-0 rounded-xl border border-slate-200 px-4 py-2 text-xs font-black text-blue-700 transition hover:bg-slate-50">
                     View All
                   </button>
                 </div>
 
-                <div className="space-y-4">
+                <div className="min-w-0 space-y-4">
                   {recentMovements.map((movement) => {
                     const inflow = isInflow(movement.type);
                     const outflow = isOutflow(movement.type);
 
                     return (
-                      <div key={movement.id} className="flex items-start gap-3">
+                      <div key={movement.id} className="flex min-w-0 items-start gap-3">
                         <div
                           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${
                             inflow
@@ -969,11 +969,11 @@ export default function AdminCashAccountsPage() {
         </div>
 
         {showModal && (
-          <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm lg:items-center">
-            <div className="my-8 w-full max-w-6xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
-              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
-                <div>
-                  <h3 className="text-2xl font-black text-slate-950">
+          <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-3 backdrop-blur-sm sm:p-4 lg:items-center">
+            <div className="my-4 flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl sm:my-8">
+              <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 sm:p-6">
+                <div className="min-w-0">
+                  <h3 className="text-xl font-black text-slate-950 sm:text-2xl">
                     {selectedAccount ? "Manage Cash Account" : "Add Cash Account"}
                   </h3>
 
@@ -989,15 +989,15 @@ export default function AdminCashAccountsPage() {
                     setSelectedAccount(null);
                     resetForm();
                   }}
-                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
                   disabled={saving || uploadingIcon}
                 >
                   <X size={20} />
                 </button>
               </div>
 
-              <div className="grid max-h-[75vh] overflow-y-auto lg:grid-cols-[1fr_390px]">
-                <div className="space-y-5 p-6">
+              <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_390px]">
+                <div className="min-w-0 space-y-5 p-5 sm:p-6">
                   <div>
                     <h4 className="text-lg font-black text-slate-950">Account Information</h4>
                     <p className="mt-1 text-sm font-semibold text-slate-500">
@@ -1012,7 +1012,7 @@ export default function AdminCashAccountsPage() {
                     onRemove={() => setIconUrl("")}
                   />
 
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
                       <label className="mb-2 block text-sm font-black text-slate-700">
                         Account Name <span className="text-red-500">*</span>
@@ -1176,7 +1176,7 @@ export default function AdminCashAccountsPage() {
                   </div>
                 </div>
 
-                <div className="border-t border-slate-200 bg-slate-50/70 p-6 lg:border-l lg:border-t-0">
+                <div className="border-t border-slate-200 bg-slate-50/70 p-5 sm:p-6 lg:border-l lg:border-t-0">
                   <PreviewAccountCard
                     name={name}
                     type={type}
@@ -1190,7 +1190,7 @@ export default function AdminCashAccountsPage() {
                 </div>
               </div>
 
-              <div className="flex flex-col justify-end gap-3 border-t border-slate-200 p-5 sm:flex-row">
+              <div className="flex flex-col-reverse justify-end gap-3 border-t border-slate-200 p-5 sm:flex-row">
                 <button
                   type="button"
                   onClick={() => {
@@ -1199,7 +1199,7 @@ export default function AdminCashAccountsPage() {
                     resetForm();
                   }}
                   disabled={saving || uploadingIcon}
-                  className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 >
                   Cancel
                 </button>
@@ -1209,7 +1209,7 @@ export default function AdminCashAccountsPage() {
                     type="button"
                     onClick={() => deleteAccount(selectedAccount)}
                     disabled={saving || uploadingIcon}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-200 bg-white px-5 py-3 text-sm font-black text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-red-200 bg-white px-5 py-3 text-sm font-black text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                   >
                     <Trash2 size={17} />
                     Delete
@@ -1220,7 +1220,7 @@ export default function AdminCashAccountsPage() {
                   type="button"
                   onClick={saveAccount}
                   disabled={saving || uploadingIcon}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 >
                   {saving ? <Loader2 size={17} className="animate-spin" /> : <Save size={17} />}
                   {saving ? "Saving..." : selectedAccount ? "Save Changes" : "Save Cash Account"}
@@ -1234,8 +1234,8 @@ export default function AdminCashAccountsPage() {
           <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm lg:items-center">
             <div className="my-8 w-full max-w-4xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
               <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
-                <div>
-                  <h3 className="text-2xl font-black text-slate-950">Cash Account Preview</h3>
+                <div className="min-w-0">
+                  <h3 className="text-xl font-black text-slate-950 sm:text-2xl">Cash Account Preview</h3>
                   <p className="mt-1 text-sm font-semibold text-slate-500">
                     Review account details, balance, status, and linked information.
                   </p>
@@ -1244,20 +1244,20 @@ export default function AdminCashAccountsPage() {
                 <button
                   type="button"
                   onClick={() => setPreviewAccount(null)}
-                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
                 >
                   <X size={20} />
                 </button>
               </div>
 
-              <div className="grid gap-6 p-6 lg:grid-cols-[1fr_320px]">
-                <div className="space-y-4">
+              <div className="grid min-w-0 grid-cols-1 gap-6 overflow-y-auto p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+                <div className="min-w-0 space-y-4">
                   <div className="rounded-3xl border border-slate-200 bg-slate-50/60 p-5">
-                    <div className="flex items-center gap-4">
+                    <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
                       <AccountIcon iconUrl={previewAccount.icon_url} name={previewAccount.name} size="lg" />
-                      <div>
-                        <h4 className="text-2xl font-black text-slate-950">{previewAccount.name}</h4>
-                        <p className="mt-1 text-sm font-semibold text-slate-500">
+                      <div className="min-w-0">
+                        <h4 className="min-w-0 break-words text-xl font-black text-slate-950 sm:text-2xl">{previewAccount.name}</h4>
+                        <p className="mt-1 min-w-0 break-words text-sm font-semibold text-slate-500">
                           {previewAccount.account_number || previewAccount.currency || "Cash account"}
                         </p>
                         <div className="mt-2 flex flex-wrap gap-2">
@@ -1268,39 +1268,39 @@ export default function AdminCashAccountsPage() {
                     </div>
                   </div>
 
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
                       <p className="text-xs font-black uppercase tracking-wide text-slate-400">Balance</p>
-                      <p className="mt-2 text-2xl font-black text-emerald-600">
+                      <p className="mt-2 min-w-0 truncate text-2xl font-black text-emerald-600">
                         {formatMoney(previewAccount.balance)}
                       </p>
                     </div>
 
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
                       <p className="text-xs font-black uppercase tracking-wide text-slate-400">Currency</p>
-                      <p className="mt-2 text-sm font-black text-slate-900">{previewAccount.currency || "PHP"}</p>
+                      <p className="mt-2 break-words text-sm font-black text-slate-900">{previewAccount.currency || "PHP"}</p>
                     </div>
 
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
                       <p className="text-xs font-black uppercase tracking-wide text-slate-400">Account Number / Reference</p>
-                      <p className="mt-2 text-sm font-black text-slate-900">{previewAccount.account_number || "—"}</p>
+                      <p className="mt-2 break-words text-sm font-black text-slate-900">{previewAccount.account_number || "—"}</p>
                     </div>
 
                     <div className="rounded-2xl border border-slate-200 bg-white p-4">
                       <p className="text-xs font-black uppercase tracking-wide text-slate-400">Created</p>
-                      <p className="mt-2 text-sm font-black text-slate-900">{formatDate(previewAccount.created_at)}</p>
+                      <p className="mt-2 break-words text-sm font-black text-slate-900">{formatDate(previewAccount.created_at)}</p>
                     </div>
                   </div>
 
                   <div className="rounded-2xl border border-slate-200 bg-white p-4">
                     <p className="text-xs font-black uppercase tracking-wide text-slate-400">Description</p>
-                    <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
+                    <p className="mt-2 break-words text-sm font-semibold leading-6 text-slate-600">
                       {previewAccount.description || "No description added."}
                     </p>
                   </div>
                 </div>
 
-                <div className="rounded-[24px] border border-slate-200 bg-slate-50/70 p-5">
+                <div className="min-w-0 rounded-[24px] border border-slate-200 bg-slate-50/70 p-5">
                   <p className="text-sm font-black text-slate-700">Quick Actions</p>
 
                   <div className="mt-4 space-y-3">
