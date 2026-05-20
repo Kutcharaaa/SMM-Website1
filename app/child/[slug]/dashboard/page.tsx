@@ -65,25 +65,6 @@ type Deposit = {
   created_at: string;
 };
 
-type ChildOrder = {
-  id: string;
-  service_id: string | null;
-  service_name: string;
-  link: string;
-  quantity: number;
-  base_price: number;
-  customer_price: number;
-  markup_percent: number;
-  owner_profit: number;
-  start_count: number | null;
-  current_count: number | null;
-  status: string;
-  provider_order_id: string | null;
-  provider_name: string | null;
-  comments?: string | null;
-  order_type?: string | null;
-  created_at: string;
-};
 
 type ChildService = {
   id: string;
@@ -116,47 +97,6 @@ function formatNumber(value: number | string | null | undefined) {
 function calculateCharge(pricePer1000: number, quantity: number) {
   if (!Number.isFinite(pricePer1000) || !Number.isFinite(quantity)) return 0;
   return Number(((quantity / 1000) * pricePer1000).toFixed(6));
-}
-
-function isCustomCommentsService(service?: ChildService | null) {
-  if (!service) return false;
-
-  const text = `${service.name || ""} ${service.category || ""} ${service.description || ""}`.toLowerCase();
-
-  return (
-    text.includes("custom comment") ||
-    text.includes("comments custom") ||
-    text.includes("comment custom") ||
-    text.includes("custom comments") ||
-    text.includes("comment per line") ||
-    text.includes("comments per line") ||
-    text.includes("1 per line") ||
-    text.includes("1per line") ||
-    text.includes("own comments") ||
-    text.includes("user comments")
-  );
-}
-
-function countCustomCommentLines(value: string) {
-  return value
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean).length;
-}
-
-function getCustomCommentLines(value: string) {
-  return value
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-}
-
-function getServiceMinimum(service?: ChildService | null) {
-  return Math.max(1, Number(service?.min_quantity || 1));
-}
-
-function getServiceMaximum(service?: ChildService | null) {
-  return Math.max(getServiceMinimum(service), Number(service?.max_quantity || 1000000));
 }
 
 function getAccentShadow(color: string) {
@@ -227,45 +167,6 @@ function getDepositStatusLabel(status?: string | null) {
   if (clean === "failed") return "Failed";
 
   return "Pending";
-}
-
-function getOrderStatusStyle(status?: string | null) {
-  const clean = String(status || "pending").toLowerCase();
-
-  if (clean === "completed") {
-    return "bg-emerald-500/10 text-emerald-200 ring-emerald-400/20";
-  }
-
-  if (clean === "processing") {
-    return "bg-blue-500/10 text-blue-200 ring-blue-400/20";
-  }
-
-  if (clean === "partial") {
-    return "bg-purple-500/10 text-purple-200 ring-purple-400/20";
-  }
-
-  if (["failed", "cancelled", "canceled", "rejected"].includes(clean)) {
-    return "bg-red-500/10 text-red-200 ring-red-400/20";
-  }
-
-  return "bg-orange-500/10 text-orange-200 ring-orange-400/20";
-}
-
-function getOrderStatusLabel(status?: string | null) {
-  const clean = String(status || "pending").toLowerCase();
-
-  if (clean === "completed") return "Completed";
-  if (clean === "processing") return "Processing";
-  if (clean === "partial") return "Partial";
-  if (clean === "failed") return "Failed";
-  if (clean === "cancelled" || clean === "canceled") return "Cancelled";
-  if (clean === "rejected") return "Rejected";
-
-  return "Pending";
-}
-
-function shortId(value?: string | null) {
-  return `#${String(value || "").slice(0, 8).toUpperCase()}`;
 }
 
 function StatCard({
@@ -358,9 +259,6 @@ export default function ChildPanelDashboardPage() {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [deposits, setDeposits] = useState<Deposit[]>([]);
   const [loadingDeposits, setLoadingDeposits] = useState(false);
-  const [orders, setOrders] = useState<ChildOrder[]>([]);
-  const [loadingOrders, setLoadingOrders] = useState(false);
-  const [orderSearch, setOrderSearch] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -377,14 +275,10 @@ export default function ChildPanelDashboardPage() {
   const [services, setServices] = useState<ChildService[]>([]);
   const [loadingServices, setLoadingServices] = useState(false);
   const [serviceSearch, setServiceSearch] = useState("");
-  const [selectedPlatformFilter, setSelectedPlatformFilter] = useState("All");
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("All");
   const [newOrderOpen, setNewOrderOpen] = useState(false);
   const [selectedServiceId, setSelectedServiceId] = useState("");
   const [orderLink, setOrderLink] = useState("");
   const [orderQuantity, setOrderQuantity] = useState("");
-  const [orderComments, setOrderComments] = useState("");
-  const [submittingOrder, setSubmittingOrder] = useState(false);
 
   const primaryColor = panel?.primary_color || "#ff4f8b";
 
@@ -417,154 +311,30 @@ export default function ChildPanelDashboardPage() {
     };
   }, [deposits]);
 
-  const orderStats = useMemo(() => {
-    const active = orders.filter((order) => {
-      const clean = String(order.status || "pending").toLowerCase();
-      return ["pending", "processing", "partial"].includes(clean);
-    }).length;
-
-    const completed = orders.filter(
-      (order) => String(order.status || "").toLowerCase() === "completed",
-    ).length;
-
-    return {
-      total: orders.length,
-      active,
-      completed,
-    };
-  }, [orders]);
-
-  const filteredOrders = useMemo(() => {
-    const query = orderSearch.toLowerCase().trim();
-
-    return orders.filter((order) => {
-      if (!query) return true;
-
-      return (
-        String(order.id || "").toLowerCase().includes(query) ||
-        String(order.service_name || "").toLowerCase().includes(query) ||
-        String(order.link || "").toLowerCase().includes(query) ||
-        String(order.status || "").toLowerCase().includes(query) ||
-        String(order.provider_order_id || "").toLowerCase().includes(query)
-      );
-    });
-  }, [orderSearch, orders]);
-
-  const servicePlatforms = useMemo(() => {
-    const priority = [
-      "Instagram",
-      "TikTok",
-      "YouTube",
-      "Facebook",
-      "Telegram",
-      "Spotify",
-      "Twitter",
-      "Twitch",
-      "Discord",
-      "Website",
-      "Other",
-    ];
-
-    const existing = Array.from(
-      new Set(
-        services
-          .map((service) => String(service.platform || "Other").trim() || "Other")
-          .filter(Boolean),
-      ),
-    );
-
-    return [
-      "All",
-      ...priority.filter((platform) => existing.includes(platform)),
-      ...existing
-        .filter((platform) => !priority.includes(platform))
-        .sort((a, b) => a.localeCompare(b)),
-    ];
-  }, [services]);
-
-  const serviceCategories = useMemo(() => {
-    const rows = services.filter((service) => {
-      if (selectedPlatformFilter === "All") return true;
-      return String(service.platform || "Other") === selectedPlatformFilter;
-    });
-
-    return [
-      "All",
-      ...Array.from(
-        new Set(
-          rows
-            .map((service) => String(service.category || "Uncategorized").trim())
-            .filter(Boolean),
-        ),
-      ).sort((a, b) => a.localeCompare(b)),
-    ];
-  }, [selectedPlatformFilter, services]);
-
   const filteredServices = useMemo(() => {
     const query = serviceSearch.toLowerCase().trim();
 
-    return services
-      .filter((service) => {
-        const platform = String(service.platform || "Other");
-        const category = String(service.category || "Uncategorized");
+    return services.filter((service) => {
+      if (!query) return true;
 
-        const matchesPlatform =
-          selectedPlatformFilter === "All" || platform === selectedPlatformFilter;
-
-        const matchesCategory =
-          selectedCategoryFilter === "All" || category === selectedCategoryFilter;
-
-        const matchesSearch =
-          !query ||
-          String(service.id || "").toLowerCase().includes(query) ||
-          String(service.name || "").toLowerCase().includes(query) ||
-          String(service.platform || "").toLowerCase().includes(query) ||
-          String(service.category || "").toLowerCase().includes(query);
-
-        return matchesPlatform && matchesCategory && matchesSearch;
-      })
-      .sort((a, b) => {
-        const priceA = Number(a.customer_price_per_1000 || 0);
-        const priceB = Number(b.customer_price_per_1000 || 0);
-
-        if (priceA !== priceB) return priceA - priceB;
-
-        return String(a.name || "").localeCompare(String(b.name || ""));
-      });
-  }, [
-    selectedCategoryFilter,
-    selectedPlatformFilter,
-    serviceSearch,
-    services,
-  ]);
-
-  const featuredServices = useMemo(() => {
-    return filteredServices.slice(0, 20);
-  }, [filteredServices]);
+      return (
+        String(service.id || "").toLowerCase().includes(query) ||
+        String(service.name || "").toLowerCase().includes(query) ||
+        String(service.platform || "").toLowerCase().includes(query) ||
+        String(service.category || "").toLowerCase().includes(query)
+      );
+    });
+  }, [serviceSearch, services]);
 
   const selectedService = useMemo(() => {
     return services.find((service) => service.id === selectedServiceId) || null;
   }, [selectedServiceId, services]);
 
-  const selectedServiceRequiresComments = useMemo(() => {
-    return isCustomCommentsService(selectedService);
-  }, [selectedService]);
-
-  const customCommentLines = useMemo(() => {
-    return getCustomCommentLines(orderComments);
-  }, [orderComments]);
-
-  const customCommentQuantity = customCommentLines.length;
-
   const orderQuantityNumber = useMemo(() => {
-    if (selectedServiceRequiresComments) {
-      return customCommentQuantity;
-    }
-
     const value = Number(orderQuantity || 0);
     if (!Number.isFinite(value)) return 0;
     return Math.max(0, Math.floor(value));
-  }, [customCommentQuantity, orderQuantity, selectedServiceRequiresComments]);
+  }, [orderQuantity]);
 
   const orderCharge = useMemo(() => {
     if (!selectedService) return 0;
@@ -619,51 +389,6 @@ export default function ChildPanelDashboardPage() {
       setMessage("Failed to load services.");
     } finally {
       setLoadingServices(false);
-    }
-  }
-
-  async function loadOrders(panelSlug = slug, sessionToken = getStoredToken()) {
-    if (!panelSlug || !sessionToken) return;
-
-    setLoadingOrders(true);
-
-    try {
-      const response = await fetch("/api/child-panel/customers/orders/list", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          slug: panelSlug,
-          token: sessionToken,
-        }),
-      });
-
-      const responseText = await response.text();
-      let result: any = null;
-
-      try {
-        result = JSON.parse(responseText);
-      } catch {
-        setMessage(
-          `Orders API returned non-JSON response. Status: ${response.status}. Make sure /api/child-panel/customers/orders/list is deployed.`,
-        );
-        setOrders([]);
-        return;
-      }
-
-      if (!response.ok || !result.success) {
-        setMessage(result.message || "Failed to load orders.");
-        setOrders([]);
-        return;
-      }
-
-      setOrders((result.orders || []) as ChildOrder[]);
-    } catch (error) {
-      console.error("CHILD_PANEL_ORDERS_LIST_ERROR:", error);
-      setMessage("Failed to load orders.");
-    } finally {
-      setLoadingOrders(false);
     }
   }
 
@@ -742,7 +467,6 @@ export default function ChildPanelDashboardPage() {
 
       await loadServices(slug, token);
       await loadDeposits(slug, token);
-      await loadOrders(slug, token);
 
       setLoading(false);
     } catch {
@@ -783,133 +507,29 @@ export default function ChildPanelDashboardPage() {
 
   function openNewOrderModal(service?: ChildService) {
     setMessage("");
-    setOrderLink("");
-    setOrderComments("");
 
-    const serviceToUse = service || (!selectedServiceId ? services[0] : services.find((item) => item.id === selectedServiceId));
-
-    if (serviceToUse) {
-      setSelectedServiceId(serviceToUse.id);
-      setOrderQuantity(isCustomCommentsService(serviceToUse) ? "" : String(serviceToUse.min_quantity || 100));
+    if (service) {
+      setSelectedServiceId(service.id);
+      setOrderQuantity(String(service.min_quantity || 100));
+    } else if (!selectedServiceId && services[0]) {
+      setSelectedServiceId(services[0].id);
+      setOrderQuantity(String(services[0].min_quantity || 100));
     }
 
     setNewOrderOpen(true);
   }
 
   function closeNewOrderModal() {
-    if (submittingOrder) return;
     setNewOrderOpen(false);
     setOrderLink("");
     setOrderQuantity("");
-    setOrderComments("");
   }
 
-  async function submitChildOrder() {
-    if (submittingOrder) return;
-
-    setMessage("");
-
-    if (!selectedService) {
-      setMessage("Please select a service.");
-      return;
-    }
-
-    if (!orderLink.trim()) {
-      setMessage("Please enter your link.");
-      return;
-    }
-
-    if (orderQuantityNumber <= 0) {
-      setMessage(
-        selectedServiceRequiresComments
-          ? "Please enter your custom comments, one comment per line."
-          : "Please enter a valid quantity.",
-      );
-      return;
-    }
-
-    if (orderQuantityNumber < getServiceMinimum(selectedService)) {
-      setMessage(
-        `Minimum quantity is ${formatNumber(getServiceMinimum(selectedService))}.`,
-      );
-      return;
-    }
-
-    if (orderQuantityNumber > getServiceMaximum(selectedService)) {
-      setMessage(
-        `Maximum quantity is ${formatNumber(getServiceMaximum(selectedService))}.`,
-      );
-      return;
-    }
-
-    if (orderCharge > Number(customer?.balance || 0)) {
-      setMessage(
-        `Insufficient balance. Required: ${formatMoney(orderCharge)}, Available: ${formatMoney(customer?.balance || 0)}.`,
-      );
-      return;
-    }
-
-    const token = getStoredToken();
-
-    if (!token) {
-      router.replace(`/child/${slug}/login`);
-      return;
-    }
-
-    setSubmittingOrder(true);
-    setMessage("Placing order...");
-
-    try {
-      const response = await fetch("/api/child-panel/customers/orders/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          slug,
-          token,
-          serviceId: selectedService.id,
-          link: orderLink.trim(),
-          quantity: orderQuantityNumber,
-          comments: selectedServiceRequiresComments
-            ? customCommentLines.join("\n")
-            : undefined,
-        }),
-      });
-
-      const responseText = await response.text();
-      let result: any = null;
-
-      try {
-        result = JSON.parse(responseText);
-      } catch {
-        setMessage(
-          `Order API returned non-JSON response. Status: ${response.status}. Make sure the API route is deployed.`,
-        );
-        setSubmittingOrder(false);
-        return;
-      }
-
-      if (!response.ok || !result.success) {
-        setMessage(getReadableError(result.message));
-        setSubmittingOrder(false);
-        return;
-      }
-
-      setMessage(result.message || "Order placed successfully.");
-      setNewOrderOpen(false);
-      setOrderLink("");
-      setOrderQuantity("");
-      setOrderComments("");
-      setSubmittingOrder(false);
-
-      await loadOrders(slug, token);
-      await loadDashboard();
-    } catch (error) {
-      console.error("CHILD_PANEL_ORDER_SUBMIT_ERROR:", error);
-      setMessage("Failed to place order.");
-      setSubmittingOrder(false);
-    }
+  function previewOrderOnly() {
+    setMessage(
+      "Service selection is ready. Next step is creating the child panel order API so this button can place real orders.",
+    );
+    setNewOrderOpen(false);
   }
 
   function closeAddFundsModal() {
@@ -1461,15 +1081,15 @@ export default function ChildPanelDashboardPage() {
 
               <StatCard
                 title="Total Orders"
-                value={formatNumber(orderStats.total)}
-                subtitle="All child panel orders"
+                value="0"
+                subtitle="Coming in orders phase"
                 icon={ShoppingCart}
                 primaryColor={primaryColor}
               />
 
               <StatCard
                 title="Active Orders"
-                value={formatNumber(orderStats.active)}
+                value="0"
                 subtitle="Pending / processing"
                 icon={BarChart3}
                 primaryColor={primaryColor}
@@ -1477,7 +1097,7 @@ export default function ChildPanelDashboardPage() {
 
               <StatCard
                 title="Completed"
-                value={formatNumber(orderStats.completed)}
+                value="0"
                 subtitle="Completed orders"
                 icon={CheckCircle2}
                 primaryColor={primaryColor}
@@ -1485,108 +1105,33 @@ export default function ChildPanelDashboardPage() {
             </div>
 
             <div className="rounded-[28px] border border-white/10 bg-white/[0.05] shadow-2xl backdrop-blur">
-              <div className="border-b border-white/10 p-5">
-                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
-                        style={{
-                          backgroundColor: `${primaryColor}18`,
-                          color: primaryColor,
-                        }}
-                      >
-                        <Package size={21} />
-                      </div>
-
-                      <div className="min-w-0">
-                        <h3 className="text-xl font-black">New Order Services</h3>
-                        <p className="mt-1 text-sm font-semibold text-white/45">
-                          Choose a platform, select a category, then pick the best service.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex w-full flex-col gap-3 sm:flex-row xl:w-auto">
-                    <button
-                      type="button"
-                      onClick={() => openNewOrderModal()}
-                      className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl px-5 text-sm font-black text-white transition"
-                      style={{
-                        background: `linear-gradient(135deg, ${primaryColor}, #7c3aed)`,
-                        boxShadow: getAccentShadow(primaryColor),
-                      }}
-                    >
-                      <Plus size={17} />
-                      New Order
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => loadServices()}
-                      className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-black text-white/75 transition hover:bg-white/[0.08]"
-                    >
-                      <RefreshCw size={16} />
-                      Refresh
-                    </button>
-                  </div>
+              <div className="flex flex-col gap-4 border-b border-white/10 p-5 lg:flex-row lg:items-center lg:justify-between">
+                <div className="min-w-0">
+                  <h3 className="text-xl font-black">Services</h3>
+                  <p className="mt-1 text-sm font-semibold text-white/45">
+                    Browse available services with this panel&apos;s markup already included.
+                  </p>
                 </div>
 
-                <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_260px]">
-                  <div className="flex h-12 min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4">
+                <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
+                  <div className="flex h-12 min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 sm:min-w-[320px]">
                     <Search size={17} className="shrink-0 text-white/30" />
                     <input
                       value={serviceSearch}
                       onChange={(event) => setServiceSearch(event.target.value)}
-                      placeholder="Search service name, service ID, category..."
+                      placeholder="Search service, platform, category, or ID..."
                       className="min-w-0 flex-1 bg-transparent text-sm font-bold text-white outline-none placeholder:text-white/25"
                     />
                   </div>
 
-                  <select
-                    value={selectedCategoryFilter}
-                    onChange={(event) => setSelectedCategoryFilter(event.target.value)}
-                    className="h-12 w-full rounded-2xl border border-white/10 bg-[#0d1024] px-4 text-sm font-black text-white outline-none focus:border-white/30"
+                  <button
+                    type="button"
+                    onClick={() => loadServices()}
+                    className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-black text-white/75 transition hover:bg-white/[0.08]"
                   >
-                    {serviceCategories.map((item) => (
-                      <option key={item} value={item}>
-                        {item === "All" ? "All Categories" : item}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
-                  {servicePlatforms.map((platform) => {
-                    const active = selectedPlatformFilter === platform;
-
-                    return (
-                      <button
-                        key={platform}
-                        type="button"
-                        onClick={() => {
-                          setSelectedPlatformFilter(platform);
-                          setSelectedCategoryFilter("All");
-                        }}
-                        className={`shrink-0 rounded-2xl px-4 py-2 text-sm font-black transition ${
-                          active
-                            ? "text-white"
-                            : "border border-white/10 bg-white/[0.04] text-white/60 hover:bg-white/[0.08] hover:text-white"
-                        }`}
-                        style={
-                          active
-                            ? {
-                                background: `linear-gradient(135deg, ${primaryColor}, #7c3aed)`,
-                                boxShadow: getAccentShadow(primaryColor),
-                              }
-                            : undefined
-                        }
-                      >
-                        {platform === "All" ? "All Platforms" : platform}
-                      </button>
-                    );
-                  })}
+                    <RefreshCw size={16} />
+                    Refresh
+                  </button>
                 </div>
               </div>
 
@@ -1611,124 +1156,58 @@ export default function ChildPanelDashboardPage() {
                     </div>
                     <h4 className="mt-4 text-lg font-black">No services found</h4>
                     <p className="mt-2 text-sm font-semibold leading-6 text-white/45">
-                      Try another platform, category, or search term.
+                      Try another search term or refresh the service list.
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    <div className="flex flex-col gap-2 rounded-[24px] border border-white/10 bg-black/20 p-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="text-sm font-black text-white">
-                          Showing {featuredServices.length} of {filteredServices.length} services
-                        </p>
-                        <p className="mt-1 text-xs font-semibold text-white/40">
-                          Customer prices already include the panel owner&apos;s markup.
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        <span
-                          className="rounded-full px-3 py-1 text-xs font-black"
-                          style={{
-                            backgroundColor: `${primaryColor}18`,
-                            color: primaryColor,
-                          }}
-                        >
-                          {selectedPlatformFilter === "All"
-                            ? "All Platforms"
-                            : selectedPlatformFilter}
-                        </span>
-                        <span className="rounded-full bg-white/[0.06] px-3 py-1 text-xs font-black text-white/60">
-                          {selectedCategoryFilter === "All"
-                            ? "All Categories"
-                            : selectedCategoryFilter}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="overflow-hidden rounded-[24px] border border-white/10 bg-black/20">
-                      <div className="hidden grid-cols-[1fr_130px_130px_110px] gap-4 border-b border-white/10 bg-white/[0.035] px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-white/35 lg:grid">
-                        <span>Service</span>
-                        <span>Price / 1K</span>
-                        <span>Min / Max</span>
-                        <span>Action</span>
-                      </div>
-
-                      <div className="divide-y divide-white/10">
-                        {featuredServices.map((service) => (
-                          <div
-                            key={service.id}
-                            className="grid gap-4 p-4 transition hover:bg-white/[0.035] lg:grid-cols-[1fr_130px_130px_110px] lg:items-center"
-                          >
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span
-                                  className="rounded-full px-2.5 py-1 text-[10px] font-black"
-                                  style={{
-                                    backgroundColor: `${primaryColor}18`,
-                                    color: primaryColor,
-                                  }}
-                                >
-                                  ID {String(service.id).slice(0, 6)}
-                                </span>
-                                <span className="rounded-full bg-white/[0.06] px-2.5 py-1 text-[10px] font-black text-white/55">
-                                  {service.platform || "Other"}
-                                </span>
-                                <span className="rounded-full bg-white/[0.06] px-2.5 py-1 text-[10px] font-black text-white/55">
-                                  {service.category || "Uncategorized"}
-                                </span>
-                              </div>
-
-                              <h4 className="mt-3 line-clamp-2 text-sm font-black leading-5 text-white">
-                                {service.name}
-                              </h4>
-
-                              {service.description && (
-                                <p className="mt-2 line-clamp-2 text-xs font-semibold leading-5 text-white/40">
-                                  {service.description}
-                                </p>
-                              )}
-                            </div>
-
-                            <div className="rounded-2xl bg-white/[0.04] p-3 lg:bg-transparent lg:p-0">
-                              <p className="text-[10px] font-black uppercase tracking-wide text-white/35 lg:hidden">
-                                Price / 1K
-                              </p>
-                              <p className="mt-1 text-base font-black text-white lg:mt-0">
-                                {formatMoney(service.customer_price_per_1000)}
-                              </p>
-                            </div>
-
-                            <div className="rounded-2xl bg-white/[0.04] p-3 lg:bg-transparent lg:p-0">
-                              <p className="text-[10px] font-black uppercase tracking-wide text-white/35 lg:hidden">
-                                Min / Max
-                              </p>
-                              <p className="mt-1 text-sm font-black text-white lg:mt-0">
-                                {formatNumber(service.min_quantity)} / {formatNumber(service.max_quantity)}
-                              </p>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => openNewOrderModal(service)}
-                              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl px-4 text-sm font-black text-white transition"
-                              style={{
-                                background: `linear-gradient(135deg, ${primaryColor}, #7c3aed)`,
-                              }}
-                            >
-                              <ShoppingCart size={16} />
-                              Order
-                            </button>
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {filteredServices.slice(0, 12).map((service) => (
+                      <button
+                        key={service.id}
+                        type="button"
+                        onClick={() => openNewOrderModal(service)}
+                        className="rounded-[22px] border border-white/10 bg-black/20 p-4 text-left transition hover:border-white/20 hover:bg-white/[0.06]"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="line-clamp-2 text-sm font-black text-white">
+                              {service.name}
+                            </p>
+                            <p className="mt-2 truncate text-xs font-semibold text-white/40">
+                              {service.platform || "Platform"} · {service.category || "Category"}
+                            </p>
                           </div>
-                        ))}
-                      </div>
-                    </div>
+                          <span
+                            className="shrink-0 rounded-full px-3 py-1 text-[10px] font-black"
+                            style={{
+                              backgroundColor: `${primaryColor}18`,
+                              color: primaryColor,
+                            }}
+                          >
+                            ID {String(service.id).slice(0, 6)}
+                          </span>
+                        </div>
 
-                    {filteredServices.length > featuredServices.length && (
-                      <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 text-center text-sm font-bold text-white/45">
-                        Showing first {featuredServices.length} results. Use search or filters to narrow the list.
-                      </div>
-                    )}
+                        <div className="mt-4 grid grid-cols-2 gap-3">
+                          <div className="rounded-2xl bg-white/[0.04] p-3">
+                            <p className="text-[10px] font-black uppercase tracking-wide text-white/35">
+                              Price / 1K
+                            </p>
+                            <p className="mt-1 text-sm font-black text-white">
+                              {formatMoney(service.customer_price_per_1000)}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl bg-white/[0.04] p-3">
+                            <p className="text-[10px] font-black uppercase tracking-wide text-white/35">
+                              Min / Max
+                            </p>
+                            <p className="mt-1 text-xs font-black text-white">
+                              {formatNumber(service.min_quantity)} / {formatNumber(service.max_quantity)}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
@@ -1832,152 +1311,68 @@ export default function ChildPanelDashboardPage() {
 
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
               <div className="rounded-[28px] border border-white/10 bg-white/[0.05] shadow-2xl backdrop-blur">
-                <div className="flex flex-col gap-4 border-b border-white/10 p-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center justify-between gap-4 border-b border-white/10 p-5">
                   <div className="min-w-0">
                     <h3 className="text-xl font-black">Recent Orders</h3>
                     <p className="mt-1 text-sm font-semibold text-white/45">
-                      Your latest child panel orders from this dashboard.
+                      Your latest orders will appear here.
                     </p>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => loadOrders()}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-black text-white/75 transition hover:bg-white/[0.08]"
+                  <div
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
+                    style={{
+                      backgroundColor: `${primaryColor}18`,
+                      color: primaryColor,
+                    }}
                   >
-                    <RefreshCw size={16} />
-                    Refresh
-                  </button>
+                    <Package size={20} />
+                  </div>
                 </div>
 
                 <div className="p-5">
                   <div className="flex h-12 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4">
                     <Search size={17} className="text-white/30" />
                     <input
-                      value={orderSearch}
-                      onChange={(event) => setOrderSearch(event.target.value)}
-                      placeholder="Search order ID, service, link, or status..."
+                      placeholder="Search orders..."
                       className="min-w-0 flex-1 bg-transparent text-sm font-bold text-white outline-none placeholder:text-white/25"
                     />
                   </div>
 
-                  {loadingOrders ? (
-                    <div className="mt-5 rounded-[24px] border border-white/10 bg-black/20 p-8 text-center">
-                      <Loader2 className="mx-auto animate-spin text-white/50" size={28} />
-                      <p className="mt-3 text-sm font-bold text-white/45">
-                        Loading orders...
-                      </p>
+                  <div className="mt-5 rounded-[24px] border border-dashed border-white/10 bg-black/20 p-10 text-center">
+                    <div
+                      className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl"
+                      style={{
+                        backgroundColor: `${primaryColor}18`,
+                        color: primaryColor,
+                      }}
+                    >
+                      <ShoppingCart size={28} />
                     </div>
-                  ) : filteredOrders.length <= 0 ? (
-                    <div className="mt-5 rounded-[24px] border border-dashed border-white/10 bg-black/20 p-10 text-center">
-                      <div
-                        className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl"
-                        style={{
-                          backgroundColor: `${primaryColor}18`,
-                          color: primaryColor,
-                        }}
-                      >
-                        <ShoppingCart size={28} />
-                      </div>
 
-                      <h4 className="mt-5 text-lg font-black">No orders found</h4>
+                    <h4 className="mt-5 text-lg font-black">No orders yet</h4>
 
-                      <p className="mt-2 text-sm font-semibold leading-6 text-white/45">
-                        Your placed orders will appear here after you submit one.
-                      </p>
+                    <p className="mt-2 text-sm font-semibold leading-6 text-white/45">
+                      Once New Order is connected, customers can place orders
+                      directly from this dashboard.
+                    </p>
 
-                      <button
-                        type="button"
-                        onClick={() => openNewOrderModal()}
-                        className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-black text-white"
-                        style={{
-                          background: `linear-gradient(135deg, ${primaryColor}, #7c3aed)`,
-                          boxShadow: getAccentShadow(primaryColor),
-                        }}
-                      >
-                        <Plus size={17} />
-                        Create First Order
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="mt-5 space-y-3">
-                      {filteredOrders.slice(0, 8).map((order) => (
-                        <div
-                          key={order.id}
-                          className="rounded-[22px] border border-white/10 bg-black/20 p-4"
-                        >
-                          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span
-                                  className="rounded-full px-3 py-1 text-xs font-black"
-                                  style={{
-                                    backgroundColor: `${primaryColor}18`,
-                                    color: primaryColor,
-                                  }}
-                                >
-                                  {shortId(order.id)}
-                                </span>
-
-                                <span
-                                  className={`rounded-full px-3 py-1 text-xs font-black ring-1 ${getOrderStatusStyle(
-                                    order.status,
-                                  )}`}
-                                >
-                                  {getOrderStatusLabel(order.status)}
-                                </span>
-
-                                {order.order_type === "custom_comments" && (
-                                  <span className="rounded-full bg-purple-500/10 px-3 py-1 text-xs font-black text-purple-200 ring-1 ring-purple-400/20">
-                                    Custom Comments
-                                  </span>
-                                )}
-                              </div>
-
-                              <h4 className="mt-3 line-clamp-2 text-sm font-black text-white">
-                                {order.service_name || "Unknown Service"}
-                              </h4>
-
-                              <a
-                                href={order.link}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="mt-2 block truncate text-xs font-semibold text-blue-200 hover:text-blue-100"
-                              >
-                                {order.link}
-                              </a>
-
-                              <p className="mt-2 text-xs font-semibold text-white/35">
-                                {formatDateTime(order.created_at)}
-                              </p>
-                            </div>
-
-                            <div className="grid shrink-0 grid-cols-2 gap-3 sm:min-w-[260px]">
-                              <div className="rounded-2xl bg-white/[0.04] p-3">
-                                <p className="text-[10px] font-black uppercase tracking-wide text-white/35">
-                                  Quantity
-                                </p>
-                                <p className="mt-1 text-sm font-black text-white">
-                                  {formatNumber(order.quantity)}
-                                </p>
-                              </div>
-
-                              <div className="rounded-2xl bg-white/[0.04] p-3">
-                                <p className="text-[10px] font-black uppercase tracking-wide text-white/35">
-                                  Charge
-                                </p>
-                                <p className="mt-1 text-sm font-black text-emerald-200">
-                                  {formatMoney(order.customer_price)}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                    <button
+                      type="button"
+                      onClick={() => openNewOrderModal()}
+                      className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-black text-white"
+                      style={{
+                        background: `linear-gradient(135deg, ${primaryColor}, #7c3aed)`,
+                        boxShadow: getAccentShadow(primaryColor),
+                      }}
+                    >
+                      <Plus size={17} />
+                      Create First Order
+                    </button>
+                  </div>
                 </div>
               </div>
+
               <aside className="space-y-5">
                 <div className="rounded-[28px] border border-white/10 bg-white/[0.05] p-5 shadow-2xl backdrop-blur">
                   <div className="flex items-center gap-3">
@@ -2108,8 +1503,7 @@ export default function ChildPanelDashboardPage() {
                     const serviceId = event.target.value;
                     const service = services.find((item) => item.id === serviceId) || null;
                     setSelectedServiceId(serviceId);
-                    setOrderComments("");
-                    setOrderQuantity(service ? (isCustomCommentsService(service) ? "" : String(service.min_quantity || 100)) : "");
+                    setOrderQuantity(service ? String(service.min_quantity || 100) : "");
                   }}
                   className="h-12 w-full rounded-2xl border border-white/10 bg-[#0d1024] px-4 text-sm font-bold text-white outline-none focus:border-white/30"
                 >
@@ -2132,17 +1526,6 @@ export default function ChildPanelDashboardPage() {
                       <p className="mt-2 text-sm font-semibold text-white/45">
                         {selectedService.platform || "Platform"} · {selectedService.category || "Category"}
                       </p>
-                      {selectedServiceRequiresComments && (
-                        <span
-                          className="mt-3 inline-flex rounded-full px-3 py-1 text-xs font-black"
-                          style={{
-                            backgroundColor: `${primaryColor}18`,
-                            color: primaryColor,
-                          }}
-                        >
-                          Custom Comments · 1 comment per line
-                        </span>
-                      )}
                       <p className="mt-3 text-sm font-semibold leading-6 text-white/45">
                         {selectedService.description || "No service description available."}
                       </p>
@@ -2181,29 +1564,7 @@ export default function ChildPanelDashboardPage() {
                 />
               </div>
 
-              {selectedServiceRequiresComments ? (
-                <div>
-                  <label className="mb-2 block text-sm font-black text-white/80">
-                    Custom Comments
-                  </label>
-                  <textarea
-                    value={orderComments}
-                    onChange={(event) => setOrderComments(event.target.value)}
-                    placeholder={`Write your custom comments here.\nOne comment per line.\nExample:\nAmazing post!\nVery nice content!`}
-                    rows={8}
-                    className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none placeholder:text-white/25 focus:border-white/30"
-                  />
-                  <div className="mt-2 flex flex-col gap-1 text-xs font-semibold text-white/40 sm:flex-row sm:items-center sm:justify-between">
-                    <span>Quantity is automatically counted from non-empty lines.</span>
-                    <span>Comments: {formatNumber(customCommentQuantity)}</span>
-                  </div>
-                  {selectedService && (
-                    <p className="mt-1 text-xs font-semibold text-white/40">
-                      Min {formatNumber(selectedService.min_quantity)} · Max {formatNumber(selectedService.max_quantity)} comments
-                    </p>
-                  )}
-                </div>
-              ) : (
+              <div className="grid gap-5 sm:grid-cols-2">
                 <div>
                   <label className="mb-2 block text-sm font-black text-white/80">
                     Quantity
@@ -2221,20 +1582,6 @@ export default function ChildPanelDashboardPage() {
                     </p>
                   )}
                 </div>
-              )}
-
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
-                  <p className="text-xs font-black uppercase tracking-[0.14em] text-white/35">
-                    Order Quantity
-                  </p>
-                  <h4 className="mt-2 text-2xl font-black text-white">
-                    {formatNumber(orderQuantityNumber)}
-                  </h4>
-                  <p className="mt-1 text-xs font-semibold text-white/45">
-                    {selectedServiceRequiresComments ? "Auto-counted comments" : "Entered quantity"}
-                  </p>
-                </div>
 
                 <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
                   <p className="text-xs font-black uppercase tracking-[0.14em] text-white/35">
@@ -2250,40 +1597,21 @@ export default function ChildPanelDashboardPage() {
               </div>
 
               <div className="rounded-2xl border border-orange-400/20 bg-orange-500/10 p-4 text-sm font-bold leading-6 text-orange-100">
-                {selectedServiceRequiresComments
-                  ? "Custom comments detected. Quantity is based on one non-empty comment per line. These comments will be saved with your order."
-                  : "Review your service, link, quantity, and estimated charge before placing your order."}
+                Service pricing is now connected. The final order submit will be connected in the next API step so it can safely charge balance and record owner profit.
               </div>
 
               <button
                 type="button"
-                onClick={submitChildOrder}
-                disabled={
-                  !selectedService ||
-                  !orderLink.trim() ||
-                  orderQuantityNumber <= 0 ||
-                  orderQuantityNumber < getServiceMinimum(selectedService) ||
-                  orderQuantityNumber > getServiceMaximum(selectedService) ||
-                  (selectedServiceRequiresComments && customCommentQuantity <= 0) ||
-                  submittingOrder
-                }
+                onClick={previewOrderOnly}
+                disabled={!selectedService || !orderLink.trim() || orderQuantityNumber <= 0}
                 className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-sm font-black text-white transition disabled:cursor-not-allowed disabled:opacity-45"
                 style={{
                   background: `linear-gradient(135deg, ${primaryColor}, #7c3aed)`,
                   boxShadow: getAccentShadow(primaryColor),
                 }}
               >
-                {submittingOrder ? (
-                  <>
-                    <Loader2 size={18} className="animate-spin" />
-                    Placing Order...
-                  </>
-                ) : (
-                  <>
-                    <ShoppingCart size={18} />
-                    Place Order
-                  </>
-                )}
+                <ShoppingCart size={18} />
+                Preview Ready
               </button>
             </div>
           </div>

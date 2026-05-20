@@ -1,33 +1,41 @@
 "use client";
 
+import DashboardGuard from "@/components/DashboardGuard";
+import DashboardLayout from "@/components/DashboardLayout";
+import { useToast } from "@/components/ToastProvider";
 import { supabase } from "@/lib/supabase";
 import {
-  BarChart3,
-  Bell,
+  AlertTriangle,
   CheckCircle2,
-  CreditCard,
-  FileImage,
-  Home,
+  Copy,
+  ExternalLink,
+  Eye,
+  Globe,
   Loader2,
-  LogOut,
-  Menu,
-  Package,
-  Plus,
+  Lock,
+  Palette,
   RefreshCw,
-  Search,
+  Save,
   Settings,
-  ShoppingCart,
+  ShieldCheck,
   Sparkles,
+  Store,
   Upload,
-  User,
   Wallet,
-  X,
+  XCircle,
 } from "lucide-react";
-import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-type Panel = {
+type Profile = {
+  balance?: number | null;
+  reseller_level?: string | null;
+  child_panel_access?: boolean | null;
+  child_panel_access_type?: string | null;
+  child_panel_subscription_status?: string | null;
+  child_panel_subscription_expires_at?: string | null;
+};
+
+type ChildPanel = {
   id: string;
   owner_user_id: string;
   panel_name: string;
@@ -35,169 +43,118 @@ type Panel = {
   support_email: string | null;
   logo_url: string | null;
   primary_color: string | null;
+  markup_percent: number | null;
   status: string;
+  access_type: string;
+  subscription_status: string | null;
+  monthly_price: number | null;
+  admin_note: string | null;
+  approved_at: string | null;
+  suspended_at: string | null;
+  rejected_at: string | null;
+  created_at: string;
+  updated_at: string | null;
 };
 
-type Customer = {
+type Subscription = {
+  id: string;
+  status: string;
+  price: number;
+  auto_renew: boolean;
+  started_at: string | null;
+  expires_at: string | null;
+  cancelled_at: string | null;
+};
+
+type CustomerDeposit = {
   id: string;
   child_panel_id: string;
   owner_user_id: string;
-  email: string;
-  username: string | null;
-  firstname: string | null;
-  lastname: string | null;
-  balance: number;
-  status: string;
-  last_login_at: string | null;
-  created_at: string;
-};
-
-type Deposit = {
-  id: string;
-  amount: number;
+  customer_id: string;
+  amount: number | null;
   method: string | null;
   reference_number: string | null;
   proof_url: string | null;
-  status: string;
+  status: string | null;
   reject_reason: string | null;
   approved_at: string | null;
   rejected_at: string | null;
   created_at: string;
+  updated_at: string | null;
+  customer?: {
+    id?: string;
+    email?: string | null;
+    username?: string | null;
+    firstname?: string | null;
+    lastname?: string | null;
+  } | null;
 };
 
-type PaymentMethod = {
+type CustomerOrder = {
   id: string;
-  method_name: string;
-  account_name: string | null;
-  account_number: string | null;
-  qr_url: string | null;
-  instructions: string | null;
-  status: string | null;
-};
-
-type ChildOrder = {
-  id: string;
+  child_panel_id: string;
+  owner_user_id: string;
+  customer_id: string;
+  main_order_id: string | null;
   service_id: string | null;
   service_name: string;
   link: string;
-  quantity: number;
-  base_price: number;
-  customer_price: number;
-  markup_percent: number;
-  owner_profit: number;
+  quantity: number | null;
+  base_price: number | null;
+  customer_price: number | null;
+  markup_percent: number | null;
+  owner_profit: number | null;
   start_count: number | null;
   current_count: number | null;
-  status: string;
+  status: string | null;
   provider_order_id: string | null;
   provider_name: string | null;
   comments?: string | null;
   order_type?: string | null;
   created_at: string;
+  updated_at: string | null;
+  child_panel_customers?:
+    | {
+        id?: string;
+        email?: string | null;
+        username?: string | null;
+        firstname?: string | null;
+        lastname?: string | null;
+        balance?: number | null;
+        status?: string | null;
+      }
+    | {
+        id?: string;
+        email?: string | null;
+        username?: string | null;
+        firstname?: string | null;
+        lastname?: string | null;
+        balance?: number | null;
+        status?: string | null;
+      }[]
+    | null;
 };
 
-type ChildService = {
-  id: string;
-  name: string;
-  category: string | null;
-  platform: string | null;
-  description: string | null;
-  price_per_1000: number | null;
-  min_quantity: number | null;
-  max_quantity: number | null;
-  status: string | null;
-  base_price_per_1000: number;
-  customer_price_per_1000: number;
-  markup_percent: number;
-  owner_profit_per_1000: number;
-};
 
-function formatMoney(value: number | string | null | undefined) {
-  return `₱${Number(value || 0).toLocaleString("en-PH", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
+const CHILD_PANEL_PRICE = 349;
 
-
-function formatNumber(value: number | string | null | undefined) {
-  return Number(value || 0).toLocaleString("en-PH");
-}
-
-function calculateCharge(pricePer1000: number, quantity: number) {
-  if (!Number.isFinite(pricePer1000) || !Number.isFinite(quantity)) return 0;
-  return Number(((quantity / 1000) * pricePer1000).toFixed(6));
-}
-
-function isCustomCommentsService(service?: ChildService | null) {
-  if (!service) return false;
-
-  const text = `${service.name || ""} ${service.category || ""} ${service.description || ""}`.toLowerCase();
-
-  return (
-    text.includes("custom comment") ||
-    text.includes("comments custom") ||
-    text.includes("comment custom") ||
-    text.includes("custom comments") ||
-    text.includes("comment per line") ||
-    text.includes("comments per line") ||
-    text.includes("1 per line") ||
-    text.includes("1per line") ||
-    text.includes("own comments") ||
-    text.includes("user comments")
-  );
-}
-
-function countCustomCommentLines(value: string) {
-  return value
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean).length;
-}
-
-function getCustomCommentLines(value: string) {
-  return value
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-}
-
-function getServiceMinimum(service?: ChildService | null) {
-  return Math.max(1, Number(service?.min_quantity || 1));
-}
-
-function getServiceMaximum(service?: ChildService | null) {
-  return Math.max(getServiceMinimum(service), Number(service?.max_quantity || 1000000));
-}
-
-function getAccentShadow(color: string) {
-  return `0 20px 55px ${color}35`;
-}
-
-function setDynamicFavicon(iconUrl?: string | null) {
-  if (!iconUrl) return;
-
-  const existing =
-    document.querySelector<HTMLLinkElement>("link[rel='icon']") ||
-    document.createElement("link");
-
-  existing.rel = "icon";
-  existing.href = iconUrl;
-
-  if (!existing.parentElement) {
-    document.head.appendChild(existing);
-  }
-}
-
-function getReadableError(value: unknown) {
-  return String(value || "Something went wrong. Please try again.");
-}
-
-function sanitizeFileName(value: string) {
+function slugify(value: string) {
   return value
     .toLowerCase()
-    .replace(/[^a-z0-9.\-_]/g, "-")
-    .replace(/-+/g, "-")
-    .slice(0, 80);
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "—";
+
+  return new Date(value).toLocaleDateString("en-PH", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 function formatDateTime(value?: string | null) {
@@ -212,56 +169,137 @@ function formatDateTime(value?: string | null) {
   });
 }
 
+function formatMoney(value: number | string | null | undefined) {
+  return `₱${Number(value || 0).toLocaleString("en-PH", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function getResellerRank(level?: string | null) {
+  const clean = String(level || "").toLowerCase();
+
+  if (clean.includes("ascend partner")) return 6;
+  if (clean.includes("elite partner")) return 5;
+  if (clean.includes("premium partner")) return 5;
+  if (clean.includes("master reseller")) return 4;
+  if (clean.includes("pro reseller")) return 3;
+  if (clean.includes("power reseller")) return 2;
+  if (clean.includes("new reseller")) return 1;
+
+  return 1;
+}
+
+function getStatusStyle(status?: string | null) {
+  const clean = String(status || "pending").toLowerCase();
+
+  if (clean === "active") {
+    return "bg-emerald-50 text-emerald-700 ring-emerald-100";
+  }
+
+  if (clean === "pending") {
+    return "bg-orange-50 text-orange-700 ring-orange-100";
+  }
+
+  if (clean === "suspended") {
+    return "bg-red-50 text-red-700 ring-red-100";
+  }
+
+  if (clean === "rejected") {
+    return "bg-slate-100 text-slate-700 ring-slate-200";
+  }
+
+  return "bg-blue-50 text-blue-700 ring-blue-100";
+}
+
+function getStatusText(status?: string | null) {
+  const clean = String(status || "pending").toLowerCase();
+
+  if (clean === "active") return "Active";
+  if (clean === "pending") return "Pending Approval";
+  if (clean === "suspended") return "Suspended";
+  if (clean === "rejected") return "Rejected";
+
+  return clean.charAt(0).toUpperCase() + clean.slice(1);
+}
+
 function getDepositStatusStyle(status?: string | null) {
   const clean = String(status || "pending").toLowerCase();
 
-  if (["approved", "completed", "paid"].includes(clean)) {
-    return "bg-emerald-500/10 text-emerald-200 ring-emerald-400/20";
+  if (clean === "approved" || clean === "completed") {
+    return "bg-emerald-50 text-emerald-700 ring-emerald-100";
   }
 
-  if (["rejected", "failed", "cancelled", "canceled"].includes(clean)) {
-    return "bg-red-500/10 text-red-200 ring-red-400/20";
+  if (clean === "rejected") {
+    return "bg-red-50 text-red-700 ring-red-100";
   }
 
-  return "bg-orange-500/10 text-orange-200 ring-orange-400/20";
+  return "bg-orange-50 text-orange-700 ring-orange-100";
 }
 
-function getDepositStatusLabel(status?: string | null) {
+function getDepositStatusText(status?: string | null) {
   const clean = String(status || "pending").toLowerCase();
 
-  if (clean === "approved" || clean === "completed" || clean === "paid") {
-    return "Approved";
+  if (clean === "approved" || clean === "completed") return "Approved";
+  if (clean === "rejected") return "Rejected";
+  return "Pending";
+}
+
+function getCustomerName(deposit: CustomerDeposit) {
+  const customer = deposit.customer;
+
+  if (!customer) return "Customer";
+
+  const fullName =
+    `${customer.firstname || ""} ${customer.lastname || ""}`.trim();
+
+  return fullName || customer.username || customer.email || "Customer";
+}
+
+function getOrderCustomer(order: CustomerOrder) {
+  const value = order.child_panel_customers;
+
+  if (Array.isArray(value)) {
+    return value[0] || null;
   }
 
-  if (clean === "rejected") return "Rejected";
-  if (clean === "failed") return "Failed";
+  return value || null;
+}
 
-  return "Pending";
+function getOrderCustomerName(order: CustomerOrder) {
+  const customer = getOrderCustomer(order);
+
+  if (!customer) return "Customer";
+
+  const fullName =
+    `${customer.firstname || ""} ${customer.lastname || ""}`.trim();
+
+  return fullName || customer.username || customer.email || "Customer";
 }
 
 function getOrderStatusStyle(status?: string | null) {
   const clean = String(status || "pending").toLowerCase();
 
   if (clean === "completed") {
-    return "bg-emerald-500/10 text-emerald-200 ring-emerald-400/20";
+    return "bg-emerald-50 text-emerald-700 ring-emerald-100";
   }
 
   if (clean === "processing") {
-    return "bg-blue-500/10 text-blue-200 ring-blue-400/20";
+    return "bg-blue-50 text-blue-700 ring-blue-100";
   }
 
   if (clean === "partial") {
-    return "bg-purple-500/10 text-purple-200 ring-purple-400/20";
+    return "bg-purple-50 text-purple-700 ring-purple-100";
   }
 
-  if (["failed", "cancelled", "canceled", "rejected"].includes(clean)) {
-    return "bg-red-500/10 text-red-200 ring-red-400/20";
+  if (clean === "failed" || clean === "cancelled" || clean === "canceled") {
+    return "bg-red-50 text-red-700 ring-red-100";
   }
 
-  return "bg-orange-500/10 text-orange-200 ring-orange-400/20";
+  return "bg-orange-50 text-orange-700 ring-orange-100";
 }
 
-function getOrderStatusLabel(status?: string | null) {
+function getOrderStatusText(status?: string | null) {
   const clean = String(status || "pending").toLowerCase();
 
   if (clean === "completed") return "Completed";
@@ -269,51 +307,61 @@ function getOrderStatusLabel(status?: string | null) {
   if (clean === "partial") return "Partial";
   if (clean === "failed") return "Failed";
   if (clean === "cancelled" || clean === "canceled") return "Cancelled";
-  if (clean === "rejected") return "Rejected";
 
   return "Pending";
 }
 
-function shortId(value?: string | null) {
-  return `#${String(value || "").slice(0, 8).toUpperCase()}`;
+
+function validateLogoDimensions(file: File) {
+  return new Promise<boolean>((resolve) => {
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    image.onload = () => {
+      const valid = image.width === 512 && image.height === 512;
+      URL.revokeObjectURL(objectUrl);
+      resolve(valid);
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(false);
+    };
+
+    image.src = objectUrl;
+  });
 }
 
-function StatCard({
+function InfoCard({
+  icon: Icon,
   title,
   value,
   subtitle,
-  icon: Icon,
-  primaryColor,
+  color,
 }: {
+  icon: any;
   title: string;
   value: string;
   subtitle: string;
-  icon: any;
-  primaryColor: string;
+  color: string;
 }) {
   return (
-    <div className="rounded-[28px] border border-white/10 bg-white/[0.05] p-5 shadow-2xl backdrop-blur">
+    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-start gap-4">
         <div
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
-          style={{
-            backgroundColor: `${primaryColor}18`,
-            color: primaryColor,
-          }}
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${color}`}
         >
           <Icon size={23} />
         </div>
 
         <div className="min-w-0">
-          <p className="text-xs font-black uppercase tracking-[0.14em] text-white/40">
-            {title}
-          </p>
+          <p className="text-sm font-bold text-slate-500">{title}</p>
 
-          <h3 className="mt-2 truncate text-2xl font-black text-white">
+          <h3 className="mt-1 truncate text-2xl font-black text-slate-950">
             {value}
           </h3>
 
-          <p className="mt-1 text-sm font-semibold text-white/45">
+          <p className="mt-1 text-sm font-semibold text-slate-500">
             {subtitle}
           </p>
         </div>
@@ -322,2253 +370,1535 @@ function StatCard({
   );
 }
 
-function SidebarItem({
-  icon: Icon,
-  label,
-  active,
-  primaryColor,
-  onClick,
-}: {
-  icon: any;
-  label: string;
-  active?: boolean;
-  primaryColor: string;
-  onClick?: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-black transition ${
-        active
-          ? "text-white"
-          : "text-white/55 hover:bg-white/[0.06] hover:text-white"
-      }`}
-      style={
-        active
-          ? {
-              background: `linear-gradient(135deg, ${primaryColor}, #7c3aed)`,
-              boxShadow: getAccentShadow(primaryColor),
-            }
-          : undefined
-      }
-    >
-      <Icon size={18} />
-      {label}
-    </button>
-  );
-}
-
-export default function ChildPanelDashboardPage() {
-  const router = useRouter();
-  const params = useParams<{ slug: string }>();
-  const slug = String(params?.slug || "");
-
-  const [panel, setPanel] = useState<Panel | null>(null);
-  const [customer, setCustomer] = useState<Customer | null>(null);
-  const [deposits, setDeposits] = useState<Deposit[]>([]);
-  const [loadingDeposits, setLoadingDeposits] = useState(false);
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
-  const [loadingPaymentMethods, setLoadingPaymentMethods] = useState(false);
-  const [orders, setOrders] = useState<ChildOrder[]>([]);
-  const [loadingOrders, setLoadingOrders] = useState(false);
-  const [orderSearch, setOrderSearch] = useState("");
+export default function ChildPanelPage() {
+  const { showToast } = useToast();
 
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const [addFundsOpen, setAddFundsOpen] = useState(false);
-  const [depositAmount, setDepositAmount] = useState("");
-  const [depositMethod, setDepositMethod] = useState("");
-  const [referenceNumber, setReferenceNumber] = useState("");
-  const [proofFile, setProofFile] = useState<File | null>(null);
-  const [proofPreview, setProofPreview] = useState("");
-  const [submittingDeposit, setSubmittingDeposit] = useState(false);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [panel, setPanel] = useState<ChildPanel | null>(null);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
 
-  const [services, setServices] = useState<ChildService[]>([]);
-  const [loadingServices, setLoadingServices] = useState(false);
-  const [serviceSearch, setServiceSearch] = useState("");
-  const [selectedPlatformFilter, setSelectedPlatformFilter] = useState("All");
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("All");
-  const [newOrderOpen, setNewOrderOpen] = useState(false);
-  const [selectedServiceId, setSelectedServiceId] = useState("");
-  const [orderLink, setOrderLink] = useState("");
-  const [orderQuantity, setOrderQuantity] = useState("");
-  const [orderComments, setOrderComments] = useState("");
-  const [submittingOrder, setSubmittingOrder] = useState(false);
+  const [panelName, setPanelName] = useState("");
+  const [panelSlug, setPanelSlug] = useState("");
+  const [supportEmail, setSupportEmail] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [primaryColor, setPrimaryColor] = useState("#2563eb");
+  const [markupPercent, setMarkupPercent] = useState("20");
 
-  const primaryColor = panel?.primary_color || "#ff4f8b";
+  const [customerDeposits, setCustomerDeposits] = useState<CustomerDeposit[]>(
+    [],
+  );
+  const [depositsLoading, setDepositsLoading] = useState(false);
+  const [depositActionLoadingId, setDepositActionLoadingId] = useState<
+    string | null
+  >(null);
 
-  const displayName = useMemo(() => {
-    if (!customer) return "Customer";
+  const [customerOrders, setCustomerOrders] = useState<CustomerOrder[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
 
-    const fullName = `${customer.firstname || ""} ${
-      customer.lastname || ""
-    }`.trim();
 
-    return fullName || customer.username || "Customer";
-  }, [customer]);
+  const resellerRank = getResellerRank(profile?.reseller_level);
+  const hasLevelPerk = resellerRank >= 3;
 
-  const depositStats = useMemo(() => {
-    const pending = deposits.filter(
-      (deposit) => String(deposit.status || "pending").toLowerCase() === "pending",
-    ).length;
+  const hasPaidAccess =
+    profile?.child_panel_access === true &&
+    profile?.child_panel_subscription_status === "active";
 
-    const approvedTotal = deposits
-      .filter((deposit) =>
-        ["approved", "completed", "paid"].includes(
-          String(deposit.status || "").toLowerCase(),
-        ),
-      )
-      .reduce((sum, deposit) => sum + Number(deposit.amount || 0), 0);
+  const hasFreeAccess =
+    profile?.child_panel_access === true &&
+    (profile?.child_panel_subscription_status === "free_lifetime" ||
+      profile?.child_panel_access_type === "level_perk");
+
+  const hasAccess = hasLevelPerk || hasPaidAccess || hasFreeAccess;
+
+  const childPanelUrl = useMemo(() => {
+    if (!panelSlug) return "ascend-service.org/child/your-panel";
+    return `ascend-service.org/child/${panelSlug}`;
+  }, [panelSlug]);
+
+  const cleanMarkupPercent = useMemo(() => {
+    const value = Number(markupPercent);
+
+    if (!Number.isFinite(value)) return 20;
+
+    return Math.min(500, Math.max(0, value));
+  }, [markupPercent]);
+
+  const markupPreview = useMemo(() => {
+    const basePrice = 100;
+    const customerPrice = basePrice + (basePrice * cleanMarkupPercent) / 100;
+    const ownerProfit = customerPrice - basePrice;
 
     return {
-      pending,
-      approvedTotal,
+      basePrice,
+      customerPrice,
+      ownerProfit,
     };
-  }, [deposits]);
+  }, [cleanMarkupPercent]);
+
+  const pendingDeposits = useMemo(() => {
+    return customerDeposits.filter(
+      (deposit) =>
+        String(deposit.status || "pending").toLowerCase() === "pending",
+    ).length;
+  }, [customerDeposits]);
+
+  const approvedDeposits = useMemo(() => {
+    return customerDeposits.filter((deposit) => {
+      const status = String(deposit.status || "").toLowerCase();
+      return status === "approved" || status === "completed";
+    }).length;
+  }, [customerDeposits]);
 
   const orderStats = useMemo(() => {
-    const active = orders.filter((order) => {
-      const clean = String(order.status || "pending").toLowerCase();
-      return ["pending", "processing", "partial"].includes(clean);
+    const total = customerOrders.length;
+
+    const active = customerOrders.filter((order) => {
+      const status = String(order.status || "pending").toLowerCase();
+      return status === "pending" || status === "processing" || status === "partial";
     }).length;
 
-    const completed = orders.filter(
+    const completed = customerOrders.filter(
       (order) => String(order.status || "").toLowerCase() === "completed",
     ).length;
 
+    const totalProfit = customerOrders.reduce(
+      (sum, order) => sum + Number(order.owner_profit || 0),
+      0,
+    );
+
     return {
-      total: orders.length,
+      total,
       active,
       completed,
+      totalProfit,
     };
-  }, [orders]);
+  }, [customerOrders]);
 
-  const filteredOrders = useMemo(() => {
-    const query = orderSearch.toLowerCase().trim();
 
-    return orders.filter((order) => {
-      if (!query) return true;
+  async function loadCustomerDeposits() {
+    setDepositsLoading(true);
 
-      return (
-        String(order.id || "").toLowerCase().includes(query) ||
-        String(order.service_name || "").toLowerCase().includes(query) ||
-        String(order.link || "").toLowerCase().includes(query) ||
-        String(order.status || "").toLowerCase().includes(query) ||
-        String(order.provider_order_id || "").toLowerCase().includes(query)
-      );
-    });
-  }, [orderSearch, orders]);
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-  const servicePlatforms = useMemo(() => {
-    const priority = [
-      "Instagram",
-      "TikTok",
-      "YouTube",
-      "Facebook",
-      "Telegram",
-      "Spotify",
-      "Twitter",
-      "Twitch",
-      "Discord",
-      "Website",
-      "Other",
-    ];
-
-    const existing = Array.from(
-      new Set(
-        services
-          .map((service) => String(service.platform || "Other").trim() || "Other")
-          .filter(Boolean),
-      ),
-    );
-
-    return [
-      "All",
-      ...priority.filter((platform) => existing.includes(platform)),
-      ...existing
-        .filter((platform) => !priority.includes(platform))
-        .sort((a, b) => a.localeCompare(b)),
-    ];
-  }, [services]);
-
-  const serviceCategories = useMemo(() => {
-    const rows = services.filter((service) => {
-      if (selectedPlatformFilter === "All") return true;
-      return String(service.platform || "Other") === selectedPlatformFilter;
-    });
-
-    return [
-      "All",
-      ...Array.from(
-        new Set(
-          rows
-            .map((service) => String(service.category || "Uncategorized").trim())
-            .filter(Boolean),
-        ),
-      ).sort((a, b) => a.localeCompare(b)),
-    ];
-  }, [selectedPlatformFilter, services]);
-
-  const filteredServices = useMemo(() => {
-    const query = serviceSearch.toLowerCase().trim();
-
-    return services
-      .filter((service) => {
-        const platform = String(service.platform || "Other");
-        const category = String(service.category || "Uncategorized");
-
-        const matchesPlatform =
-          selectedPlatformFilter === "All" || platform === selectedPlatformFilter;
-
-        const matchesCategory =
-          selectedCategoryFilter === "All" || category === selectedCategoryFilter;
-
-        const matchesSearch =
-          !query ||
-          String(service.id || "").toLowerCase().includes(query) ||
-          String(service.name || "").toLowerCase().includes(query) ||
-          String(service.platform || "").toLowerCase().includes(query) ||
-          String(service.category || "").toLowerCase().includes(query);
-
-        return matchesPlatform && matchesCategory && matchesSearch;
-      })
-      .sort((a, b) => {
-        const priceA = Number(a.customer_price_per_1000 || 0);
-        const priceB = Number(b.customer_price_per_1000 || 0);
-
-        if (priceA !== priceB) return priceA - priceB;
-
-        return String(a.name || "").localeCompare(String(b.name || ""));
-      });
-  }, [
-    selectedCategoryFilter,
-    selectedPlatformFilter,
-    serviceSearch,
-    services,
-  ]);
-
-  const featuredServices = useMemo(() => {
-    return filteredServices.slice(0, 20);
-  }, [filteredServices]);
-
-  const selectedService = useMemo(() => {
-    return services.find((service) => service.id === selectedServiceId) || null;
-  }, [selectedServiceId, services]);
-
-  const selectedServiceRequiresComments = useMemo(() => {
-    return isCustomCommentsService(selectedService);
-  }, [selectedService]);
-
-  const customCommentLines = useMemo(() => {
-    return getCustomCommentLines(orderComments);
-  }, [orderComments]);
-
-  const customCommentQuantity = customCommentLines.length;
-
-  const orderQuantityNumber = useMemo(() => {
-    if (selectedServiceRequiresComments) {
-      return customCommentQuantity;
+    if (!session?.access_token) {
+      setDepositsLoading(false);
+      showToast("Please login again to load customer deposits.", "error");
+      return;
     }
 
-    const value = Number(orderQuantity || 0);
-    if (!Number.isFinite(value)) return 0;
-    return Math.max(0, Math.floor(value));
-  }, [customCommentQuantity, orderQuantity, selectedServiceRequiresComments]);
-
-  const orderCharge = useMemo(() => {
-    if (!selectedService) return 0;
-    return calculateCharge(
-      Number(selectedService.customer_price_per_1000 || 0),
-      orderQuantityNumber,
-    );
-  }, [orderQuantityNumber, selectedService]);
-
-  const selectedPaymentMethod = useMemo(() => {
-    return paymentMethods.find((method) => method.method_name === depositMethod) || null;
-  }, [depositMethod, paymentMethods]);
-
-  function getStoredToken() {
-    const localToken = window.localStorage.getItem("child_panel_token");
-    const localSlug = window.localStorage.getItem("child_panel_slug");
-
-    if (localToken && localSlug === slug) return localToken;
-
-    const sessionToken = window.sessionStorage.getItem("child_panel_token");
-    const sessionSlug = window.sessionStorage.getItem("child_panel_slug");
-
-    if (sessionToken && sessionSlug === slug) return sessionToken;
-
-    return "";
-  }
-
-  async function loadServices(panelSlug = slug, sessionToken = getStoredToken()) {
-    if (!panelSlug || !sessionToken) return;
-
-    setLoadingServices(true);
-
     try {
-      const response = await fetch("/api/child-panel/customers/services/list", {
+      const response = await fetch("/api/child-panel/owner/deposits/list", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({
-          slug: panelSlug,
-          token: sessionToken,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        setMessage(result.message || "Failed to load services.");
-        setServices([]);
-        return;
-      }
-
-      setServices((result.services || []) as ChildService[]);
-    } catch (error) {
-      console.error("CHILD_PANEL_SERVICES_LIST_ERROR:", error);
-      setMessage("Failed to load services.");
-    } finally {
-      setLoadingServices(false);
-    }
-  }
-
-  async function loadOrders(panelSlug = slug, sessionToken = getStoredToken()) {
-    if (!panelSlug || !sessionToken) return;
-
-    setLoadingOrders(true);
-
-    try {
-      const response = await fetch("/api/child-panel/customers/orders/list", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          slug: panelSlug,
-          token: sessionToken,
-        }),
       });
 
       const responseText = await response.text();
+
       let result: any = null;
 
       try {
         result = JSON.parse(responseText);
       } catch {
-        setMessage(
-          `Orders API returned non-JSON response. Status: ${response.status}. Make sure /api/child-panel/customers/orders/list is deployed.`,
+        showToast(
+          `Customer deposits API returned non-JSON response. Status: ${response.status}`,
+          "error",
         );
-        setOrders([]);
+        setDepositsLoading(false);
         return;
       }
 
       if (!response.ok || !result.success) {
-        setMessage(result.message || "Failed to load orders.");
-        setOrders([]);
+        showToast(
+          result.message || "Failed to load customer deposits.",
+          "error",
+        );
+        setDepositsLoading(false);
         return;
       }
 
-      setOrders((result.orders || []) as ChildOrder[]);
+      setCustomerDeposits((result.deposits || []) as CustomerDeposit[]);
     } catch (error) {
-      console.error("CHILD_PANEL_ORDERS_LIST_ERROR:", error);
-      setMessage("Failed to load orders.");
-    } finally {
-      setLoadingOrders(false);
+      console.error("LOAD_CUSTOMER_DEPOSITS_ERROR:", error);
+      showToast("Failed to load customer deposits.", "error");
     }
+
+    setDepositsLoading(false);
   }
 
-  async function loadPaymentMethods(panelSlug = slug, sessionToken = getStoredToken()) {
-    if (!panelSlug || !sessionToken) return;
+  async function loadCustomerOrders() {
+    setOrdersLoading(true);
 
-    setLoadingPaymentMethods(true);
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      setOrdersLoading(false);
+      showToast("Please login again to load customer orders.", "error");
+      return;
+    }
 
     try {
-      const response = await fetch("/api/child-panel/customers/payment-methods/list", {
+      const response = await fetch("/api/child-panel/owner/orders/list", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({
-          slug: panelSlug,
-          token: sessionToken,
-        }),
       });
 
-      const result = await response.json();
+      const responseText = await response.text();
 
-      if (result.success) {
-        const methods = (result.methods || []) as PaymentMethod[];
-        setPaymentMethods(methods);
+      let result: any = null;
 
-        if (!depositMethod && methods[0]) {
-          setDepositMethod(methods[0].method_name);
-        }
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        showToast(
+          `Customer orders API returned non-JSON response. Status: ${response.status}`,
+          "error",
+        );
+        setOrdersLoading(false);
+        return;
       }
+
+      if (!response.ok || !result.success) {
+        showToast(result.message || "Failed to load customer orders.", "error");
+        setOrdersLoading(false);
+        return;
+      }
+
+      setCustomerOrders((result.orders || []) as CustomerOrder[]);
     } catch (error) {
-      console.error("CHILD_PANEL_PAYMENT_METHODS_LIST_ERROR:", error);
-    } finally {
-      setLoadingPaymentMethods(false);
+      console.error("LOAD_CUSTOMER_ORDERS_ERROR:", error);
+      showToast("Failed to load customer orders.", "error");
     }
+
+    setOrdersLoading(false);
   }
 
-  async function loadDeposits(panelSlug = slug, sessionToken = getStoredToken()) {
-    if (!panelSlug || !sessionToken) return;
-
-    setLoadingDeposits(true);
-
-    try {
-      const response = await fetch("/api/child-panel/customers/deposits/list", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          slug: panelSlug,
-          token: sessionToken,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        setDeposits((result.deposits || []) as Deposit[]);
-      }
-    } catch (error) {
-      console.error("CHILD_PANEL_DEPOSITS_LIST_ERROR:", error);
-    } finally {
-      setLoadingDeposits(false);
-    }
-  }
-
-  async function loadDashboard() {
+  async function loadData() {
     setLoading(true);
-    setMessage("");
 
-    const token = getStoredToken();
+    const { data: authData } = await supabase.auth.getUser();
 
-    if (!token) {
-      router.replace(`/child/${slug}/login`);
-      return;
-    }
-
-    try {
-      const response = await fetch("/api/child-panel/customers/me", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          slug,
-          token,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!result.success) {
-        window.localStorage.removeItem("child_panel_token");
-        window.localStorage.removeItem("child_panel_slug");
-        window.localStorage.removeItem("child_panel_customer");
-
-        window.sessionStorage.removeItem("child_panel_token");
-        window.sessionStorage.removeItem("child_panel_slug");
-        window.sessionStorage.removeItem("child_panel_customer");
-
-        router.replace(`/child/${slug}/login`);
-        return;
-      }
-
-      setPanel(result.panel);
-      setCustomer(result.customer);
-
-      document.title = `Dashboard | ${result.panel.panel_name}`;
-      setDynamicFavicon(result.panel.logo_url);
-
-      await loadServices(slug, token);
-      await loadPaymentMethods(slug, token);
-      await loadDeposits(slug, token);
-      await loadOrders(slug, token);
-
+    if (!authData.user) {
       setLoading(false);
-    } catch {
-      setMessage("Failed to load dashboard.");
+      return;
+    }
+
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select(
+        "balance, reseller_level, child_panel_access, child_panel_access_type, child_panel_subscription_status, child_panel_subscription_expires_at",
+      )
+      .eq("id", authData.user.id)
+      .single();
+
+    if (profileError) {
+      showToast(profileError.message, "error");
       setLoading(false);
-    }
-  }
-
-  function logout() {
-    window.localStorage.removeItem("child_panel_token");
-    window.localStorage.removeItem("child_panel_slug");
-    window.localStorage.removeItem("child_panel_customer");
-
-    window.sessionStorage.removeItem("child_panel_token");
-    window.sessionStorage.removeItem("child_panel_slug");
-    window.sessionStorage.removeItem("child_panel_customer");
-
-    router.replace(`/child/${slug}/login`);
-  }
-
-  function resetAddFundsForm() {
-    setDepositAmount("");
-    setDepositMethod("");
-    setReferenceNumber("");
-    setProofFile(null);
-
-    if (proofPreview) {
-      URL.revokeObjectURL(proofPreview);
-    }
-
-    setProofPreview("");
-  }
-
-  function openAddFundsModal() {
-    setMessage("");
-    const token = getStoredToken();
-    loadPaymentMethods(slug, token);
-    setAddFundsOpen(true);
-  }
-
-  function openNewOrderModal(service?: ChildService) {
-    setMessage("");
-    setOrderLink("");
-    setOrderComments("");
-
-    const serviceToUse = service || (!selectedServiceId ? services[0] : services.find((item) => item.id === selectedServiceId));
-
-    if (serviceToUse) {
-      setSelectedServiceId(serviceToUse.id);
-      setOrderQuantity(isCustomCommentsService(serviceToUse) ? "" : String(serviceToUse.min_quantity || 100));
-    }
-
-    setNewOrderOpen(true);
-  }
-
-  function closeNewOrderModal() {
-    if (submittingOrder) return;
-    setNewOrderOpen(false);
-    setOrderLink("");
-    setOrderQuantity("");
-    setOrderComments("");
-  }
-
-  async function submitChildOrder() {
-    if (submittingOrder) return;
-
-    setMessage("");
-
-    if (!selectedService) {
-      setMessage("Please select a service.");
       return;
     }
 
-    if (!orderLink.trim()) {
-      setMessage("Please enter your link.");
-      return;
+    setProfile((profileData || null) as Profile | null);
+
+    const { data: panelData } = await supabase
+      .from("child_panels")
+      .select("*")
+      .eq("owner_user_id", authData.user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (panelData) {
+      const childPanel = panelData as ChildPanel;
+
+      setPanel(childPanel);
+      setPanelName(childPanel.panel_name || "");
+      setPanelSlug(childPanel.panel_slug || "");
+      setSupportEmail(childPanel.support_email || "");
+      setLogoUrl(childPanel.logo_url || "");
+      setPrimaryColor(childPanel.primary_color || "#2563eb");
+      setMarkupPercent(String(childPanel.markup_percent ?? 20));
     }
 
-    if (orderQuantityNumber <= 0) {
-      setMessage(
-        selectedServiceRequiresComments
-          ? "Please enter your custom comments, one comment per line."
-          : "Please enter a valid quantity.",
-      );
-      return;
+    const { data: subscriptionData } = await supabase
+      .from("child_panel_subscriptions")
+      .select("*")
+      .eq("user_id", authData.user.id)
+      .eq("status", "active")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (subscriptionData) {
+      setSubscription(subscriptionData as Subscription);
     }
 
-    if (orderQuantityNumber < getServiceMinimum(selectedService)) {
-      setMessage(
-        `Minimum quantity is ${formatNumber(getServiceMinimum(selectedService))}.`,
-      );
-      return;
-    }
+    setLoading(false);
 
-    if (orderQuantityNumber > getServiceMaximum(selectedService)) {
-      setMessage(
-        `Maximum quantity is ${formatNumber(getServiceMaximum(selectedService))}.`,
-      );
-      return;
-    }
-
-    if (orderCharge > Number(customer?.balance || 0)) {
-      setMessage(
-        `Insufficient balance. Required: ${formatMoney(orderCharge)}, Available: ${formatMoney(customer?.balance || 0)}.`,
-      );
-      return;
-    }
-
-    const token = getStoredToken();
-
-    if (!token) {
-      router.replace(`/child/${slug}/login`);
-      return;
-    }
-
-    setSubmittingOrder(true);
-    setMessage("Placing order...");
-
-    try {
-      const response = await fetch("/api/child-panel/customers/orders/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          slug,
-          token,
-          serviceId: selectedService.id,
-          link: orderLink.trim(),
-          quantity: orderQuantityNumber,
-          comments: selectedServiceRequiresComments
-            ? customCommentLines.join("\n")
-            : undefined,
-        }),
-      });
-
-      const responseText = await response.text();
-      let result: any = null;
-
-      try {
-        result = JSON.parse(responseText);
-      } catch {
-        setMessage(
-          `Order API returned non-JSON response. Status: ${response.status}. Make sure the API route is deployed.`,
-        );
-        setSubmittingOrder(false);
-        return;
-      }
-
-      if (!response.ok || !result.success) {
-        setMessage(getReadableError(result.message));
-        setSubmittingOrder(false);
-        return;
-      }
-
-      setMessage(result.message || "Order placed successfully.");
-      setNewOrderOpen(false);
-      setOrderLink("");
-      setOrderQuantity("");
-      setOrderComments("");
-      setSubmittingOrder(false);
-
-      await loadOrders(slug, token);
-      await loadDashboard();
-    } catch (error) {
-      console.error("CHILD_PANEL_ORDER_SUBMIT_ERROR:", error);
-      setMessage("Failed to place order.");
-      setSubmittingOrder(false);
+    if (panelData) {
+      await loadCustomerDeposits();
+      await loadCustomerOrders();
     }
   }
 
-  function closeAddFundsModal() {
-    if (submittingDeposit) return;
-    setAddFundsOpen(false);
-    resetAddFundsForm();
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  function handlePanelNameChange(value: string) {
+    setPanelName(value);
+
+    if (!panel) {
+      setPanelSlug(slugify(value));
+    }
   }
 
-  function handleProofFile(file?: File | null) {
-    setMessage("");
-
-    if (!file) {
-      setProofFile(null);
-      if (proofPreview) URL.revokeObjectURL(proofPreview);
-      setProofPreview("");
-      return;
-    }
+  async function uploadLogo(file: File) {
+    if (!file) return;
 
     const allowedTypes = ["image/png", "image/jpeg", "image/webp"];
 
     if (!allowedTypes.includes(file.type)) {
-      setMessage("Payment proof must be PNG, JPG, or WEBP.");
+      showToast("Logo must be PNG, JPG, or WEBP.", "error");
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      setMessage("Payment proof must be 5MB or smaller.");
+    if (file.size > 2 * 1024 * 1024) {
+      showToast("Logo file must be 2MB or smaller.", "error");
       return;
     }
 
-    if (proofPreview) URL.revokeObjectURL(proofPreview);
+    const validSize = await validateLogoDimensions(file);
 
-    setProofFile(file);
-    setProofPreview(URL.createObjectURL(file));
+    if (!validSize) {
+      showToast("Logo must be exactly 512 x 512 px.", "error");
+      return;
+    }
+
+    setLogoUploading(true);
+
+    const { data: authData } = await supabase.auth.getUser();
+
+    if (!authData.user) {
+      showToast("Please login again.", "error");
+      setLogoUploading(false);
+      return;
+    }
+
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${authData.user.id}/${Date.now()}-child-panel-logo.${fileExt}`;
+
+    const { error } = await supabase.storage
+      .from("child-panel-logos")
+      .upload(fileName, file, {
+        cacheControl: "3600",
+        upsert: true,
+      });
+
+    if (error) {
+      showToast(error.message, "error");
+      setLogoUploading(false);
+      return;
+    }
+
+    const { data } = supabase.storage
+      .from("child-panel-logos")
+      .getPublicUrl(fileName);
+
+    setLogoUrl(data.publicUrl);
+    setLogoUploading(false);
+
+    showToast("Logo uploaded successfully.", "success");
   }
 
-  async function submitDeposit() {
-    if (submittingDeposit) return;
+  async function savePanel() {
+    if (saving) return;
 
-    setMessage("");
-
-    if (!panel || !customer) {
-      setMessage("Please login again before submitting add funds.");
+    if (!hasAccess) {
+      showToast(
+        "You need Child Panel access before setting up a panel.",
+        "error",
+      );
       return;
     }
 
-    const token = getStoredToken();
-
-    if (!token) {
-      router.replace(`/child/${slug}/login`);
+    if (!panelName.trim()) {
+      showToast("Please enter your panel name.", "warning");
       return;
     }
 
-    const amount = Number(depositAmount || 0);
-
-    if (!Number.isFinite(amount) || amount < 50) {
-      setMessage("Minimum add funds amount is ₱50.00.");
+    if (!panelSlug.trim()) {
+      showToast("Please enter your panel slug.", "warning");
       return;
     }
 
-    if (!depositMethod.trim()) {
-      setMessage("Please select a payment method.");
+    if (panelSlug.length < 3) {
+      showToast("Panel slug must be at least 3 characters.", "warning");
       return;
     }
 
-    if (!referenceNumber.trim()) {
-      setMessage("Please enter your reference number.");
+    if (!/^[a-z0-9-]+$/.test(panelSlug)) {
+      showToast(
+        "Panel slug can only use lowercase letters, numbers, and hyphen.",
+        "warning",
+      );
       return;
     }
 
-    if (!proofFile) {
-      setMessage("Please choose your payment proof image first.");
+    if (!Number.isFinite(Number(markupPercent))) {
+      showToast("Please enter a valid markup percentage.", "warning");
       return;
     }
 
-    setSubmittingDeposit(true);
-    setMessage("Uploading payment proof...");
+    if (cleanMarkupPercent < 0 || cleanMarkupPercent > 500) {
+      showToast("Markup percent must be between 0% and 500%.", "warning");
+      return;
+    }
+
+    setSaving(true);
+
+    const { data: authData } = await supabase.auth.getUser();
+
+    if (!authData.user) {
+      showToast("Please login again.", "error");
+      setSaving(false);
+      return;
+    }
+
+    const accessType =
+      hasLevelPerk || hasFreeAccess ? "level_perk" : "paid_subscription";
+
+    const subscriptionStatus =
+      hasLevelPerk || hasFreeAccess ? "free_lifetime" : "active";
+
+    if (panel) {
+      const { error } = await supabase
+        .from("child_panels")
+        .update({
+          panel_name: panelName.trim(),
+          panel_slug: panelSlug.trim(),
+          support_email: supportEmail.trim() || null,
+          logo_url: logoUrl.trim() || null,
+          primary_color: primaryColor || "#2563eb",
+          markup_percent: cleanMarkupPercent,
+          access_type: accessType,
+          subscription_status: subscriptionStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", panel.id)
+        .eq("owner_user_id", authData.user.id);
+
+      if (error) {
+        showToast(error.message, "error");
+        setSaving(false);
+        return;
+      }
+
+      showToast("Child Panel settings saved.", "success");
+    } else {
+      const { error } = await supabase.from("child_panels").insert({
+        owner_user_id: authData.user.id,
+        panel_name: panelName.trim(),
+        panel_slug: panelSlug.trim(),
+        support_email: supportEmail.trim() || null,
+        logo_url: logoUrl.trim() || null,
+        primary_color: primaryColor || "#2563eb",
+        markup_percent: cleanMarkupPercent,
+        status: "pending",
+        access_type: accessType,
+        subscription_status: subscriptionStatus,
+        monthly_price: hasLevelPerk || hasFreeAccess ? 0 : CHILD_PANEL_PRICE,
+      });
+
+      if (error) {
+        showToast(error.message, "error");
+        setSaving(false);
+        return;
+      }
+
+      showToast("Child Panel setup submitted for approval.", "success");
+    }
+
+    setSaving(false);
+    await loadData();
+  }
+
+  async function updateCustomerDeposit(
+    depositId: string,
+    action: "approve" | "reject",
+  ) {
+    if (depositActionLoadingId) return;
+
+    let rejectReason = "";
+
+    if (action === "reject") {
+      const reason = window.prompt("Enter reject reason:");
+
+      if (reason === null) return;
+
+      rejectReason = reason.trim();
+
+      if (!rejectReason) {
+        showToast("Reject reason is required.", "warning");
+        return;
+      }
+    }
+
+    setDepositActionLoadingId(depositId);
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      showToast("Please login again.", "error");
+      setDepositActionLoadingId(null);
+      return;
+    }
 
     try {
-      const fileExt = proofFile.name.split(".").pop()?.toLowerCase() || "png";
-      const fileName = `${panel.id}/${customer.id}/${Date.now()}-${sanitizeFileName(
-        proofFile.name,
-      )}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("child-panel-deposit-proofs")
-        .upload(fileName, proofFile, {
-          cacheControl: "3600",
-          upsert: false,
-          contentType: proofFile.type,
-        });
-
-      if (uploadError) {
-        setMessage(`Upload failed: ${uploadError.message}`);
-        setSubmittingDeposit(false);
-        return;
-      }
-
-      const { data: publicUrlData } = supabase.storage
-        .from("child-panel-deposit-proofs")
-        .getPublicUrl(fileName);
-
-      const proofUrl = publicUrlData?.publicUrl || "";
-
-      if (!proofUrl) {
-        setMessage("Upload failed: payment proof URL was not generated.");
-        setSubmittingDeposit(false);
-        return;
-      }
-
-      setMessage("Submitting add funds request...");
-
-      const response = await fetch(
-        "/api/child-panel/customers/deposits/create",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            slug,
-            token,
-            amount,
-            method: depositMethod.trim(),
-            referenceNumber: referenceNumber.trim(),
-            proofUrl,
-          }),
+      const response = await fetch("/api/child-panel/owner/deposits/update", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
         },
-      );
+        body: JSON.stringify({
+          depositId,
+          action,
+          rejectReason,
+        }),
+      });
 
       const responseText = await response.text();
+
       let result: any = null;
 
       try {
         result = JSON.parse(responseText);
       } catch {
-        setMessage(
-          `Deposit API returned non-JSON response. Status: ${response.status}. Make sure the API route is deployed.`,
+        showToast(
+          `Update deposit API returned non-JSON response. Status: ${response.status}`,
+          "error",
         );
-        setSubmittingDeposit(false);
+        setDepositActionLoadingId(null);
         return;
       }
 
       if (!response.ok || !result.success) {
-        setMessage(getReadableError(result.message));
-        setSubmittingDeposit(false);
+        showToast(result.message || "Failed to update deposit.", "error");
+        setDepositActionLoadingId(null);
         return;
       }
 
-      setMessage(result.message || "Add funds request submitted successfully.");
-      setSubmittingDeposit(false);
-      setAddFundsOpen(false);
-      resetAddFundsForm();
-      await loadServices(slug, token);
-      await loadDeposits(slug, token);
-      await loadDashboard();
+      showToast(result.message || "Deposit updated successfully.", "success");
+      await loadCustomerDeposits();
     } catch (error) {
-      console.error("CHILD_PANEL_DEPOSIT_SUBMIT_ERROR:", error);
-      setMessage("Failed to submit add funds request.");
-      setSubmittingDeposit(false);
+      console.error("UPDATE_CUSTOMER_DEPOSIT_ERROR:", error);
+      showToast("Failed to update deposit.", "error");
     }
+
+    setDepositActionLoadingId(null);
   }
 
-  useEffect(() => {
-    loadDashboard();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug]);
-
-  useEffect(() => {
-    return () => {
-      if (proofPreview) URL.revokeObjectURL(proofPreview);
-    };
-  }, [proofPreview]);
+  async function copyUrl() {
+    await navigator.clipboard.writeText(`https://${childPanelUrl}`);
+    showToast("Child Panel URL copied.", "success");
+  }
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#050716] px-4 text-white">
-        <div className="rounded-[28px] border border-white/10 bg-white/[0.04] px-8 py-7 text-center shadow-2xl backdrop-blur">
-          <div
-            className="mx-auto h-11 w-11 animate-spin rounded-full border-4 border-white/10"
-            style={{ borderTopColor: primaryColor }}
-          />
+      <DashboardGuard>
+        <DashboardLayout>
+          <div className="flex min-h-[70vh] items-center justify-center">
+            <div className="rounded-3xl border border-slate-200 bg-white px-8 py-6 text-center shadow-sm">
+              <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600" />
 
-          <p className="mt-4 text-sm font-bold text-white/60">
-            Loading dashboard...
-          </p>
-        </div>
-      </main>
-    );
-  }
-
-  if (!panel || !customer) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-[#050716] px-4 text-white">
-        <div className="max-w-md rounded-[32px] border border-white/10 bg-white/[0.04] p-8 text-center shadow-2xl backdrop-blur">
-          <h1 className="text-3xl font-black">Session Error</h1>
-          <p className="mt-3 text-sm font-semibold text-white/55">
-            {message || "Please login again."}
-          </p>
-
-          <Link
-            href={`/child/${slug}/login`}
-            className="mt-7 inline-flex items-center justify-center rounded-2xl bg-white px-6 py-3 text-sm font-black text-slate-950"
-          >
-            Login Again
-          </Link>
-        </div>
-      </main>
+              <p className="mt-4 text-sm font-bold text-slate-500">
+                Loading Child Panel...
+              </p>
+            </div>
+          </div>
+        </DashboardLayout>
+      </DashboardGuard>
     );
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#050716] text-white">
-      <div
-        className="absolute inset-0 opacity-95"
-        style={{
-          background: `
-            radial-gradient(circle at 16% 10%, ${primaryColor}32, transparent 28%),
-            radial-gradient(circle at 90% 18%, ${primaryColor}25, transparent 26%),
-            radial-gradient(circle at 55% 95%, ${primaryColor}26, transparent 32%),
-            linear-gradient(135deg, #050716 0%, #090b1f 45%, #060815 100%)
-          `,
-        }}
-      />
-
-      <div className="absolute left-[-16%] top-[34%] h-[370px] w-[140%] rotate-[-7deg] opacity-55 blur-[1px]">
-        <div
-          className="h-full w-full"
-          style={{
-            background: `linear-gradient(90deg, transparent 0%, ${primaryColor}18 22%, ${primaryColor}75 48%, #7c3aed62 66%, transparent 100%)`,
-            clipPath:
-              "polygon(0 38%, 18% 26%, 37% 44%, 52% 33%, 72% 48%, 100% 24%, 100% 56%, 76% 76%, 53% 59%, 34% 73%, 16% 53%, 0 66%)",
-          }}
-        />
-      </div>
-
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[size:72px_72px] opacity-15" />
-
-      <div className="relative flex min-h-screen">
-        <aside className="hidden w-72 shrink-0 border-r border-white/10 bg-black/20 p-5 backdrop-blur-xl lg:block">
-          <div className="flex items-center gap-3">
-            {panel.logo_url ? (
-              <img
-                src={panel.logo_url}
-                alt={panel.panel_name}
-                className="h-12 w-12 rounded-2xl object-cover ring-1 ring-white/10"
-              />
-            ) : (
-              <div
-                className="flex h-12 w-12 items-center justify-center rounded-2xl text-xl font-black"
-                style={{
-                  backgroundColor: primaryColor,
-                  boxShadow: getAccentShadow(primaryColor),
-                }}
-              >
-                {panel.panel_name.charAt(0).toUpperCase()}
-              </div>
-            )}
-
+    <DashboardGuard>
+      <DashboardLayout>
+        <div className="min-w-0 space-y-6">
+          <div className="flex min-w-0 flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
             <div className="min-w-0">
-              <p className="truncate text-lg font-black">{panel.panel_name}</p>
-              <p className="truncate text-xs font-bold text-white/40">
-                Customer Dashboard
+              <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-blue-700">
+                <Sparkles size={15} />
+                Reseller Tool
+              </div>
+
+              <h1 className="mt-4 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+                Child Panel
+              </h1>
+
+              <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
+                Set up your own branded SMM panel powered by Ascend Service.
               </p>
             </div>
-          </div>
-
-          <nav className="mt-8 space-y-2">
-            <SidebarItem
-              icon={Home}
-              label="Dashboard"
-              active
-              primaryColor={primaryColor}
-            />
-            <SidebarItem
-              icon={Plus}
-              label="New Order"
-              primaryColor={primaryColor}
-              onClick={() => openNewOrderModal()}
-            />
-            <SidebarItem
-              icon={ShoppingCart}
-              label="Orders"
-              primaryColor={primaryColor}
-            />
-            <SidebarItem
-              icon={CreditCard}
-              label="Add Funds"
-              primaryColor={primaryColor}
-              onClick={openAddFundsModal}
-            />
-            <SidebarItem
-              icon={Wallet}
-              label="Transactions"
-              primaryColor={primaryColor}
-            />
-            <SidebarItem
-              icon={Settings}
-              label="Settings"
-              primaryColor={primaryColor}
-            />
-          </nav>
-
-          <div className="mt-8 rounded-[28px] border border-white/10 bg-white/[0.04] p-5">
-            <p className="text-xs font-black uppercase tracking-[0.14em] text-white/35">
-              Wallet Balance
-            </p>
-
-            <h3 className="mt-2 text-3xl font-black">
-              {formatMoney(customer.balance)}
-            </h3>
 
             <button
               type="button"
-              onClick={openAddFundsModal}
-              className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black text-white"
-              style={{
-                background: `linear-gradient(135deg, ${primaryColor}, #7c3aed)`,
-                boxShadow: getAccentShadow(primaryColor),
-              }}
+              onClick={loadData}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50 sm:w-fit"
             >
-              <Plus size={17} />
-              Add Funds
+              <RefreshCw size={17} />
+              Refresh
             </button>
           </div>
-        </aside>
 
-        {mobileMenuOpen && (
-          <div className="fixed inset-0 z-[80] bg-black/70 p-4 backdrop-blur lg:hidden">
-            <div className="h-full max-w-sm rounded-[32px] border border-white/10 bg-[#080a18] p-5 shadow-2xl">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  {panel.logo_url ? (
-                    <img
-                      src={panel.logo_url}
-                      alt={panel.panel_name}
-                      className="h-11 w-11 rounded-2xl object-cover"
-                    />
-                  ) : (
-                    <div
-                      className="flex h-11 w-11 items-center justify-center rounded-2xl font-black"
-                      style={{ backgroundColor: primaryColor }}
-                    >
-                      {panel.panel_name.charAt(0).toUpperCase()}
-                    </div>
-                  )}
+          <div className="grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+            <InfoCard
+              icon={hasAccess ? ShieldCheck : Lock}
+              title="Access Status"
+              value={hasAccess ? "Unlocked" : "Locked"}
+              subtitle={
+                hasAccess
+                  ? "You can set up your panel"
+                  : "Subscribe or reach Level 3"
+              }
+              color={
+                hasAccess
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-red-50 text-red-700"
+              }
+            />
 
-                  <div className="min-w-0">
-                    <p className="truncate font-black">{panel.panel_name}</p>
-                    <p className="text-xs font-bold text-white/40">Menu</p>
-                  </div>
-                </div>
+            <InfoCard
+              icon={Store}
+              title="Panel Status"
+              value={panel ? getStatusText(panel.status) : "Not Created"}
+              subtitle={
+                panel ? "Current child panel status" : "Create your first panel"
+              }
+              color="bg-blue-50 text-blue-700"
+            />
 
-                <button
-                  type="button"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/[0.06] text-white/70"
-                >
-                  <X size={20} />
-                </button>
-              </div>
+            <InfoCard
+              icon={Wallet}
+              title="Monthly Price"
+              value={hasLevelPerk || hasFreeAccess ? "Free" : "₱349"}
+              subtitle={
+                hasLevelPerk || hasFreeAccess
+                  ? "Lifetime reseller perk"
+                  : "Paid monthly subscription"
+              }
+              color="bg-purple-50 text-purple-700"
+            />
 
-              <nav className="mt-8 space-y-2">
-                <SidebarItem
-                  icon={Home}
-                  label="Dashboard"
-                  active
-                  primaryColor={primaryColor}
-                />
-                <SidebarItem
-                  icon={Plus}
-                  label="New Order"
-                  primaryColor={primaryColor}
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    openNewOrderModal();
-                  }}
-                />
-                <SidebarItem
-                  icon={ShoppingCart}
-                  label="Orders"
-                  primaryColor={primaryColor}
-                />
-                <SidebarItem
-                  icon={CreditCard}
-                  label="Add Funds"
-                  primaryColor={primaryColor}
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    openAddFundsModal();
-                  }}
-                />
-                <SidebarItem
-                  icon={Settings}
-                  label="Settings"
-                  primaryColor={primaryColor}
-                />
-                <SidebarItem
-                  icon={LogOut}
-                  label="Logout"
-                  primaryColor={primaryColor}
-                  onClick={logout}
-                />
-              </nav>
-            </div>
+            <InfoCard
+              icon={Globe}
+              title="Panel URL"
+              value={panelSlug || "Not Set"}
+              subtitle="Your future child panel link"
+              color="bg-orange-50 text-orange-700"
+            />
           </div>
-        )}
 
-        <section className="min-w-0 flex-1">
-          <header className="sticky top-0 z-40 border-b border-white/10 bg-[#050716]/70 px-4 py-4 backdrop-blur-xl sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex min-w-0 items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setMobileMenuOpen(true)}
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white/75 lg:hidden"
-                >
-                  <Menu size={20} />
-                </button>
-
-                <div className="min-w-0">
-                  <p className="text-xs font-black uppercase tracking-[0.14em] text-white/35">
-                    Welcome back
-                  </p>
-                  <h1 className="mt-1 truncate text-xl font-black text-white sm:text-2xl">
-                    {displayName}
-                  </h1>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={loadDashboard}
-                  className="hidden h-11 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-black text-white/75 transition hover:bg-white/[0.08] sm:flex"
-                >
-                  <RefreshCw size={16} />
-                  Refresh
-                </button>
-
-                <button
-                  type="button"
-                  className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white/75"
-                >
-                  <Bell size={18} />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={logout}
-                  className="hidden h-11 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-black text-white/75 transition hover:bg-white/[0.08] md:flex"
-                >
-                  <LogOut size={16} />
-                  Logout
-                </button>
-              </div>
-            </div>
-          </header>
-
-          <div className="min-w-0 space-y-6 p-4 sm:p-6 lg:p-8">
-            {message && (
-              <div className="rounded-2xl border border-blue-400/20 bg-blue-500/10 px-5 py-4 text-sm font-bold text-blue-100">
-                {message}
-              </div>
-            )}
-
-            <div className="rounded-[34px] border border-white/10 bg-white/[0.05] p-6 shadow-2xl backdrop-blur">
-              <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-center">
-                <div className="min-w-0">
-                  <div
-                    className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.14em]"
-                    style={{
-                      borderColor: `${primaryColor}55`,
-                      backgroundColor: `${primaryColor}12`,
-                    }}
-                  >
-                    <Sparkles size={15} style={{ color: primaryColor }} />
-                    Customer Dashboard
-                  </div>
-
-                  <h2 className="mt-5 text-3xl font-black tracking-tight sm:text-4xl">
-                    Manage your social media growth in one place.
-                  </h2>
-
-                  <p className="mt-3 max-w-2xl text-sm font-semibold leading-7 text-white/55">
-                    Add funds, place new orders, and track your progress from a
-                    clean dashboard built for fast ordering.
-                  </p>
-
-                  <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                    <button
-                      type="button"
-                      onClick={() => openNewOrderModal()}
-                      className="inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-4 text-sm font-black text-white transition"
-                      style={{
-                        background: `linear-gradient(135deg, ${primaryColor}, #7c3aed)`,
-                        boxShadow: getAccentShadow(primaryColor),
-                      }}
-                    >
-                      <Plus size={18} />
-                      New Order
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={openAddFundsModal}
-                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-4 text-sm font-black text-white/75 transition hover:bg-white/[0.08]"
-                    >
-                      <Wallet size={18} />
-                      Add Funds
-                    </button>
-                  </div>
+          {!hasAccess && (
+            <div className="rounded-[28px] border border-red-100 bg-red-50 p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-red-600 shadow-sm">
+                  <Lock size={24} />
                 </div>
 
-                <div className="rounded-[28px] border border-white/10 bg-black/20 p-5">
-                  <p className="text-xs font-black uppercase tracking-[0.14em] text-white/35">
-                    Available Balance
-                  </p>
-
-                  <h3 className="mt-2 text-4xl font-black">
-                    {formatMoney(customer.balance)}
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-xl font-black text-red-700">
+                    Child Panel Access Locked
                   </h3>
 
-                  <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: "35%",
-                        background: `linear-gradient(90deg, ${primaryColor}, #7c3aed)`,
-                      }}
-                    />
-                  </div>
-
-                  <p className="mt-3 text-xs font-semibold text-white/45">
-                    Submit add funds and wait for approval from the panel owner.
+                  <p className="mt-2 text-sm font-semibold leading-6 text-red-600/80">
+                    You need an active ₱349/month Child Panel subscription or
+                    Level 3+ reseller status to use this feature.
                   </p>
-                </div>
-              </div>
-            </div>
 
-            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-              <StatCard
-                title="Wallet Balance"
-                value={formatMoney(customer.balance)}
-                subtitle="Available funds"
-                icon={Wallet}
-                primaryColor={primaryColor}
-              />
-
-              <StatCard
-                title="Total Orders"
-                value={formatNumber(orderStats.total)}
-                subtitle="All child panel orders"
-                icon={ShoppingCart}
-                primaryColor={primaryColor}
-              />
-
-              <StatCard
-                title="Active Orders"
-                value={formatNumber(orderStats.active)}
-                subtitle="Pending / processing"
-                icon={BarChart3}
-                primaryColor={primaryColor}
-              />
-
-              <StatCard
-                title="Completed"
-                value={formatNumber(orderStats.completed)}
-                subtitle="Completed orders"
-                icon={CheckCircle2}
-                primaryColor={primaryColor}
-              />
-            </div>
-
-            <div className="rounded-[28px] border border-white/10 bg-white/[0.05] shadow-2xl backdrop-blur">
-              <div className="border-b border-white/10 p-5">
-                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
-                        style={{
-                          backgroundColor: `${primaryColor}18`,
-                          color: primaryColor,
-                        }}
-                      >
-                        <Package size={21} />
-                      </div>
-
-                      <div className="min-w-0">
-                        <h3 className="text-xl font-black">New Order Services</h3>
-                        <p className="mt-1 text-sm font-semibold text-white/45">
-                          Choose a platform, select a category, then pick the best service.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex w-full flex-col gap-3 sm:flex-row xl:w-auto">
-                    <button
-                      type="button"
-                      onClick={() => openNewOrderModal()}
-                      className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl px-5 text-sm font-black text-white transition"
-                      style={{
-                        background: `linear-gradient(135deg, ${primaryColor}, #7c3aed)`,
-                        boxShadow: getAccentShadow(primaryColor),
-                      }}
-                    >
-                      <Plus size={17} />
-                      New Order
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => loadServices()}
-                      className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-black text-white/75 transition hover:bg-white/[0.08]"
-                    >
-                      <RefreshCw size={16} />
-                      Refresh
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_260px]">
-                  <div className="flex h-12 min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4">
-                    <Search size={17} className="shrink-0 text-white/30" />
-                    <input
-                      value={serviceSearch}
-                      onChange={(event) => setServiceSearch(event.target.value)}
-                      placeholder="Search service name, service ID, category..."
-                      className="min-w-0 flex-1 bg-transparent text-sm font-bold text-white outline-none placeholder:text-white/25"
-                    />
-                  </div>
-
-                  <select
-                    value={selectedCategoryFilter}
-                    onChange={(event) => setSelectedCategoryFilter(event.target.value)}
-                    className="h-12 w-full rounded-2xl border border-white/10 bg-[#0d1024] px-4 text-sm font-black text-white outline-none focus:border-white/30"
+                  <a
+                    href="/dashboard/reseller"
+                    className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-sm font-black text-white transition hover:bg-red-700 sm:w-fit"
                   >
-                    {serviceCategories.map((item) => (
-                      <option key={item} value={item}>
-                        {item === "All" ? "All Categories" : item}
-                      </option>
-                    ))}
-                  </select>
+                    Go to Reseller Page
+                    <ExternalLink size={16} />
+                  </a>
                 </div>
-
-                <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
-                  {servicePlatforms.map((platform) => {
-                    const active = selectedPlatformFilter === platform;
-
-                    return (
-                      <button
-                        key={platform}
-                        type="button"
-                        onClick={() => {
-                          setSelectedPlatformFilter(platform);
-                          setSelectedCategoryFilter("All");
-                        }}
-                        className={`shrink-0 rounded-2xl px-4 py-2 text-sm font-black transition ${
-                          active
-                            ? "text-white"
-                            : "border border-white/10 bg-white/[0.04] text-white/60 hover:bg-white/[0.08] hover:text-white"
-                        }`}
-                        style={
-                          active
-                            ? {
-                                background: `linear-gradient(135deg, ${primaryColor}, #7c3aed)`,
-                                boxShadow: getAccentShadow(primaryColor),
-                              }
-                            : undefined
-                        }
-                      >
-                        {platform === "All" ? "All Platforms" : platform}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="p-5">
-                {loadingServices ? (
-                  <div className="rounded-[24px] border border-white/10 bg-black/20 p-8 text-center">
-                    <Loader2 className="mx-auto animate-spin text-white/50" size={28} />
-                    <p className="mt-3 text-sm font-bold text-white/45">
-                      Loading services...
-                    </p>
-                  </div>
-                ) : filteredServices.length <= 0 ? (
-                  <div className="rounded-[24px] border border-dashed border-white/10 bg-black/20 p-8 text-center">
-                    <div
-                      className="mx-auto flex h-14 w-14 items-center justify-center rounded-3xl"
-                      style={{
-                        backgroundColor: `${primaryColor}18`,
-                        color: primaryColor,
-                      }}
-                    >
-                      <Package size={25} />
-                    </div>
-                    <h4 className="mt-4 text-lg font-black">No services found</h4>
-                    <p className="mt-2 text-sm font-semibold leading-6 text-white/45">
-                      Try another platform, category, or search term.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="flex flex-col gap-2 rounded-[24px] border border-white/10 bg-black/20 p-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="text-sm font-black text-white">
-                          Showing {featuredServices.length} of {filteredServices.length} services
-                        </p>
-                        <p className="mt-1 text-xs font-semibold text-white/40">
-                          Customer prices already include the panel owner&apos;s markup.
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        <span
-                          className="rounded-full px-3 py-1 text-xs font-black"
-                          style={{
-                            backgroundColor: `${primaryColor}18`,
-                            color: primaryColor,
-                          }}
-                        >
-                          {selectedPlatformFilter === "All"
-                            ? "All Platforms"
-                            : selectedPlatformFilter}
-                        </span>
-                        <span className="rounded-full bg-white/[0.06] px-3 py-1 text-xs font-black text-white/60">
-                          {selectedCategoryFilter === "All"
-                            ? "All Categories"
-                            : selectedCategoryFilter}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="overflow-hidden rounded-[24px] border border-white/10 bg-black/20">
-                      <div className="hidden grid-cols-[1fr_130px_130px_110px] gap-4 border-b border-white/10 bg-white/[0.035] px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-white/35 lg:grid">
-                        <span>Service</span>
-                        <span>Price / 1K</span>
-                        <span>Min / Max</span>
-                        <span>Action</span>
-                      </div>
-
-                      <div className="divide-y divide-white/10">
-                        {featuredServices.map((service) => (
-                          <div
-                            key={service.id}
-                            className="grid gap-4 p-4 transition hover:bg-white/[0.035] lg:grid-cols-[1fr_130px_130px_110px] lg:items-center"
-                          >
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span
-                                  className="rounded-full px-2.5 py-1 text-[10px] font-black"
-                                  style={{
-                                    backgroundColor: `${primaryColor}18`,
-                                    color: primaryColor,
-                                  }}
-                                >
-                                  ID {String(service.id).slice(0, 6)}
-                                </span>
-                                <span className="rounded-full bg-white/[0.06] px-2.5 py-1 text-[10px] font-black text-white/55">
-                                  {service.platform || "Other"}
-                                </span>
-                                <span className="rounded-full bg-white/[0.06] px-2.5 py-1 text-[10px] font-black text-white/55">
-                                  {service.category || "Uncategorized"}
-                                </span>
-                              </div>
-
-                              <h4 className="mt-3 line-clamp-2 text-sm font-black leading-5 text-white">
-                                {service.name}
-                              </h4>
-
-                              {service.description && (
-                                <p className="mt-2 line-clamp-2 text-xs font-semibold leading-5 text-white/40">
-                                  {service.description}
-                                </p>
-                              )}
-                            </div>
-
-                            <div className="rounded-2xl bg-white/[0.04] p-3 lg:bg-transparent lg:p-0">
-                              <p className="text-[10px] font-black uppercase tracking-wide text-white/35 lg:hidden">
-                                Price / 1K
-                              </p>
-                              <p className="mt-1 text-base font-black text-white lg:mt-0">
-                                {formatMoney(service.customer_price_per_1000)}
-                              </p>
-                            </div>
-
-                            <div className="rounded-2xl bg-white/[0.04] p-3 lg:bg-transparent lg:p-0">
-                              <p className="text-[10px] font-black uppercase tracking-wide text-white/35 lg:hidden">
-                                Min / Max
-                              </p>
-                              <p className="mt-1 text-sm font-black text-white lg:mt-0">
-                                {formatNumber(service.min_quantity)} / {formatNumber(service.max_quantity)}
-                              </p>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => openNewOrderModal(service)}
-                              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl px-4 text-sm font-black text-white transition"
-                              style={{
-                                background: `linear-gradient(135deg, ${primaryColor}, #7c3aed)`,
-                              }}
-                            >
-                              <ShoppingCart size={16} />
-                              Order
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {filteredServices.length > featuredServices.length && (
-                      <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 text-center text-sm font-bold text-white/45">
-                        Showing first {featuredServices.length} results. Use search or filters to narrow the list.
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
+          )}
 
-            <div className="rounded-[28px] border border-white/10 bg-white/[0.05] shadow-2xl backdrop-blur">
-              <div className="flex flex-col gap-4 border-b border-white/10 p-5 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <h3 className="text-xl font-black">Recent Add Funds</h3>
-                  <p className="mt-1 text-sm font-semibold text-white/45">
-                    Track your pending, approved, and rejected deposit requests.
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => loadDeposits()}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-black text-white/75 transition hover:bg-white/[0.08]"
-                >
-                  <RefreshCw size={16} />
-                  Refresh
-                </button>
-              </div>
-
-              <div className="p-5">
-                {loadingDeposits ? (
-                  <div className="rounded-[24px] border border-white/10 bg-black/20 p-8 text-center">
-                    <Loader2 className="mx-auto animate-spin text-white/50" size={28} />
-                    <p className="mt-3 text-sm font-bold text-white/45">
-                      Loading deposit history...
-                    </p>
-                  </div>
-                ) : deposits.length <= 0 ? (
-                  <div className="rounded-[24px] border border-dashed border-white/10 bg-black/20 p-8 text-center">
-                    <div
-                      className="mx-auto flex h-14 w-14 items-center justify-center rounded-3xl"
-                      style={{
-                        backgroundColor: `${primaryColor}18`,
-                        color: primaryColor,
-                      }}
-                    >
-                      <Wallet size={25} />
+          {hasAccess && (
+            <>
+              <div className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+                <div className="min-w-0 rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
+                      <Settings size={24} />
                     </div>
-                    <h4 className="mt-4 text-lg font-black">No deposits yet</h4>
-                    <p className="mt-2 text-sm font-semibold leading-6 text-white/45">
-                      Your add funds requests will appear here after you submit one.
-                    </p>
+
+                    <div className="min-w-0">
+                      <h2 className="text-xl font-black text-slate-950">
+                        Set Up Your Child Panel
+                      </h2>
+
+                      <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
+                        Fill in your panel information. New panels are marked
+                        pending until admin approval.
+                      </p>
+                    </div>
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    {deposits.slice(0, 5).map((deposit) => (
-                      <div
-                        key={deposit.id}
-                        className="rounded-[22px] border border-white/10 bg-black/20 p-4"
-                      >
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-lg font-black text-white">
-                                {formatMoney(deposit.amount)}
-                              </p>
-                              <span
-                                className={`rounded-full px-3 py-1 text-xs font-black ring-1 ${getDepositStatusStyle(
-                                  deposit.status,
-                                )}`}
-                              >
-                                {getDepositStatusLabel(deposit.status)}
+
+                  <div className="mt-6 grid gap-5">
+                    <div>
+                      <label className="mb-2 block text-sm font-black text-slate-700">
+                        Panel Name
+                      </label>
+
+                      <input
+                        value={panelName}
+                        onChange={(event) =>
+                          handlePanelNameChange(event.target.value)
+                        }
+                        placeholder="Example: Kutchara Boost Panel"
+                        className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-black text-slate-700">
+                        Panel Slug / URL
+                      </label>
+
+                      <div className="grid gap-3 lg:grid-cols-[1fr_auto]">
+                        <input
+                          value={panelSlug}
+                          onChange={(event) =>
+                            setPanelSlug(slugify(event.target.value))
+                          }
+                          placeholder="your-panel-name"
+                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
+                        />
+
+                        <button
+                          type="button"
+                          onClick={copyUrl}
+                          className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-5 text-sm font-black text-blue-700 transition hover:bg-blue-100"
+                        >
+                          <Copy size={16} />
+                          Copy URL
+                        </button>
+                      </div>
+
+                      <p className="mt-2 break-all text-xs font-bold text-slate-500">
+                        Preview: https://{childPanelUrl}
+                      </p>
+                    </div>
+
+                    <div className="grid gap-5 md:grid-cols-2">
+                      <div>
+                        <label className="mb-2 block text-sm font-black text-slate-700">
+                          Support Email
+                        </label>
+
+                        <input
+                          value={supportEmail}
+                          onChange={(event) =>
+                            setSupportEmail(event.target.value)
+                          }
+                          placeholder="support@yourpanel.com"
+                          className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-sm font-black text-slate-700">
+                          Theme Color
+                        </label>
+
+                        <div className="flex h-12 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4">
+                          <Palette size={18} className="text-slate-400" />
+
+                          <input
+                            type="color"
+                            value={primaryColor}
+                            onChange={(event) =>
+                              setPrimaryColor(event.target.value)
+                            }
+                            className="h-8 w-10 cursor-pointer border-0 bg-transparent p-0"
+                          />
+
+                          <input
+                            value={primaryColor}
+                            onChange={(event) =>
+                              setPrimaryColor(event.target.value)
+                            }
+                            className="min-w-0 flex-1 bg-transparent text-sm font-bold text-slate-800 outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-[24px] border border-blue-100 bg-blue-50/60 p-5">
+                      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-center">
+                        <div>
+                          <label className="mb-2 block text-sm font-black text-slate-700">
+                            Markup Percent
+                          </label>
+
+                          <div className="flex h-12 items-center rounded-2xl border border-blue-100 bg-white px-4 shadow-sm">
+                            <input
+                              type="number"
+                              min="0"
+                              max="500"
+                              step="0.01"
+                              value={markupPercent}
+                              onChange={(event) =>
+                                setMarkupPercent(event.target.value)
+                              }
+                              placeholder="20"
+                              className="min-w-0 flex-1 bg-transparent text-sm font-bold text-slate-800 outline-none"
+                            />
+
+                            <span className="text-sm font-black text-blue-600">
+                              %
+                            </span>
+                          </div>
+
+                          <p className="mt-2 text-xs font-semibold leading-5 text-slate-500">
+                            This markup is added on top of Ascend base service
+                            prices. Customers will see the marked-up price, and
+                            the difference becomes your profit.
+                          </p>
+                        </div>
+
+                        <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
+                          <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+                            Pricing Preview
+                          </p>
+
+                          <div className="mt-3 space-y-2 text-sm">
+                            <div className="flex items-center justify-between gap-4">
+                              <span className="font-semibold text-slate-500">
+                                Base Price
+                              </span>
+                              <span className="font-black text-slate-900">
+                                ₱{markupPreview.basePrice.toFixed(2)}
                               </span>
                             </div>
-                            <p className="mt-1 truncate text-sm font-semibold text-white/50">
-                              {deposit.method || "Payment Method"} · Ref: {deposit.reference_number || "—"}
-                            </p>
-                            <p className="mt-1 text-xs font-semibold text-white/35">
-                              {formatDateTime(deposit.created_at)}
-                            </p>
-                            {deposit.reject_reason && (
-                              <p className="mt-2 rounded-2xl bg-red-500/10 px-3 py-2 text-xs font-bold text-red-200">
-                                Reason: {deposit.reject_reason}
-                              </p>
+
+                            <div className="flex items-center justify-between gap-4">
+                              <span className="font-semibold text-slate-500">
+                                Customer Sees
+                              </span>
+                              <span className="font-black text-blue-600">
+                                ₱{markupPreview.customerPrice.toFixed(2)}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between gap-4">
+                              <span className="font-semibold text-slate-500">
+                                Your Profit
+                              </span>
+                              <span className="font-black text-emerald-600">
+                                ₱{markupPreview.ownerProfit.toFixed(2)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-black text-slate-700">
+                        Upload Logo
+                      </label>
+
+                      <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-5">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                            {logoUrl ? (
+                              <img
+                                src={logoUrl}
+                                alt="Child Panel Logo"
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <Store size={28} className="text-slate-400" />
                             )}
                           </div>
 
-                          {deposit.proof_url && (
-                            <a
-                              href={deposit.proof_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-black text-white/70 transition hover:bg-white/[0.08]"
-                            >
-                              <FileImage size={15} />
-                              Proof
-                            </a>
-                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-black text-slate-800">
+                              Logo must be exactly 512 x 512 px
+                            </p>
+
+                            <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+                              Accepted formats: PNG, JPG, WEBP. Maximum file
+                              size: 2MB.
+                            </p>
+
+                            <label className="mt-4 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700">
+                              {logoUploading ? (
+                                <>
+                                  <Loader2 size={17} className="animate-spin" />
+                                  Uploading...
+                                </>
+                              ) : (
+                                <>
+                                  <Upload size={17} />
+                                  Choose Logo
+                                </>
+                              )}
+
+                              <input
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp"
+                                disabled={logoUploading}
+                                onChange={(event) => {
+                                  const file = event.target.files?.[0];
+                                  if (file) uploadLogo(file);
+                                  event.target.value = "";
+                                }}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+                    </div>
 
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-              <div className="rounded-[28px] border border-white/10 bg-white/[0.05] shadow-2xl backdrop-blur">
-                <div className="flex flex-col gap-4 border-b border-white/10 p-5 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <h3 className="text-xl font-black">Recent Orders</h3>
-                    <p className="mt-1 text-sm font-semibold text-white/45">
-                      Your latest child panel orders from this dashboard.
+                    <button
+                      type="button"
+                      onClick={savePanel}
+                      disabled={saving}
+                      className="inline-flex h-13 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-4 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-fit"
+                    >
+                      {saving ? (
+                        <Loader2 size={18} className="animate-spin" />
+                      ) : (
+                        <Save size={18} />
+                      )}
+
+                      {saving
+                        ? "Saving..."
+                        : panel
+                          ? "Save Settings"
+                          : "Create Child Panel"}
+                    </button>
+                  </div>
+                </div>
+
+                <aside className="min-w-0 space-y-5">
+                  <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="flex items-center justify-between gap-4">
+                      <h3 className="text-lg font-black text-slate-950">
+                        Panel Preview
+                      </h3>
+
+                      {panel && (
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-black ring-1 ${getStatusStyle(
+                            panel.status,
+                          )}`}
+                        >
+                          {getStatusText(panel.status)}
+                        </span>
+                      )}
+                    </div>
+
+                    <div
+                      className="mt-5 rounded-[24px] p-5 text-white shadow-sm"
+                      style={{ backgroundColor: primaryColor || "#2563eb" }}
+                    >
+                      <div className="flex items-center gap-3">
+                        {logoUrl ? (
+                          <img
+                            src={logoUrl}
+                            alt={panelName || "Child Panel"}
+                            className="h-11 w-11 rounded-2xl bg-white object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/20 text-lg font-black">
+                            {(panelName || "P").charAt(0).toUpperCase()}
+                          </div>
+                        )}
+
+                        <div className="min-w-0">
+                          <h4 className="truncate text-lg font-black">
+                            {panelName || "Your Panel Name"}
+                          </h4>
+
+                          <p className="truncate text-xs font-semibold text-white/80">
+                            Powered by Ascend Service
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 rounded-2xl bg-white/15 p-4">
+                        <p className="text-xs font-black uppercase tracking-wide text-white/70">
+                          Panel URL
+                        </p>
+
+                        <p className="mt-2 break-all text-sm font-black">
+                          {childPanelUrl}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+                    <h3 className="text-lg font-black text-slate-950">
+                      Access Details
+                    </h3>
+
+                    <div className="mt-5 space-y-4">
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-sm font-bold text-slate-500">
+                          Reseller Level
+                        </span>
+
+                        <span className="text-right text-sm font-black text-slate-900">
+                          {profile?.reseller_level || "New Reseller"}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-sm font-bold text-slate-500">
+                          Access Type
+                        </span>
+
+                        <span className="text-right text-sm font-black text-slate-900">
+                          {hasLevelPerk || hasFreeAccess
+                            ? "Free Lifetime"
+                            : "Paid Subscription"}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-sm font-bold text-slate-500">
+                          Markup Percent
+                        </span>
+
+                        <span className="text-right text-sm font-black text-blue-600">
+                          {cleanMarkupPercent.toFixed(2)}%
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-sm font-bold text-slate-500">
+                          Expires At
+                        </span>
+
+                        <span className="text-right text-sm font-black text-slate-900">
+                          {hasLevelPerk || hasFreeAccess
+                            ? "Never"
+                            : formatDate(
+                                subscription?.expires_at ||
+                                  profile?.child_panel_subscription_expires_at,
+                              )}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {panel?.status === "pending" && (
+                    <div className="rounded-[24px] border border-orange-100 bg-orange-50 p-5">
+                      <div className="flex gap-3">
+                        <AlertTriangle
+                          className="mt-0.5 shrink-0 text-orange-600"
+                          size={20}
+                        />
+
+                        <div>
+                          <h4 className="font-black text-orange-700">
+                            Pending Admin Approval
+                          </h4>
+
+                          <p className="mt-1 text-sm font-semibold leading-6 text-orange-700/80">
+                            Your panel setup is saved. Admin approval is needed
+                            before the public child panel becomes active.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {panel?.status === "active" && (
+                    <a
+                      href={`/child/${panel.panel_slug}`}
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-4 text-sm font-black text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700"
+                    >
+                      <CheckCircle2 size={18} />
+                      Open Child Panel
+                    </a>
+                  )}
+                </aside>
+              </div>
+
+              <div className="rounded-[28px] border border-slate-200 bg-white shadow-sm">
+                <div className="flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-xl font-black text-slate-950">
+                      Customer Add Funds Requests
+                    </h2>
+
+                    <p className="mt-1 text-sm font-semibold text-slate-500">
+                      Review, approve, or reject add funds requests from your
+                      child panel customers.
                     </p>
                   </div>
 
                   <button
                     type="button"
-                    onClick={() => loadOrders()}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-black text-white/75 transition hover:bg-white/[0.08]"
+                    onClick={loadCustomerDeposits}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50 sm:w-fit"
                   >
-                    <RefreshCw size={16} />
-                    Refresh
+                    <RefreshCw size={17} />
+                    Refresh Requests
                   </button>
                 </div>
 
-                <div className="p-5">
-                  <div className="flex h-12 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4">
-                    <Search size={17} className="text-white/30" />
-                    <input
-                      value={orderSearch}
-                      onChange={(event) => setOrderSearch(event.target.value)}
-                      placeholder="Search order ID, service, link, or status..."
-                      className="min-w-0 flex-1 bg-transparent text-sm font-bold text-white outline-none placeholder:text-white/25"
-                    />
+                <div className="grid gap-4 border-b border-slate-100 p-5 sm:grid-cols-3">
+                  <div className="rounded-2xl bg-orange-50 p-4">
+                    <p className="text-xs font-black uppercase tracking-wide text-orange-600">
+                      Pending
+                    </p>
+                    <p className="mt-2 text-2xl font-black text-orange-700">
+                      {pendingDeposits}
+                    </p>
                   </div>
 
-                  {loadingOrders ? (
-                    <div className="mt-5 rounded-[24px] border border-white/10 bg-black/20 p-8 text-center">
-                      <Loader2 className="mx-auto animate-spin text-white/50" size={28} />
-                      <p className="mt-3 text-sm font-bold text-white/45">
-                        Loading orders...
-                      </p>
-                    </div>
-                  ) : filteredOrders.length <= 0 ? (
-                    <div className="mt-5 rounded-[24px] border border-dashed border-white/10 bg-black/20 p-10 text-center">
-                      <div
-                        className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl"
-                        style={{
-                          backgroundColor: `${primaryColor}18`,
-                          color: primaryColor,
-                        }}
-                      >
-                        <ShoppingCart size={28} />
-                      </div>
+                  <div className="rounded-2xl bg-emerald-50 p-4">
+                    <p className="text-xs font-black uppercase tracking-wide text-emerald-600">
+                      Approved
+                    </p>
+                    <p className="mt-2 text-2xl font-black text-emerald-700">
+                      {approvedDeposits}
+                    </p>
+                  </div>
 
-                      <h4 className="mt-5 text-lg font-black">No orders found</h4>
+                  <div className="rounded-2xl bg-blue-50 p-4">
+                    <p className="text-xs font-black uppercase tracking-wide text-blue-600">
+                      Total Requests
+                    </p>
+                    <p className="mt-2 text-2xl font-black text-blue-700">
+                      {customerDeposits.length}
+                    </p>
+                  </div>
+                </div>
 
-                      <p className="mt-2 text-sm font-semibold leading-6 text-white/45">
-                        Your placed orders will appear here after you submit one.
-                      </p>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[980px] text-sm">
+                    <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                      <tr>
+                        <th className="px-5 py-4 text-left">Customer</th>
+                        <th className="px-5 py-4 text-left">Amount</th>
+                        <th className="px-5 py-4 text-left">Method</th>
+                        <th className="px-5 py-4 text-left">Reference</th>
+                        <th className="px-5 py-4 text-left">Status</th>
+                        <th className="px-5 py-4 text-left">Date</th>
+                        <th className="px-5 py-4 text-left">Actions</th>
+                      </tr>
+                    </thead>
 
-                      <button
-                        type="button"
-                        onClick={() => openNewOrderModal()}
-                        className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-black text-white"
-                        style={{
-                          background: `linear-gradient(135deg, ${primaryColor}, #7c3aed)`,
-                          boxShadow: getAccentShadow(primaryColor),
-                        }}
-                      >
-                        <Plus size={17} />
-                        Create First Order
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="mt-5 space-y-3">
-                      {filteredOrders.slice(0, 8).map((order) => (
-                        <div
-                          key={order.id}
-                          className="rounded-[22px] border border-white/10 bg-black/20 p-4"
-                        >
-                          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-2">
+                    <tbody>
+                      {depositsLoading ? (
+                        <tr>
+                          <td
+                            colSpan={7}
+                            className="px-5 py-12 text-center text-slate-500"
+                          >
+                            <Loader2
+                              className="mx-auto animate-spin"
+                              size={26}
+                            />
+                            <p className="mt-3 text-sm font-bold">
+                              Loading customer deposits...
+                            </p>
+                          </td>
+                        </tr>
+                      ) : customerDeposits.length <= 0 ? (
+                        <tr>
+                          <td
+                            colSpan={7}
+                            className="px-5 py-12 text-center text-sm font-semibold text-slate-500"
+                          >
+                            No customer add funds requests yet.
+                          </td>
+                        </tr>
+                      ) : (
+                        customerDeposits.map((deposit) => {
+                          const status = String(
+                            deposit.status || "pending",
+                          ).toLowerCase();
+                          const pending = status === "pending";
+                          const updating =
+                            depositActionLoadingId === deposit.id;
+
+                          return (
+                            <tr
+                              key={deposit.id}
+                              className="border-t border-slate-100 transition hover:bg-slate-50"
+                            >
+                              <td className="px-5 py-5 align-top">
+                                <p className="font-black text-slate-900">
+                                  {getCustomerName(deposit)}
+                                </p>
+                                <p className="mt-1 max-w-[220px] truncate text-xs font-semibold text-slate-500">
+                                  {deposit.customer?.email || "No email"}
+                                </p>
+                              </td>
+
+                              <td className="px-5 py-5 align-top font-black text-slate-900">
+                                {formatMoney(deposit.amount)}
+                              </td>
+
+                              <td className="px-5 py-5 align-top font-semibold text-slate-600">
+                                {deposit.method || "Manual Payment"}
+                              </td>
+
+                              <td className="px-5 py-5 align-top">
+                                <p className="max-w-[180px] truncate font-semibold text-slate-600">
+                                  {deposit.reference_number || "—"}
+                                </p>
+                              </td>
+
+                              <td className="px-5 py-5 align-top">
                                 <span
-                                  className="rounded-full px-3 py-1 text-xs font-black"
-                                  style={{
-                                    backgroundColor: `${primaryColor}18`,
-                                    color: primaryColor,
-                                  }}
+                                  className={`inline-flex rounded-full px-3 py-1 text-xs font-black ring-1 ${getDepositStatusStyle(
+                                    deposit.status,
+                                  )}`}
                                 >
-                                  {shortId(order.id)}
+                                  {getDepositStatusText(deposit.status)}
                                 </span>
 
+                                {deposit.reject_reason && (
+                                  <p className="mt-2 max-w-[220px] truncate text-xs font-semibold text-red-500">
+                                    {deposit.reject_reason}
+                                  </p>
+                                )}
+                              </td>
+
+                              <td className="px-5 py-5 align-top">
+                                <p className="font-semibold text-slate-600">
+                                  {formatDateTime(deposit.created_at)}
+                                </p>
+                              </td>
+
+                              <td className="px-5 py-5 align-top">
+                                <div className="flex items-center gap-2">
+                                  {deposit.proof_url && (
+                                    <a
+                                      href={deposit.proof_url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50"
+                                      title="View proof"
+                                    >
+                                      <Eye size={16} />
+                                    </a>
+                                  )}
+
+                                  {pending && (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          updateCustomerDeposit(
+                                            deposit.id,
+                                            "approve",
+                                          )
+                                        }
+                                        disabled={updating}
+                                        className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 text-xs font-black text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                                      >
+                                        {updating ? (
+                                          <Loader2
+                                            size={14}
+                                            className="animate-spin"
+                                          />
+                                        ) : (
+                                          <CheckCircle2 size={14} />
+                                        )}
+                                        Approve
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          updateCustomerDeposit(
+                                            deposit.id,
+                                            "reject",
+                                          )
+                                        }
+                                        disabled={updating}
+                                        className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-red-600 px-3 text-xs font-black text-white transition hover:bg-red-700 disabled:opacity-50"
+                                      >
+                                        <XCircle size={14} />
+                                        Reject
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+
+              <div className="rounded-[28px] border border-slate-200 bg-white shadow-sm">
+                <div className="flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-xl font-black text-slate-950">
+                      Customer Orders
+                    </h2>
+
+                    <p className="mt-1 text-sm font-semibold text-slate-500">
+                      View your child panel customer orders, pricing, markup profit, and linked main order IDs.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={loadCustomerOrders}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50 sm:w-fit"
+                  >
+                    <RefreshCw size={17} />
+                    Refresh Orders
+                  </button>
+                </div>
+
+                <div className="grid gap-4 border-b border-slate-100 p-5 sm:grid-cols-4">
+                  <div className="rounded-2xl bg-blue-50 p-4">
+                    <p className="text-xs font-black uppercase tracking-wide text-blue-600">
+                      Total Orders
+                    </p>
+                    <p className="mt-2 text-2xl font-black text-blue-700">
+                      {orderStats.total}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl bg-orange-50 p-4">
+                    <p className="text-xs font-black uppercase tracking-wide text-orange-600">
+                      Active
+                    </p>
+                    <p className="mt-2 text-2xl font-black text-orange-700">
+                      {orderStats.active}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl bg-emerald-50 p-4">
+                    <p className="text-xs font-black uppercase tracking-wide text-emerald-600">
+                      Completed
+                    </p>
+                    <p className="mt-2 text-2xl font-black text-emerald-700">
+                      {orderStats.completed}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl bg-purple-50 p-4">
+                    <p className="text-xs font-black uppercase tracking-wide text-purple-600">
+                      Total Profit
+                    </p>
+                    <p className="mt-2 text-2xl font-black text-purple-700">
+                      {formatMoney(orderStats.totalProfit)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[1250px] text-sm">
+                    <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                      <tr>
+                        <th className="px-5 py-4 text-left">Customer</th>
+                        <th className="px-5 py-4 text-left">Service</th>
+                        <th className="px-5 py-4 text-left">Quantity</th>
+                        <th className="px-5 py-4 text-left">Customer Paid</th>
+                        <th className="px-5 py-4 text-left">Base Cost</th>
+                        <th className="px-5 py-4 text-left">Profit</th>
+                        <th className="px-5 py-4 text-left">Status</th>
+                        <th className="px-5 py-4 text-left">Main Order</th>
+                        <th className="px-5 py-4 text-left">Date</th>
+                        <th className="px-5 py-4 text-left">Actions</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {ordersLoading ? (
+                        <tr>
+                          <td
+                            colSpan={10}
+                            className="px-5 py-12 text-center text-slate-500"
+                          >
+                            <Loader2
+                              className="mx-auto animate-spin"
+                              size={26}
+                            />
+                            <p className="mt-3 text-sm font-bold">
+                              Loading customer orders...
+                            </p>
+                          </td>
+                        </tr>
+                      ) : customerOrders.length <= 0 ? (
+                        <tr>
+                          <td
+                            colSpan={10}
+                            className="px-5 py-12 text-center text-sm font-semibold text-slate-500"
+                          >
+                            No customer orders yet.
+                          </td>
+                        </tr>
+                      ) : (
+                        customerOrders.map((order) => {
+                          const customer = getOrderCustomer(order);
+                          const hasComments =
+                            String(order.order_type || "").toLowerCase() ===
+                            "custom_comments";
+
+                          return (
+                            <tr
+                              key={order.id}
+                              className="border-t border-slate-100 transition hover:bg-slate-50"
+                            >
+                              <td className="px-5 py-5 align-top">
+                                <p className="font-black text-slate-900">
+                                  {getOrderCustomerName(order)}
+                                </p>
+                                <p className="mt-1 max-w-[180px] truncate text-xs font-semibold text-slate-500">
+                                  {customer?.email || "No email"}
+                                </p>
+                              </td>
+
+                              <td className="px-5 py-5 align-top">
+                                <p className="max-w-[260px] truncate font-black text-slate-900">
+                                  {order.service_name}
+                                </p>
+                                <a
+                                  href={order.link}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="mt-1 block max-w-[240px] truncate text-xs font-bold text-blue-600 hover:text-blue-700"
+                                >
+                                  {order.link}
+                                </a>
+                                {hasComments && (
+                                  <p className="mt-1 text-xs font-black text-purple-600">
+                                    Custom Comments
+                                  </p>
+                                )}
+                              </td>
+
+                              <td className="px-5 py-5 align-top font-black text-slate-700">
+                                {Number(order.quantity || 0).toLocaleString("en-PH")}
+                              </td>
+
+                              <td className="px-5 py-5 align-top font-black text-emerald-600">
+                                {formatMoney(order.customer_price)}
+                              </td>
+
+                              <td className="px-5 py-5 align-top font-black text-slate-700">
+                                {formatMoney(order.base_price)}
+                              </td>
+
+                              <td className="px-5 py-5 align-top">
+                                <p className="font-black text-purple-600">
+                                  {formatMoney(order.owner_profit)}
+                                </p>
+                                <p className="mt-1 text-xs font-semibold text-slate-400">
+                                  {Number(order.markup_percent || 0)}% markup
+                                </p>
+                              </td>
+
+                              <td className="px-5 py-5 align-top">
                                 <span
-                                  className={`rounded-full px-3 py-1 text-xs font-black ring-1 ${getOrderStatusStyle(
+                                  className={`inline-flex rounded-full px-3 py-1 text-xs font-black ring-1 ${getOrderStatusStyle(
                                     order.status,
                                   )}`}
                                 >
-                                  {getOrderStatusLabel(order.status)}
+                                  {getOrderStatusText(order.status)}
                                 </span>
+                              </td>
 
-                                {order.order_type === "custom_comments" && (
-                                  <span className="rounded-full bg-purple-500/10 px-3 py-1 text-xs font-black text-purple-200 ring-1 ring-purple-400/20">
-                                    Custom Comments
-                                  </span>
-                                )}
-                              </div>
-
-                              <h4 className="mt-3 line-clamp-2 text-sm font-black text-white">
-                                {order.service_name || "Unknown Service"}
-                              </h4>
-
-                              <a
-                                href={order.link}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="mt-2 block truncate text-xs font-semibold text-blue-200 hover:text-blue-100"
-                              >
-                                {order.link}
-                              </a>
-
-                              <p className="mt-2 text-xs font-semibold text-white/35">
-                                {formatDateTime(order.created_at)}
-                              </p>
-                            </div>
-
-                            <div className="grid shrink-0 grid-cols-2 gap-3 sm:min-w-[260px]">
-                              <div className="rounded-2xl bg-white/[0.04] p-3">
-                                <p className="text-[10px] font-black uppercase tracking-wide text-white/35">
-                                  Quantity
+                              <td className="px-5 py-5 align-top">
+                                <p className="max-w-[130px] truncate font-black text-slate-700">
+                                  {order.main_order_id
+                                    ? `#${String(order.main_order_id)
+                                        .slice(0, 8)
+                                        .toUpperCase()}`
+                                    : "—"}
                                 </p>
-                                <p className="mt-1 text-sm font-black text-white">
-                                  {formatNumber(order.quantity)}
+                                <p className="mt-1 max-w-[130px] truncate text-xs font-semibold text-slate-400">
+                                  {order.provider_order_id
+                                    ? `Provider: ${order.provider_order_id}`
+                                    : order.provider_name || "No provider yet"}
                                 </p>
-                              </div>
+                              </td>
 
-                              <div className="rounded-2xl bg-white/[0.04] p-3">
-                                <p className="text-[10px] font-black uppercase tracking-wide text-white/35">
-                                  Charge
+                              <td className="px-5 py-5 align-top">
+                                <p className="font-semibold text-slate-600">
+                                  {formatDateTime(order.created_at)}
                                 </p>
-                                <p className="mt-1 text-sm font-black text-emerald-200">
-                                  {formatMoney(order.customer_price)}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-              <aside className="space-y-5">
-                <div className="rounded-[28px] border border-white/10 bg-white/[0.05] p-5 shadow-2xl backdrop-blur">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="flex h-12 w-12 items-center justify-center rounded-2xl"
-                      style={{
-                        backgroundColor: `${primaryColor}18`,
-                        color: primaryColor,
-                      }}
-                    >
-                      <User size={22} />
-                    </div>
+                              </td>
 
-                    <div className="min-w-0">
-                      <h3 className="truncate text-lg font-black">
-                        {displayName}
-                      </h3>
-                      <p className="truncate text-sm font-semibold text-white/45">
-                        @{customer.username || "customer"}
-                      </p>
-                    </div>
-                  </div>
+                              <td className="px-5 py-5 align-top">
+                                <div className="flex items-center gap-2">
+                                  <a
+                                    href={order.link}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50"
+                                    title="Open link"
+                                  >
+                                    <ExternalLink size={16} />
+                                  </a>
 
-                  <div className="mt-5 space-y-3 text-sm">
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="font-semibold text-white/45">Email</span>
-                      <span className="min-w-0 truncate text-right font-black">
-                        {customer.email}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="font-semibold text-white/45">Status</span>
-                      <span
-                        className="rounded-full px-3 py-1 text-xs font-black"
-                        style={{
-                          backgroundColor: `${primaryColor}18`,
-                          color: primaryColor,
-                        }}
-                      >
-                        Active
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="font-semibold text-white/45">Joined</span>
-                      <span className="font-black">
-                        {new Date(customer.created_at).toLocaleDateString(
-                          "en-PH",
-                          {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          },
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-[28px] border border-white/10 bg-white/[0.05] p-5 shadow-2xl backdrop-blur">
-                  <h3 className="text-lg font-black">Quick Actions</h3>
-
-                  <div className="mt-5 grid gap-3">
-                    <button
-                      type="button"
-                      onClick={() => openNewOrderModal()}
-                      className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-left text-sm font-black text-white/75 transition hover:bg-white/[0.08]"
-                    >
-                      New Order
-                      <Plus size={17} />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={openAddFundsModal}
-                      className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-left text-sm font-black text-white/75 transition hover:bg-white/[0.08]"
-                    >
-                      Add Funds
-                      <Wallet size={17} />
-                    </button>
-
-                    <button className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-left text-sm font-black text-white/75 transition hover:bg-white/[0.08]">
-                      View Orders
-                      <ShoppingCart size={17} />
-                    </button>
-                  </div>
-                </div>
-              </aside>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      {newOrderOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-black/75 p-3 backdrop-blur-sm sm:p-5 lg:items-center">
-          <div className="my-4 w-full max-w-3xl overflow-hidden rounded-[32px] border border-white/10 bg-[#080a18] shadow-2xl">
-            <div className="flex items-start justify-between gap-4 border-b border-white/10 p-5 sm:p-6">
-              <div className="min-w-0">
-                <p className="text-xs font-black uppercase tracking-[0.14em] text-white/35">
-                  Order
-                </p>
-                <h3 className="mt-1 text-2xl font-black text-white">
-                  New Order
-                </h3>
-                <p className="mt-1 text-sm font-semibold leading-6 text-white/50">
-                  Select a service and preview the price with the panel owner&apos;s markup applied.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={closeNewOrderModal}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white/70 transition hover:bg-white/[0.08]"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="space-y-5 p-5 sm:p-6">
-              <div>
-                <label className="mb-2 block text-sm font-black text-white/80">
-                  Service
-                </label>
-                <select
-                  value={selectedServiceId}
-                  onChange={(event) => {
-                    const serviceId = event.target.value;
-                    const service = services.find((item) => item.id === serviceId) || null;
-                    setSelectedServiceId(serviceId);
-                    setOrderComments("");
-                    setOrderQuantity(service ? (isCustomCommentsService(service) ? "" : String(service.min_quantity || 100)) : "");
-                  }}
-                  className="h-12 w-full rounded-2xl border border-white/10 bg-[#0d1024] px-4 text-sm font-bold text-white outline-none focus:border-white/30"
-                >
-                  <option value="">Select service</option>
-                  {services.map((service) => (
-                    <option key={service.id} value={service.id}>
-                      {service.name} · {formatMoney(service.customer_price_per_1000)} / 1K
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {selectedService && (
-                <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-5">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="min-w-0">
-                      <h4 className="line-clamp-2 text-lg font-black text-white">
-                        {selectedService.name}
-                      </h4>
-                      <p className="mt-2 text-sm font-semibold text-white/45">
-                        {selectedService.platform || "Platform"} · {selectedService.category || "Category"}
-                      </p>
-                      {selectedServiceRequiresComments && (
-                        <span
-                          className="mt-3 inline-flex rounded-full px-3 py-1 text-xs font-black"
-                          style={{
-                            backgroundColor: `${primaryColor}18`,
-                            color: primaryColor,
-                          }}
-                        >
-                          Custom Comments · 1 comment per line
-                        </span>
+                                  {hasComments && order.comments && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        alert(
+                                          `Custom comments:\n\n${order.comments}`,
+                                        )
+                                      }
+                                      className="inline-flex h-9 items-center justify-center rounded-xl border border-purple-100 bg-purple-50 px-3 text-xs font-black text-purple-700 transition hover:bg-purple-100"
+                                    >
+                                      Comments
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
                       )}
-                      <p className="mt-3 text-sm font-semibold leading-6 text-white/45">
-                        {selectedService.description || "No service description available."}
-                      </p>
-                    </div>
-                    <div className="grid shrink-0 grid-cols-2 gap-3 sm:min-w-[260px]">
-                      <div className="rounded-2xl bg-black/20 p-3">
-                        <p className="text-[10px] font-black uppercase tracking-wide text-white/35">
-                          Price / 1K
-                        </p>
-                        <p className="mt-1 text-sm font-black text-white">
-                          {formatMoney(selectedService.customer_price_per_1000)}
-                        </p>
-                      </div>
-                      <div className="rounded-2xl bg-black/20 p-3">
-                        <p className="text-[10px] font-black uppercase tracking-wide text-white/35">
-                          Markup
-                        </p>
-                        <p className="mt-1 text-sm font-black text-white">
-                          {Number(selectedService.markup_percent || 0)}%
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <label className="mb-2 block text-sm font-black text-white/80">
-                  Link
-                </label>
-                <input
-                  value={orderLink}
-                  onChange={(event) => setOrderLink(event.target.value)}
-                  placeholder="Enter your social media link"
-                  className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-bold text-white outline-none placeholder:text-white/25 focus:border-white/30"
-                />
-              </div>
-
-              {selectedServiceRequiresComments ? (
-                <div>
-                  <label className="mb-2 block text-sm font-black text-white/80">
-                    Custom Comments
-                  </label>
-                  <textarea
-                    value={orderComments}
-                    onChange={(event) => setOrderComments(event.target.value)}
-                    placeholder={`Write your custom comments here.\nOne comment per line.\nExample:\nAmazing post!\nVery nice content!`}
-                    rows={8}
-                    className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none placeholder:text-white/25 focus:border-white/30"
-                  />
-                  <div className="mt-2 flex flex-col gap-1 text-xs font-semibold text-white/40 sm:flex-row sm:items-center sm:justify-between">
-                    <span>Quantity is automatically counted from non-empty lines.</span>
-                    <span>Comments: {formatNumber(customCommentQuantity)}</span>
-                  </div>
-                  {selectedService && (
-                    <p className="mt-1 text-xs font-semibold text-white/40">
-                      Min {formatNumber(selectedService.min_quantity)} · Max {formatNumber(selectedService.max_quantity)} comments
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div>
-                  <label className="mb-2 block text-sm font-black text-white/80">
-                    Quantity
-                  </label>
-                  <input
-                    type="number"
-                    value={orderQuantity}
-                    onChange={(event) => setOrderQuantity(event.target.value)}
-                    placeholder="Enter quantity"
-                    className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-bold text-white outline-none placeholder:text-white/25 focus:border-white/30"
-                  />
-                  {selectedService && (
-                    <p className="mt-2 text-xs font-semibold text-white/40">
-                      Min {formatNumber(selectedService.min_quantity)} · Max {formatNumber(selectedService.max_quantity)}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
-                  <p className="text-xs font-black uppercase tracking-[0.14em] text-white/35">
-                    Order Quantity
-                  </p>
-                  <h4 className="mt-2 text-2xl font-black text-white">
-                    {formatNumber(orderQuantityNumber)}
-                  </h4>
-                  <p className="mt-1 text-xs font-semibold text-white/45">
-                    {selectedServiceRequiresComments ? "Auto-counted comments" : "Entered quantity"}
-                  </p>
-                </div>
-
-                <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
-                  <p className="text-xs font-black uppercase tracking-[0.14em] text-white/35">
-                    Estimated Charge
-                  </p>
-                  <h4 className="mt-2 text-3xl font-black text-white">
-                    {formatMoney(orderCharge)}
-                  </h4>
-                  <p className="mt-1 text-xs font-semibold text-white/45">
-                    Balance: {formatMoney(customer.balance)}
-                  </p>
+                    </tbody>
+                  </table>
                 </div>
               </div>
-
-              <div className="rounded-2xl border border-orange-400/20 bg-orange-500/10 p-4 text-sm font-bold leading-6 text-orange-100">
-                {selectedServiceRequiresComments
-                  ? "Custom comments detected. Quantity is based on one non-empty comment per line. These comments will be saved with your order."
-                  : "Review your service, link, quantity, and estimated charge before placing your order."}
-              </div>
-
-              <button
-                type="button"
-                onClick={submitChildOrder}
-                disabled={
-                  !selectedService ||
-                  !orderLink.trim() ||
-                  orderQuantityNumber <= 0 ||
-                  orderQuantityNumber < getServiceMinimum(selectedService) ||
-                  orderQuantityNumber > getServiceMaximum(selectedService) ||
-                  (selectedServiceRequiresComments && customCommentQuantity <= 0) ||
-                  submittingOrder
-                }
-                className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-sm font-black text-white transition disabled:cursor-not-allowed disabled:opacity-45"
-                style={{
-                  background: `linear-gradient(135deg, ${primaryColor}, #7c3aed)`,
-                  boxShadow: getAccentShadow(primaryColor),
-                }}
-              >
-                {submittingOrder ? (
-                  <>
-                    <Loader2 size={18} className="animate-spin" />
-                    Placing Order...
-                  </>
-                ) : (
-                  <>
-                    <ShoppingCart size={18} />
-                    Place Order
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {addFundsOpen && (
-        <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-black/75 p-3 backdrop-blur-sm sm:p-5 lg:items-center">
-          <div className="my-4 w-full max-w-2xl overflow-hidden rounded-[32px] border border-white/10 bg-[#080a18] shadow-2xl">
-            <div className="flex items-start justify-between gap-4 border-b border-white/10 p-5 sm:p-6">
-              <div className="min-w-0">
-                <p className="text-xs font-black uppercase tracking-[0.14em] text-white/35">
-                  Wallet
-                </p>
-                <h3 className="mt-1 text-2xl font-black text-white">
-                  Add Funds
-                </h3>
-                <p className="mt-1 text-sm font-semibold leading-6 text-white/50">
-                  Submit your payment details and proof. Your balance will update
-                  after approval.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={closeAddFundsModal}
-                disabled={submittingDeposit}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white/70 transition hover:bg-white/[0.08] disabled:opacity-50"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="space-y-5 p-5 sm:p-6">
-              <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-5">
-                <p className="text-xs font-black uppercase tracking-[0.14em] text-white/35">
-                  Current Balance
-                </p>
-                <h4 className="mt-2 text-3xl font-black text-white">
-                  {formatMoney(customer.balance)}
-                </h4>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-2 block text-sm font-black text-white/80">
-                    Amount
-                  </label>
-                  <input
-                    type="number"
-                    min="50"
-                    value={depositAmount}
-                    onChange={(event) => setDepositAmount(event.target.value)}
-                    placeholder="Minimum ₱50"
-                    className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-bold text-white outline-none placeholder:text-white/25 focus:border-white/30"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-black text-white/80">
-                    Payment Method
-                  </label>
-                  <select
-                    value={depositMethod}
-                    onChange={(event) => setDepositMethod(event.target.value)}
-                    className="h-12 w-full rounded-2xl border border-white/10 bg-[#0d1024] px-4 text-sm font-bold text-white outline-none focus:border-white/30"
-                  >
-                    <option value="">Select payment method</option>
-                    {paymentMethods.map((method) => (
-                      <option key={method.id} value={method.method_name}>
-                        {method.method_name}
-                      </option>
-                    ))}
-                  </select>
-                  {loadingPaymentMethods && (
-                    <p className="mt-2 text-xs font-semibold text-white/40">
-                      Loading payment methods...
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {selectedPaymentMethod && (
-                <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-5">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-                    {selectedPaymentMethod.qr_url && (
-                      <a
-                        href={selectedPaymentMethod.qr_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="block h-28 w-28 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-black/20"
-                      >
-                        <img
-                          src={selectedPaymentMethod.qr_url}
-                          alt={selectedPaymentMethod.method_name}
-                          className="h-full w-full object-cover"
-                        />
-                      </a>
-                    )}
-
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-black text-white">
-                        {selectedPaymentMethod.method_name}
-                      </p>
-                      <div className="mt-3 grid gap-2 text-sm font-semibold text-white/55">
-                        {selectedPaymentMethod.account_name && (
-                          <p>Account Name: <span className="font-black text-white">{selectedPaymentMethod.account_name}</span></p>
-                        )}
-                        {selectedPaymentMethod.account_number && (
-                          <p>Account Number: <span className="font-black text-white">{selectedPaymentMethod.account_number}</span></p>
-                        )}
-                        {selectedPaymentMethod.instructions && (
-                          <p className="leading-6">{selectedPaymentMethod.instructions}</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <label className="mb-2 block text-sm font-black text-white/80">
-                  Reference Number
-                </label>
-                <input
-                  value={referenceNumber}
-                  onChange={(event) => setReferenceNumber(event.target.value)}
-                  placeholder="Enter transaction/reference number"
-                  className="h-12 w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-bold text-white outline-none placeholder:text-white/25 focus:border-white/30"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-black text-white/80">
-                  Payment Proof
-                </label>
-
-                <div className="rounded-[24px] border border-dashed border-white/15 bg-white/[0.035] p-5">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                    <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/20">
-                      {proofPreview ? (
-                        <img
-                          src={proofPreview}
-                          alt="Payment proof preview"
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <FileImage size={30} className="text-white/35" />
-                      )}
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-black text-white">
-                        Upload payment screenshot
-                      </p>
-                      <p className="mt-1 text-xs font-semibold leading-5 text-white/45">
-                        Accepted: PNG, JPG, WEBP. Maximum file size: 5MB.
-                      </p>
-
-                      <label
-                        className="mt-4 inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-black text-white transition"
-                        style={{
-                          background: `linear-gradient(135deg, ${primaryColor}, #7c3aed)`,
-                          boxShadow: getAccentShadow(primaryColor),
-                        }}
-                      >
-                        <Upload size={17} />
-                        {proofFile ? "Change Proof" : "Choose Proof"}
-                        <input
-                          type="file"
-                          accept="image/png,image/jpeg,image/webp"
-                          onChange={(event) => {
-                            const file = event.target.files?.[0];
-                            handleProofFile(file);
-                            event.target.value = "";
-                          }}
-                          className="hidden"
-                        />
-                      </label>
-
-                      {proofFile && (
-                        <p className="mt-3 break-all text-xs font-bold text-white/45">
-                          Selected: {proofFile.name}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm font-semibold leading-6 text-white/55">
-                The image will upload when you click Submit Request. Please do
-                not close this modal while the request is submitting.
-              </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                <button
-                  type="button"
-                  onClick={closeAddFundsModal}
-                  disabled={submittingDeposit}
-                  className="inline-flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-black text-white/75 transition hover:bg-white/[0.08] disabled:opacity-50 sm:w-auto"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="button"
-                  onClick={submitDeposit}
-                  disabled={submittingDeposit}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-black text-white transition disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-                  style={{
-                    background: `linear-gradient(135deg, ${primaryColor}, #7c3aed)`,
-                    boxShadow: getAccentShadow(primaryColor),
-                  }}
-                >
-                  {submittingDeposit ? (
-                    <>
-                      <Loader2 size={17} className="animate-spin" />
-                      Submitting...
-                    </>
-                  ) : (
-                    <>
-                      <Wallet size={17} />
-                      Submit Request
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </main>
+            </>
+          )}        </div>
+      </DashboardLayout>
+    </DashboardGuard>
   );
 }
