@@ -146,7 +146,7 @@ function isCustomCommentService(service: Service | null) {
     text.includes("comments custom") ||
     text.includes("custom comment") ||
     text.includes("comment custom") ||
-    text.includes("custom comment") ||
+    text.includes("custom comment package") ||
     text.includes("comments package")
   );
 }
@@ -564,8 +564,8 @@ export default function OrdersPage() {
   const [serviceSearch, setServiceSearch] = useState("");
   const [link, setLink] = useState("");
   const [quantity, setQuantity] = useState("");
-  const [notes, setNotes] = useState("");
   const [customComments, setCustomComments] = useState("");
+  const [notes, setNotes] = useState("");
   const [placingOrder, setPlacingOrder] = useState(false);
   const [favoriteServiceIds, setFavoriteServiceIds] = useState<string[]>([]);
   const [serviceFilter, setServiceFilter] = useState("all");
@@ -742,10 +742,14 @@ export default function OrdersPage() {
   const filteredServices = useMemo(() => {
     const keyword = serviceSearch.toLowerCase().trim();
 
-    let rows = (keyword ? services : networkServices).filter((service) => {
-      if (!category) return true;
-      return normalizeServiceText(service.category) === normalizeServiceText(category);
-    });
+    let rows = keyword ? services : networkServices;
+
+    if (!keyword && category) {
+      rows = rows.filter(
+        (service) =>
+          normalizeServiceText(service.category) === normalizeServiceText(category),
+      );
+    }
 
     if (keyword) {
       rows = rows.filter((service) => {
@@ -826,7 +830,8 @@ export default function OrdersPage() {
       : 0;
 
   const estimatedCharge = selectedService
-    ? (Number(orderQuantity || 0) / 1000) * Number(selectedService.price_per_1000)
+    ? (Number(orderQuantity || 0) / 1000) *
+      Number(selectedService.price_per_1000)
     : 0;
 
   const canPlaceOrder = Boolean(
@@ -862,8 +867,8 @@ export default function OrdersPage() {
     setServiceSearch("");
     setLink("");
     setQuantity("");
-    setNotes("");
     setCustomComments("");
+    setNotes("");
     setServiceFilter("all");
   }
 
@@ -902,10 +907,15 @@ export default function OrdersPage() {
 
     const customCommentMode = isCustomCommentService(selectedService);
     const cleanedComments = getCommentLines(customComments).join("\n");
-    const qty = customCommentMode ? getCommentQuantity(customComments) : Number(quantity);
+    const qty = customCommentMode
+      ? getCommentQuantity(customComments)
+      : Number(quantity);
 
     if (customCommentMode && qty <= 0) {
-      showToast("Please enter at least one comment. Use 1 comment per line.", "warning");
+      showToast(
+        "Please enter at least one comment. Use 1 comment per line.",
+        "warning",
+      );
       setPlacingOrder(false);
       return;
     }
@@ -1350,7 +1360,7 @@ export default function OrdersPage() {
                   <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                     <StepHeader step="1" title="Choose Platform" />
 
-                    <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-7">
+                    <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
                       {networks.map((item) => (
                         <button
                           key={item.name}
@@ -1359,6 +1369,8 @@ export default function OrdersPage() {
                             setNetwork(item.name);
                             setCategory("");
                             setSelectedServiceId("");
+                            setServiceSearch("");
+                            setServiceFilter("all");
                           }}
                           className={`flex min-w-0 items-center gap-3 rounded-2xl border p-3 text-left transition ${
                             network === item.name
@@ -1367,7 +1379,7 @@ export default function OrdersPage() {
                           }`}
                         >
                           <PlatformIcon name={item.name} />
-                          <span className="min-w-0 truncate text-xs font-black">
+                          <span className="min-w-0 truncate text-xs font-black sm:text-sm">
                             {item.name}
                           </span>
                         </button>
@@ -1494,8 +1506,8 @@ export default function OrdersPage() {
                               type="button"
                               onClick={() => {
                                 setSelectedServiceId(service.id);
-                                setQuantity("");
                                 setCustomComments("");
+                                setQuantity("");
                               }}
                               className={`w-full rounded-2xl border p-4 text-left transition ${
                                 active
@@ -1597,60 +1609,30 @@ export default function OrdersPage() {
                       </div>
 
                       {isSelectedCustomCommentService ? (
-                        <div className="space-y-4">
-                          <div>
-                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                              <label className="text-sm font-black text-slate-700">
-                                Comments
-                              </label>
+                        <div>
+                          <div className="flex items-center justify-between gap-3">
+                            <label className="text-sm font-black text-slate-700">
+                              Comments
+                            </label>
 
-                              <span className="text-xs font-black text-blue-600">
-                                {customCommentQuantity} comment
-                                {customCommentQuantity === 1 ? "" : "s"} detected
-                              </span>
-                            </div>
-
-                            <textarea
-                              value={customComments}
-                              onChange={(e) => setCustomComments(e.target.value)}
-                              placeholder={`Type your comments here...\n1 comment per line\nExample: Amazing post!`}
-                              rows={7}
-                              className="mt-2 w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold leading-6 outline-none transition focus:border-blue-500"
-                            />
-
-                            <p className="mt-2 text-xs font-semibold text-slate-500">
-                              For this service, quantity is automatically counted from your comments.
-                            </p>
+                            <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-600">
+                              {customCommentQuantity} line
+                              {customCommentQuantity === 1 ? "" : "s"}
+                            </span>
                           </div>
 
-                          <div className="grid gap-4 md:grid-cols-2">
-                            <div>
-                              <label className="text-sm font-black text-slate-700">
-                                Quantity
-                              </label>
+                          <textarea
+                            value={customComments}
+                            onChange={(e) => setCustomComments(e.target.value)}
+                            rows={6}
+                            placeholder={"Enter comments here...\n1 comment per line"}
+                            className="mt-2 w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold leading-6 outline-none transition focus:border-blue-500"
+                          />
 
-                              <input
-                                type="number"
-                                value={customCommentQuantity || ""}
-                                readOnly
-                                placeholder="Auto-counted"
-                                className="mt-2 h-[52px] w-full cursor-not-allowed rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-700 outline-none"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="text-sm font-black text-slate-700">
-                                Notes
-                              </label>
-
-                              <input
-                                value={notes}
-                                onChange={(e) => setNotes(e.target.value)}
-                                placeholder="Optional"
-                                className="mt-2 h-[52px] w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-semibold outline-none transition focus:border-blue-500"
-                              />
-                            </div>
-                          </div>
+                          <p className="mt-2 text-xs font-bold text-slate-500">
+                            Quantity is automatically counted from your comment
+                            lines. Empty lines are ignored.
+                          </p>
                         </div>
                       ) : (
                         <div className="grid gap-4 md:grid-cols-2">
@@ -1717,12 +1699,10 @@ export default function OrdersPage() {
                         value={getPublicServiceId(selectedService)}
                       />
 
-                      {isSelectedCustomCommentService && (
-                        <SideDetail
-                          label="Comments Count"
-                          value={customCommentQuantity || 0}
-                        />
-                      )}
+                      <SideDetail
+                        label={isSelectedCustomCommentService ? "Comment Lines" : "Quantity"}
+                        value={orderQuantity ? Number(orderQuantity).toLocaleString() : "N/A"}
+                      />
 
                       <SideDetail
                         label="Rate"
@@ -1778,6 +1758,11 @@ export default function OrdersPage() {
                         <SideDetail
                           label="Service ID"
                           value={getPublicServiceId(selectedService)}
+                        />
+
+                        <SideDetail
+                          label={isSelectedCustomCommentService ? "Comment Lines" : "Quantity"}
+                          value={orderQuantity ? Number(orderQuantity).toLocaleString() : "N/A"}
                         />
 
                         <SideDetail
