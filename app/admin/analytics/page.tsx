@@ -1,8 +1,7 @@
 "use client";
 
 import AdminGuard from "@/components/AdminGuard";
-import AdminSidebar from "@/components/AdminSidebar";
-import AdminTopbar from "@/components/AdminTopbar";
+import AdminLayout from "@/components/AdminLayout";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
@@ -320,9 +319,9 @@ function MetricCard({
   const trendIsDown = trend?.includes("-") || trend?.includes("↓");
 
   return (
-    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <div className="mb-5 flex items-start justify-between">
-        <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${toneClass}`}>{icon}</div>
+    <div className="min-w-0 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+      <div className="mb-5 flex min-w-0 items-start justify-between gap-3">
+        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${toneClass}`}>{icon}</div>
 
         {mock ? (
           <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-orange-700 ring-1 ring-orange-100">Mock</span>
@@ -334,9 +333,9 @@ function MetricCard({
         )}
       </div>
 
-      <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">{title}</p>
-      <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">{value}</h3>
-      <p className="mt-2 text-sm font-semibold text-slate-500">{subtitle}</p>
+      <p className="truncate text-xs font-black uppercase tracking-[0.12em] text-slate-500">{title}</p>
+      <h3 className="mt-2 min-w-0 break-words text-2xl font-black tracking-tight text-slate-950">{value}</h3>
+      <p className="mt-2 line-clamp-2 text-sm font-semibold text-slate-500">{subtitle}</p>
 
       {trend && (
         <p className={`mt-4 text-xs font-black ${trendIsDown ? "text-red-600" : "text-emerald-600"}`}>
@@ -375,9 +374,9 @@ function AccountingLineChart({
   const labelStep = Math.max(1, Math.ceil(data.length / 8));
 
   return (
-    <div className="rounded-[26px] border border-slate-200 bg-white p-6 shadow-sm xl:col-span-2">
-      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
+    <div className="min-w-0 rounded-[26px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6 xl:col-span-2">
+      <div className="mb-6 flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
           <h3 className="text-xl font-black text-slate-950">Revenue, Profit & Expense Trend</h3>
           <div className="mt-3 flex flex-wrap gap-4 text-xs font-black text-slate-500">
             <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />Revenue</span>
@@ -462,7 +461,7 @@ function ProfitBreakdown({
   ];
 
   return (
-    <div className="rounded-[26px] border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="min-w-0 rounded-[26px] border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
       <div className="mb-5">
         <h3 className="text-xl font-black text-slate-950">Profit Breakdown</h3>
         <p className="mt-1 text-sm font-semibold text-slate-500">Provider cost, profit, expenses, and net profit.</p>
@@ -481,7 +480,7 @@ function ProfitBreakdown({
         <div className="space-y-3">
           {items.map((item) => (
             <div key={item.label} className="flex items-center justify-between gap-4 text-sm">
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 items-center gap-3">
                 <span className={`h-2.5 w-2.5 rounded-full ${item.dot}`} />
                 <span className="font-black text-slate-700">{item.label}</span>
               </div>
@@ -510,17 +509,17 @@ function TableShell({
   mock?: boolean;
 }) {
   return (
-    <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-        <div className="flex items-center gap-3">
-          <h3 className="text-lg font-black text-slate-950">{title}</h3>
+    <div className="min-w-0 overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-sm">
+      <div className="flex min-w-0 flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div className="flex min-w-0 items-center gap-3">
+          <h3 className="min-w-0 truncate text-lg font-black text-slate-950">{title}</h3>
           {mock && (
             <span className="rounded-full bg-orange-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-orange-700 ring-1 ring-orange-100">Mock</span>
           )}
         </div>
 
         {onViewAll && (
-          <button onClick={onViewAll} className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-black text-slate-700 transition hover:bg-slate-50">
+          <button onClick={onViewAll} className="w-full rounded-xl border border-slate-200 px-4 py-2 text-xs font-black text-slate-700 transition hover:bg-slate-50 sm:w-auto">
             View All
           </button>
         )}
@@ -547,11 +546,11 @@ function DataModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
-      <div className="max-h-[88vh] w-full max-w-6xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
-        <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:p-4">
+      <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 sm:p-6">
           <div>
-            <h3 className="text-2xl font-black text-slate-950">{title}</h3>
+            <h3 className="text-xl font-black text-slate-950 sm:text-2xl">{title}</h3>
             <p className="mt-1 text-sm font-semibold text-slate-500">{subtitle}</p>
           </div>
 
@@ -560,7 +559,7 @@ function DataModal({
           </button>
         </div>
 
-        <div className="max-h-[70vh] overflow-auto p-6">{children}</div>
+        <div className="min-h-0 flex-1 overflow-auto p-5 sm:p-6">{children}</div>
       </div>
     </div>
   );
@@ -685,14 +684,9 @@ const activeOrders = filteredOrders.filter((order) =>
 
   return (
     <AdminGuard allowedRoles={["head_admin", "super_admin"]}>
-      <main className="min-h-screen bg-[#f6f8fb] text-slate-950">
-        <AdminSidebar />
-
-        <section className="lg:ml-72 min-h-screen">
-          <AdminTopbar />
-
-          <div className="p-4 sm:p-6 lg:p-8">
-            <div className="mb-6 flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+      <AdminLayout>
+        <div className="min-w-0">
+            <div className="mb-6 flex min-w-0 flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
               <div>
                 <div className="mb-3 flex flex-wrap items-center gap-3">
                   <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-700 ring-1 ring-emerald-100">
@@ -713,13 +707,13 @@ const activeOrders = filteredOrders.filter((order) =>
 
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex overflow-hidden rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
+              <div className="flex min-w-0 flex-wrap items-center gap-3">
+                <div className="flex w-full overflow-x-auto rounded-2xl border border-slate-200 bg-white p-1 shadow-sm sm:w-auto">
                   {periodOptions.map((option) => (
                     <button
                       key={option.value}
                       onClick={() => setPeriod(option.value)}
-                      className={`rounded-xl px-4 py-2 text-sm font-black transition ${
+                      className={`shrink-0 rounded-xl px-4 py-2 text-sm font-black transition ${
                         period === option.value ? "bg-emerald-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-50"
                       }`}
                     >
@@ -728,11 +722,11 @@ const activeOrders = filteredOrders.filter((order) =>
                   ))}
                 </div>
 
-                <button onClick={loadData} className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50">
+                <button onClick={loadData} className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50 sm:w-auto">
                   Refresh
                 </button>
 
-                <button className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50">
+                <button className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50 sm:w-auto">
                   Export
                 </button>
               </div>
@@ -744,8 +738,8 @@ const activeOrders = filteredOrders.filter((order) =>
               </div>
             )}
 
-            <div className="mb-6 rounded-[24px] border border-emerald-100 bg-gradient-to-r from-emerald-50 via-white to-blue-50 p-5">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mb-6 min-w-0 rounded-[24px] border border-emerald-100 bg-gradient-to-r from-emerald-50 via-white to-blue-50 p-5">
+              <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">Selected Period</p>
                   <h2 className="mt-1 text-xl font-black text-slate-950">{range.label}</h2>
@@ -757,33 +751,33 @@ const activeOrders = filteredOrders.filter((order) =>
               </div>
             </div>
 
-            <div className="mb-6 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+            <div className="mb-6 grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
               <MetricCard title="Order Revenue" value={money(totalRevenue)} subtitle="Total paid order amount" trend="↑ 18.6%" icon={<IconMoney />} tone="green" />
               <MetricCard title="Gross Profit" value={money(grossProfit)} subtitle="Revenue minus provider cost" trend="↑ 15.2%" icon={<IconChart />} tone="blue" />
               <MetricCard title="Net Profit" value={money(netProfit)} subtitle="Gross profit minus expenses" trend={netProfit >= 0 ? "↑ 12.8%" : "↓ 5.4%"} icon={<IconPie />} tone="purple" />
               <MetricCard title="Estimated Profit 30%" value={money(estimatedProfitFrom30PercentMargin)} subtitle="Estimated based on 30% margin" trend="↑ 18.6%" icon={<IconPercent />} tone="orange" />
             </div>
 
-            <div className="mb-6 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+            <div className="mb-6 grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
               <MetricCard title="Total Expenses" value={money(totalExpenses)} subtitle="All business expenses" trend="↓ 5.4%" icon={<IconCard />} tone="red" />
               <MetricCard title="Total Orders" value={String(filteredOrders.length)} subtitle="All orders in selected period" trend="↑ 11.3%" icon={<IconReceipt />} tone="blue" />
               <MetricCard title="Active Orders" value={String(activeOrders)} subtitle="Pending / Processing / Partial" trend="↓ 3.2%" icon={<IconClock />} tone="orange" />
               <MetricCard title="Completed Orders" value={String(completedOrders)} subtitle="Completed orders" trend="↑ 14.6%" icon={<IconCheck />} tone="green" />
             </div>
 
-            <div className="mb-6 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+            <div className="mb-6 grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
               <MetricCard title="Cash Accounts" value={money(totalBusinessMoney)} subtitle="Total balance in all accounts" icon={<IconBank />} tone="teal" />
               <MetricCard title="Reseller Point Conversions" value={money(totalPointConversions)} subtitle="Total amount converted" trend="↑ 9.5%" icon={<IconRefresh />} tone="purple" mock />
               <MetricCard title="Total User Commissions" value={money(totalCommissions)} subtitle="Total commissions of all users" trend="↑ 8.3%" icon={<IconUsers />} tone="orange" mock />
               <MetricCard title="Pending Payouts" value={money(pendingPayouts)} subtitle="Unpaid commissions" icon={<IconTimer />} tone="red" mock />
             </div>
 
-            <div className="mb-6 grid gap-6 xl:grid-cols-3">
+            <div className="mb-6 grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-3">
               <AccountingLineChart data={chartData} />
               <ProfitBreakdown providerCost={totalProviderCost} grossProfit={grossProfit} expenses={totalExpenses} netProfit={netProfit} />
             </div>
 
-            <div className="mb-6 grid gap-6 xl:grid-cols-3">
+            <div className="mb-6 grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-3">
               <TableShell title="Recent Orders" onViewAll={() => setActiveModal("orders")}>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[760px] text-sm">
@@ -865,7 +859,7 @@ const activeOrders = filteredOrders.filter((order) =>
               </TableShell>
             </div>
 
-            <div className="grid gap-6 xl:grid-cols-2">
+            <div className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-2">
               <TableShell title="Reseller Point Conversions" onViewAll={() => setActiveModal("pointConversions")} mock>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[680px] text-sm">
@@ -916,8 +910,7 @@ const activeOrders = filteredOrders.filter((order) =>
                 </div>
               </TableShell>
             </div>
-          </div>
-        </section>
+        </div>
 
         <DataModal open={activeModal === "orders"} onClose={() => setActiveModal(null)} title="All Recent Orders" subtitle="Full order accounting report for the selected period.">
           <div className="overflow-x-auto">
@@ -1053,7 +1046,7 @@ const activeOrders = filteredOrders.filter((order) =>
             </table>
           </div>
         </DataModal>
-      </main>
+      </AdminLayout>
     </AdminGuard>
   );
 }

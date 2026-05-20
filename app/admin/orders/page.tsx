@@ -225,7 +225,11 @@ function PlatformIcon({ serviceName }: { serviceName?: string | null }) {
   } else if (name.includes("spotify")) {
     icon = <FaSpotify />;
     className = "bg-emerald-50 text-emerald-600 ring-emerald-100";
-  } else if (name.includes("twitter") || name.includes(" x ") || name.startsWith("x ")) {
+  } else if (
+    name.includes("twitter") ||
+    name.includes(" x ") ||
+    name.startsWith("x ")
+  ) {
     icon = <FaTwitter />;
     className = "bg-sky-50 text-sky-600 ring-sky-100";
   } else if (name.includes("twitch")) {
@@ -268,22 +272,24 @@ function StatCard({
   }[tone];
 
   return (
-    <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <div className="flex items-start gap-4">
-        <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ring-1 ${toneClass}`}>
+    <div className="min-w-0 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+      <div className="flex min-w-0 items-start gap-4">
+        <div
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ring-1 ${toneClass}`}
+        >
           {icon}
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">
+          <p className="truncate text-xs font-black uppercase tracking-[0.12em] text-slate-500">
             {title}
           </p>
 
-          <h3 className="mt-2 text-2xl font-black tracking-tight text-slate-950">
+          <h3 className="mt-2 min-w-0 truncate text-2xl font-black tracking-tight text-slate-950">
             {value}
           </h3>
 
-          <p className="mt-1 text-sm font-semibold text-slate-500">
+          <p className="mt-1 line-clamp-2 text-sm font-semibold text-slate-500">
             {subtitle}
           </p>
         </div>
@@ -306,8 +312,10 @@ function ActionButton({
   tone?: "slate" | "green" | "blue" | "red";
 }) {
   const toneClass = {
-    slate: "border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50",
-    green: "border-emerald-200 text-emerald-700 hover:border-emerald-300 hover:bg-emerald-50",
+    slate:
+      "border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50",
+    green:
+      "border-emerald-200 text-emerald-700 hover:border-emerald-300 hover:bg-emerald-50",
     blue: "border-blue-200 text-blue-700 hover:border-blue-300 hover:bg-blue-50",
     red: "border-red-200 text-red-700 hover:border-red-300 hover:bg-red-50",
   }[tone];
@@ -318,7 +326,7 @@ function ActionButton({
       title={title}
       onClick={onClick}
       disabled={disabled}
-      className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border bg-white transition disabled:cursor-not-allowed disabled:opacity-40 ${toneClass}`}
+      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border bg-white transition disabled:cursor-not-allowed disabled:opacity-40 ${toneClass}`}
     >
       {children}
     </button>
@@ -339,26 +347,35 @@ function ModalShell({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm lg:items-center">
-      <div className="my-8 w-full max-w-4xl overflow-hidden rounded-[28px] bg-white shadow-2xl">
-        <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-6">
-          <div>
-            <h3 className="text-2xl font-black text-slate-950">{title}</h3>
-            <p className="mt-1 text-sm font-semibold text-slate-500">{subtitle}</p>
+    <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-slate-950/60 p-3 backdrop-blur-sm sm:p-4 lg:items-center">
+      <div className="my-4 flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl sm:my-8">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 sm:p-6">
+          <div className="min-w-0">
+            <h3 className="text-xl font-black text-slate-950 sm:text-2xl">
+              {title}
+            </h3>
+
+            <p className="mt-1 text-sm font-semibold text-slate-500">
+              {subtitle}
+            </p>
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-950"
           >
             <X size={20} />
           </button>
         </div>
 
-        <div className="max-h-[70vh] overflow-y-auto p-6">{children}</div>
+        <div className="min-h-0 overflow-y-auto p-5 sm:p-6">{children}</div>
 
-        {footer && <div className="border-t border-slate-200 p-6">{footer}</div>}
+        {footer && (
+          <div className="border-t border-slate-200 p-5 sm:p-6">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -374,12 +391,16 @@ function InfoBlock({
   valueClassName?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
-      <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+    <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+      <p className="truncate text-xs font-black uppercase tracking-[0.12em] text-slate-400">
         {label}
       </p>
 
-      <div className={`mt-2 text-sm font-black ${valueClassName}`}>{value}</div>
+      <div
+        className={`mt-2 min-w-0 break-words text-sm font-black ${valueClassName}`}
+      >
+        {value}
+      </div>
     </div>
   );
 }
@@ -404,7 +425,9 @@ export default function AdminOrdersPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [serviceFilter, setServiceFilter] = useState("all");
-  const [quickFilter, setQuickFilter] = useState<"all" | "high_value" | "no_provider" | "old_pending">("all");
+  const [quickFilter, setQuickFilter] = useState<
+    "all" | "high_value" | "no_provider" | "old_pending"
+  >("all");
 
   const { confirmAction } = useConfirm();
 
@@ -490,7 +513,8 @@ export default function AdminOrdersPage() {
     if (action === "cancel") {
       const confirmCancel = await confirmAction({
         title: "Cancel Provider Order",
-        message: "Are you sure you want to send a cancel request to the provider?",
+        message:
+          "Are you sure you want to send a cancel request to the provider?",
         confirmText: "Cancel Provider Order",
         variant: "danger",
       });
@@ -715,17 +739,40 @@ export default function AdminOrdersPage() {
   }
 
   const serviceOptions = useMemo(() => {
-    return Array.from(new Set(orders.map((order) => order.service_name).filter(Boolean))).sort();
+    return Array.from(
+      new Set(orders.map((order) => order.service_name).filter(Boolean)),
+    ).sort();
   }, [orders]);
 
   const stats = useMemo(() => {
-    const completed = orders.filter((order) => normalizeStatus(order.status) === "completed").length;
-    const pending = orders.filter((order) => normalizeStatus(order.status) === "pending").length;
-    const processing = orders.filter((order) => normalizeStatus(order.status) === "processing").length;
-    const partial = orders.filter((order) => normalizeStatus(order.status) === "partial").length;
-    const failed = orders.filter((order) => normalizeStatus(order.status) === "failed").length;
-    const cancelled = orders.filter((order) => isCancelledStatus(order.status)).length;
-    const refunded = orders.filter((order) => normalizeStatus(order.status) === "refunded").length;
+    const completed = orders.filter(
+      (order) => normalizeStatus(order.status) === "completed",
+    ).length;
+
+    const pending = orders.filter(
+      (order) => normalizeStatus(order.status) === "pending",
+    ).length;
+
+    const processing = orders.filter(
+      (order) => normalizeStatus(order.status) === "processing",
+    ).length;
+
+    const partial = orders.filter(
+      (order) => normalizeStatus(order.status) === "partial",
+    ).length;
+
+    const failed = orders.filter(
+      (order) => normalizeStatus(order.status) === "failed",
+    ).length;
+
+    const cancelled = orders.filter((order) =>
+      isCancelledStatus(order.status),
+    ).length;
+
+    const refunded = orders.filter(
+      (order) => normalizeStatus(order.status) === "refunded",
+    ).length;
+
     const active = orders.filter((order) => isActiveStatus(order.status)).length;
 
     return {
@@ -746,7 +793,10 @@ export default function AdminOrdersPage() {
     const dayMs = 24 * 60 * 60 * 1000;
 
     return orders.filter((order) => {
-      return normalizeStatus(order.status) === "pending" && now - new Date(order.created_at).getTime() > dayMs;
+      return (
+        normalizeStatus(order.status) === "pending" &&
+        now - new Date(order.created_at).getTime() > dayMs
+      );
     }).length;
   }, [orders]);
 
@@ -791,7 +841,8 @@ export default function AdminOrdersPage() {
             : quickFilter === "no_provider"
               ? !order.provider_order_id
               : normalizeStatus(order.status) === "pending" &&
-                Date.now() - new Date(order.created_at).getTime() > 24 * 60 * 60 * 1000;
+                Date.now() - new Date(order.created_at).getTime() >
+                  24 * 60 * 60 * 1000;
 
       return matchesStatus && matchesService && matchesSearch && matchesQuick;
     });
@@ -819,10 +870,6 @@ export default function AdminOrdersPage() {
       isActiveStatus(order.status),
     ).length;
 
-    const failedCount = filteredOrders.filter(
-      (order) => normalizeStatus(order.status) === "failed",
-    ).length;
-
     const rowsHtml = filteredOrders
       .map((order) => {
         return `
@@ -832,7 +879,9 @@ export default function AdminOrdersPage() {
             <td>${order.service_name || "Unknown Service"}</td>
             <td>${Number(order.quantity || 0).toLocaleString("en-PH")}</td>
             <td>${formatMoney(order.price)}</td>
-            <td><span class="status ${normalizeStatus(order.status)}">${normalizeStatus(order.status)}</span></td>
+            <td><span class="status ${normalizeStatus(order.status)}">${normalizeStatus(
+              order.status,
+            )}</span></td>
             <td>${order.provider_name || "Manual"}</td>
             <td>${order.provider_order_id || "No Provider ID"}</td>
             <td>${formatDate(order.created_at)} ${formatTime(order.created_at)}</td>
@@ -1111,9 +1160,9 @@ export default function AdminOrdersPage() {
   return (
     <AdminGuard allowedRoles={["admin", "head_admin", "super_admin"]}>
       <AdminLayout>
-        <div className="space-y-6">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-            <div>
+        <div className="min-w-0 space-y-6">
+          <div className="flex min-w-0 flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+            <div className="min-w-0">
               <h2 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
                 Orders
               </h2>
@@ -1123,11 +1172,11 @@ export default function AdminOrdersPage() {
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="grid w-full grid-cols-1 gap-3 sm:w-auto sm:grid-cols-3 xl:flex xl:flex-wrap xl:items-center">
               <button
                 type="button"
                 onClick={loadOrders}
-                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50"
               >
                 <RefreshCw size={17} />
                 Refresh
@@ -1137,16 +1186,20 @@ export default function AdminOrdersPage() {
                 type="button"
                 onClick={syncOrderStatuses}
                 disabled={syncingOrders}
-                className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {syncingOrders ? <Loader2 size={17} className="animate-spin" /> : <RefreshCw size={17} />}
+                {syncingOrders ? (
+                  <Loader2 size={17} className="animate-spin" />
+                ) : (
+                  <RefreshCw size={17} />
+                )}
                 {syncingOrders ? "Syncing..." : "Sync Status"}
               </button>
 
               <button
                 type="button"
                 onClick={exportOrdersToPDF}
-                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:bg-slate-50"
               >
                 <FileText size={17} />
                 Export PDF
@@ -1161,9 +1214,10 @@ export default function AdminOrdersPage() {
           )}
 
           <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="grid gap-4 xl:grid-cols-[1.2fr_0.7fr_0.7fr_auto]">
-              <div className="flex h-12 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 shadow-sm">
-                <Search size={18} className="text-slate-400" />
+            <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[1.2fr_0.7fr_0.7fr_auto]">
+              <div className="flex h-12 min-w-0 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 shadow-sm">
+                <Search size={18} className="shrink-0 text-slate-400" />
+
                 <input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
@@ -1174,8 +1228,10 @@ export default function AdminOrdersPage() {
 
               <select
                 value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
-                className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
+                onChange={(event) =>
+                  setStatusFilter(event.target.value as StatusFilter)
+                }
+                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
               >
                 {statusTabs.map((tab) => (
                   <option key={tab.value} value={tab.value}>
@@ -1187,7 +1243,7 @@ export default function AdminOrdersPage() {
               <select
                 value={serviceFilter}
                 onChange={(event) => setServiceFilter(event.target.value)}
-                className="h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
+                className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 shadow-sm outline-none"
               >
                 <option value="all">All Services</option>
                 {serviceOptions.map((service) => (
@@ -1205,7 +1261,7 @@ export default function AdminOrdersPage() {
                   setServiceFilter("all");
                   setQuickFilter("all");
                 }}
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50"
+                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-700 shadow-sm transition hover:bg-slate-50 xl:w-auto"
               >
                 <Filter size={17} />
                 Clear
@@ -1213,24 +1269,78 @@ export default function AdminOrdersPage() {
             </div>
           </div>
 
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-            <StatCard title="Total Orders" value={formatNumber(stats.total)} subtitle="All time orders" icon={<ShoppingCart size={23} />} tone="blue" />
-            <StatCard title="Active Orders" value={formatNumber(stats.active)} subtitle="Pending / Processing / Partial" icon={<Clock3 size={23} />} tone="orange" />
-            <StatCard title="Completed Orders" value={formatNumber(stats.completed)} subtitle="Successfully completed" icon={<CheckCircle2 size={23} />} tone="green" />
-            <StatCard title="Failed Orders" value={formatNumber(stats.failed)} subtitle="Failed by provider" icon={<XCircle size={23} />} tone="red" />
+          <div className="grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              title="Total Orders"
+              value={formatNumber(stats.total)}
+              subtitle="All time orders"
+              icon={<ShoppingCart size={23} />}
+              tone="blue"
+            />
+
+            <StatCard
+              title="Active Orders"
+              value={formatNumber(stats.active)}
+              subtitle="Pending / Processing / Partial"
+              icon={<Clock3 size={23} />}
+              tone="orange"
+            />
+
+            <StatCard
+              title="Completed Orders"
+              value={formatNumber(stats.completed)}
+              subtitle="Successfully completed"
+              icon={<CheckCircle2 size={23} />}
+              tone="green"
+            />
+
+            <StatCard
+              title="Failed Orders"
+              value={formatNumber(stats.failed)}
+              subtitle="Failed by provider"
+              icon={<XCircle size={23} />}
+              tone="red"
+            />
           </div>
 
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-            <StatCard title="Pending Orders" value={formatNumber(stats.pending)} subtitle="Waiting to start" icon={<Clock3 size={23} />} tone="orange" />
-            <StatCard title="Processing Orders" value={formatNumber(stats.processing)} subtitle="Currently in progress" icon={<RefreshCw size={23} />} tone="blue" />
-            <StatCard title="Partial Orders" value={formatNumber(stats.partial)} subtitle="Partially completed" icon={<Package size={23} />} tone="purple" />
-            <StatCard title="Refunded Orders" value={formatNumber(stats.refunded)} subtitle="Refunded orders" icon={<Undo2 size={23} />} tone="slate" />
+          <div className="grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              title="Pending Orders"
+              value={formatNumber(stats.pending)}
+              subtitle="Waiting to start"
+              icon={<Clock3 size={23} />}
+              tone="orange"
+            />
+
+            <StatCard
+              title="Processing Orders"
+              value={formatNumber(stats.processing)}
+              subtitle="Currently in progress"
+              icon={<RefreshCw size={23} />}
+              tone="blue"
+            />
+
+            <StatCard
+              title="Partial Orders"
+              value={formatNumber(stats.partial)}
+              subtitle="Partially completed"
+              icon={<Package size={23} />}
+              tone="purple"
+            />
+
+            <StatCard
+              title="Refunded Orders"
+              value={formatNumber(stats.refunded)}
+              subtitle="Refunded orders"
+              icon={<Undo2 size={23} />}
+              tone="slate"
+            />
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
-            <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+          <div className="grid min-w-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="min-w-0 overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
               <div className="border-b border-slate-100 p-4">
-                <div className="flex flex-wrap gap-2">
+                <div className="flex gap-2 overflow-x-auto pb-1 xl:flex-wrap xl:overflow-visible xl:pb-0">
                   {statusTabs.map((tab) => {
                     const active = statusFilter === tab.value;
 
@@ -1239,7 +1349,7 @@ export default function AdminOrdersPage() {
                         key={tab.value}
                         type="button"
                         onClick={() => setStatusFilter(tab.value)}
-                        className={`rounded-2xl px-4 py-2 text-sm font-black transition ${
+                        className={`shrink-0 rounded-2xl px-4 py-2 text-sm font-black transition ${
                           active
                             ? "bg-emerald-600 text-white shadow-sm"
                             : "bg-slate-50 text-slate-600 hover:bg-slate-100"
@@ -1276,13 +1386,19 @@ export default function AdminOrdersPage() {
                       const progress = getProgressPercent(order);
 
                       return (
-                        <tr key={order.id} className="border-t border-slate-100 transition hover:bg-slate-50/70">
+                        <tr
+                          key={order.id}
+                          className="border-t border-slate-100 transition hover:bg-slate-50/70"
+                        >
                           <td className="px-5 py-5 align-top font-black text-emerald-700">
                             {shortOrderId(order.id)}
                           </td>
 
                           <td className="px-5 py-5 align-top">
-                            <p className="font-black text-slate-700">{shortUserId(order.user_id)}</p>
+                            <p className="font-black text-slate-700">
+                              {shortUserId(order.user_id)}
+                            </p>
+
                             <p className="mt-1 max-w-[140px] truncate text-xs font-semibold text-slate-400">
                               {order.user_id}
                             </p>
@@ -1291,10 +1407,12 @@ export default function AdminOrdersPage() {
                           <td className="px-5 py-5 align-top">
                             <div className="flex items-start gap-3">
                               <PlatformIcon serviceName={order.service_name} />
+
                               <div className="min-w-0">
                                 <p className="max-w-[230px] truncate font-black text-slate-800">
                                   {order.service_name || "Unknown Service"}
                                 </p>
+
                                 <p className="mt-1 text-xs font-semibold text-slate-400">
                                   {formatNumber(order.quantity)} quantity
                                 </p>
@@ -1334,29 +1452,50 @@ export default function AdminOrdersPage() {
                           </td>
 
                           <td className="px-5 py-5 align-top">
-                            <p className="font-black text-slate-700">{order.provider_name || "Manual"}</p>
+                            <p className="font-black text-slate-700">
+                              {order.provider_name || "Manual"}
+                            </p>
+
                             <p className="mt-1 max-w-[130px] truncate text-xs font-semibold text-slate-400">
-                              {order.provider_order_id ? `ID: ${order.provider_order_id}` : "No provider ID"}
+                              {order.provider_order_id
+                                ? `ID: ${order.provider_order_id}`
+                                : "No provider ID"}
                             </p>
                           </td>
 
                           <td className="px-5 py-5 align-top">
-                            <p className="font-black text-slate-700">{formatDate(order.created_at)}</p>
-                            <p className="mt-1 text-xs font-semibold text-slate-400">{formatTime(order.created_at)}</p>
+                            <p className="font-black text-slate-700">
+                              {formatDate(order.created_at)}
+                            </p>
+
+                            <p className="mt-1 text-xs font-semibold text-slate-400">
+                              {formatTime(order.created_at)}
+                            </p>
                           </td>
 
                           <td className="px-5 py-5 align-top">
                             <div className="flex items-center gap-2">
-                              <ActionButton title="View order" onClick={() => openModal(order, "view")}>
+                              <ActionButton
+                                title="View order"
+                                onClick={() => openModal(order, "view")}
+                              >
                                 <Eye size={16} />
                               </ActionButton>
 
-                              <ActionButton title="Update order" onClick={() => openModal(order, "manage")} tone="green">
+                              <ActionButton
+                                title="Update order"
+                                onClick={() => openModal(order, "manage")}
+                                tone="green"
+                              >
                                 <Pencil size={16} />
                               </ActionButton>
 
                               <ActionButton
-                                title={isRefundAllowed(order, refundEnabled) ? "Refund order" : "Refund only available for pending orders"}
+                                title={
+                                  isRefundAllowed(order, refundEnabled)
+                                    ? "Refund order"
+                                    : "Refund only available for pending orders"
+                                }
                                 onClick={() => openModal(order, "refund")}
                                 disabled={!isRefundAllowed(order, refundEnabled)}
                                 tone="red"
@@ -1366,7 +1505,10 @@ export default function AdminOrdersPage() {
                             </div>
 
                             <div className="mt-3 h-1.5 w-24 overflow-hidden rounded-full bg-slate-100">
-                              <div className="h-full rounded-full bg-emerald-500" style={{ width: `${progress}%` }} />
+                              <div
+                                className="h-full rounded-full bg-emerald-500"
+                                style={{ width: `${progress}%` }}
+                              />
                             </div>
                           </td>
                         </tr>
@@ -1380,7 +1522,11 @@ export default function AdminOrdersPage() {
                             <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-slate-50 text-slate-400 ring-1 ring-slate-100">
                               <Package size={26} />
                             </div>
-                            <h3 className="mt-4 text-lg font-black text-slate-950">No orders found</h3>
+
+                            <h3 className="mt-4 text-lg font-black text-slate-950">
+                              No orders found
+                            </h3>
+
                             <p className="mt-1 text-sm font-semibold text-slate-500">
                               Try clearing your search or filters.
                             </p>
@@ -1394,40 +1540,65 @@ export default function AdminOrdersPage() {
 
               <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 text-sm font-semibold text-slate-500 sm:flex-row sm:items-center sm:justify-between">
                 <p>
-                  Showing <span className="font-black text-slate-800">{filteredOrders.length}</span> of{" "}
-                  <span className="font-black text-slate-800">{orders.length}</span> orders
+                  Showing{" "}
+                  <span className="font-black text-slate-800">
+                    {filteredOrders.length}
+                  </span>{" "}
+                  of{" "}
+                  <span className="font-black text-slate-800">
+                    {orders.length}
+                  </span>{" "}
+                  orders
                 </p>
 
-                <p>Auto-refreshing every 15 seconds</p>
+                <p>Auto-refreshing every 3 seconds</p>
               </div>
             </div>
 
-            <aside className="space-y-5">
+            <aside className="min-w-0 space-y-5">
               <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="mb-4 flex items-center gap-2">
                   <ShieldAlert size={18} className="text-emerald-600" />
-                  <h3 className="text-lg font-black text-slate-950">Order Health</h3>
+                  <h3 className="text-lg font-black text-slate-950">
+                    Order Health
+                  </h3>
                 </div>
 
                 <div className="space-y-3 text-sm">
                   <div className="flex items-center justify-between gap-4">
-                    <span className="font-semibold text-slate-600">Pending too long</span>
-                    <span className="font-black text-orange-600">{oldPendingCount}</span>
+                    <span className="font-semibold text-slate-600">
+                      Pending too long
+                    </span>
+                    <span className="font-black text-orange-600">
+                      {oldPendingCount}
+                    </span>
                   </div>
 
                   <div className="flex items-center justify-between gap-4">
-                    <span className="font-semibold text-slate-600">Failed orders</span>
-                    <span className="font-black text-red-600">{stats.failed}</span>
+                    <span className="font-semibold text-slate-600">
+                      Failed orders
+                    </span>
+                    <span className="font-black text-red-600">
+                      {stats.failed}
+                    </span>
                   </div>
 
                   <div className="flex items-center justify-between gap-4">
-                    <span className="font-semibold text-slate-600">Partial orders</span>
-                    <span className="font-black text-purple-600">{stats.partial}</span>
+                    <span className="font-semibold text-slate-600">
+                      Partial orders
+                    </span>
+                    <span className="font-black text-purple-600">
+                      {stats.partial}
+                    </span>
                   </div>
 
                   <div className="flex items-center justify-between gap-4">
-                    <span className="font-semibold text-slate-600">Refunded orders</span>
-                    <span className="font-black text-slate-700">{stats.refunded}</span>
+                    <span className="font-semibold text-slate-600">
+                      Refunded orders
+                    </span>
+                    <span className="font-black text-slate-700">
+                      {stats.refunded}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -1435,41 +1606,53 @@ export default function AdminOrdersPage() {
               <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="mb-4 flex items-center gap-2">
                   <SlidersHorizontal size={18} className="text-slate-600" />
-                  <h3 className="text-lg font-black text-slate-950">Quick Filters</h3>
+                  <h3 className="text-lg font-black text-slate-950">
+                    Quick Filters
+                  </h3>
                 </div>
 
                 <div className="space-y-2">
                   <button
                     type="button"
                     onClick={() => setQuickFilter("high_value")}
-                    className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-sm font-bold transition ${
-                      quickFilter === "high_value" ? "bg-emerald-50 text-emerald-700" : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+                    className={`flex w-full items-center justify-between gap-4 rounded-2xl px-4 py-3 text-sm font-bold transition ${
+                      quickFilter === "high_value"
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-slate-50 text-slate-600 hover:bg-slate-100"
                     }`}
                   >
-                    <span>High value orders</span>
-                    <span>{highValueCount}</span>
+                    <span className="min-w-0 truncate">High value orders</span>
+                    <span className="shrink-0">{highValueCount}</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setQuickFilter("no_provider")}
-                    className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-sm font-bold transition ${
-                      quickFilter === "no_provider" ? "bg-emerald-50 text-emerald-700" : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+                    className={`flex w-full items-center justify-between gap-4 rounded-2xl px-4 py-3 text-sm font-bold transition ${
+                      quickFilter === "no_provider"
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-slate-50 text-slate-600 hover:bg-slate-100"
                     }`}
                   >
-                    <span>Orders without provider ID</span>
-                    <span>{withoutProviderCount}</span>
+                    <span className="min-w-0 truncate">
+                      Orders without provider ID
+                    </span>
+                    <span className="shrink-0">{withoutProviderCount}</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setQuickFilter("old_pending")}
-                    className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-sm font-bold transition ${
-                      quickFilter === "old_pending" ? "bg-emerald-50 text-emerald-700" : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+                    className={`flex w-full items-center justify-between gap-4 rounded-2xl px-4 py-3 text-sm font-bold transition ${
+                      quickFilter === "old_pending"
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-slate-50 text-slate-600 hover:bg-slate-100"
                     }`}
                   >
-                    <span>Orders older than 24h pending</span>
-                    <span>{oldPendingCount}</span>
+                    <span className="min-w-0 truncate">
+                      Orders older than 24h pending
+                    </span>
+                    <span className="shrink-0">{oldPendingCount}</span>
                   </button>
 
                   <button
@@ -1485,11 +1668,14 @@ export default function AdminOrdersPage() {
               <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="mb-4 flex items-center gap-2">
                   <AlertTriangle size={18} className="text-orange-500" />
-                  <h3 className="text-lg font-black text-slate-950">Refund Note</h3>
+                  <h3 className="text-lg font-black text-slate-950">
+                    Refund Note
+                  </h3>
                 </div>
 
                 <p className="text-sm font-semibold leading-6 text-slate-500">
-                  Refund button is only enabled for pending orders. Users should still request refunds through Tickets first.
+                  Refund button is only enabled for pending orders. Users should
+                  still request refunds through Tickets first.
                 </p>
               </div>
             </aside>
@@ -1503,10 +1689,14 @@ export default function AdminOrdersPage() {
             onClose={closeModal}
           >
             <div className="space-y-6">
-              <div className="flex items-start gap-4 rounded-3xl border border-slate-200 bg-slate-50/60 p-5">
+              <div className="flex min-w-0 flex-col gap-4 rounded-3xl border border-slate-200 bg-slate-50/60 p-5 sm:flex-row sm:items-start">
                 <PlatformIcon serviceName={selectedOrder.service_name} />
+
                 <div className="min-w-0 flex-1">
-                  <h4 className="text-lg font-black text-slate-950">{selectedOrder.service_name}</h4>
+                  <h4 className="line-clamp-2 text-lg font-black text-slate-950">
+                    {selectedOrder.service_name}
+                  </h4>
+
                   <a
                     href={selectedOrder.link}
                     target="_blank"
@@ -1516,22 +1706,59 @@ export default function AdminOrdersPage() {
                     {selectedOrder.link}
                   </a>
                 </div>
-                <StatusBadge status={selectedOrder.status} />
+
+                <div className="shrink-0">
+                  <StatusBadge status={selectedOrder.status} />
+                </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
                 <InfoBlock label="Order ID" value={selectedOrder.id} />
-                <InfoBlock label="User" value={shortUserId(selectedOrder.user_id)} />
-                <InfoBlock label="Price" value={formatMoney(selectedOrder.price)} valueClassName="text-emerald-600" />
-                <InfoBlock label="Quantity" value={formatNumber(selectedOrder.quantity)} />
-                <InfoBlock label="Start Count" value={formatNumber(selectedOrder.start_count)} />
-                <InfoBlock label="Current Count" value={formatNumber(selectedOrder.current_count)} />
-                <InfoBlock label="Remains" value={formatNumber(getRemains(selectedOrder))} />
-                <InfoBlock label="Provider" value={selectedOrder.provider_name || "Manual"} />
-                <InfoBlock label="Provider Order ID" value={selectedOrder.provider_order_id || "No provider ID"} />
-                <InfoBlock label="Created Date" value={formatDate(selectedOrder.created_at)} />
-                <InfoBlock label="Created Time" value={formatTime(selectedOrder.created_at)} />
-                <InfoBlock label="Progress" value={`${getProgressPercent(selectedOrder).toFixed(1)}%`} />
+                <InfoBlock
+                  label="User"
+                  value={shortUserId(selectedOrder.user_id)}
+                />
+                <InfoBlock
+                  label="Price"
+                  value={formatMoney(selectedOrder.price)}
+                  valueClassName="text-emerald-600"
+                />
+                <InfoBlock
+                  label="Quantity"
+                  value={formatNumber(selectedOrder.quantity)}
+                />
+                <InfoBlock
+                  label="Start Count"
+                  value={formatNumber(selectedOrder.start_count)}
+                />
+                <InfoBlock
+                  label="Current Count"
+                  value={formatNumber(selectedOrder.current_count)}
+                />
+                <InfoBlock
+                  label="Remains"
+                  value={formatNumber(getRemains(selectedOrder))}
+                />
+                <InfoBlock
+                  label="Provider"
+                  value={selectedOrder.provider_name || "Manual"}
+                />
+                <InfoBlock
+                  label="Provider Order ID"
+                  value={selectedOrder.provider_order_id || "No provider ID"}
+                />
+                <InfoBlock
+                  label="Created Date"
+                  value={formatDate(selectedOrder.created_at)}
+                />
+                <InfoBlock
+                  label="Created Time"
+                  value={formatTime(selectedOrder.created_at)}
+                />
+                <InfoBlock
+                  label="Progress"
+                  value={`${getProgressPercent(selectedOrder).toFixed(1)}%`}
+                />
               </div>
             </div>
           </ModalShell>
@@ -1543,11 +1770,11 @@ export default function AdminOrdersPage() {
             subtitle="Update order status, counts, or send provider actions."
             onClose={closeModal}
             footer={
-              <div className="flex flex-col justify-end gap-3 sm:flex-row">
+              <div className="flex flex-col-reverse justify-end gap-3 sm:flex-row">
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 sm:w-auto"
                 >
                   Cancel
                 </button>
@@ -1556,31 +1783,52 @@ export default function AdminOrdersPage() {
                   type="button"
                   onClick={updateOrderStatus}
                   disabled={savingOrder}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-black text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                 >
-                  {savingOrder && <Loader2 size={17} className="animate-spin" />}
+                  {savingOrder && (
+                    <Loader2 size={17} className="animate-spin" />
+                  )}
                   {savingOrder ? "Saving..." : "Save Changes"}
                 </button>
               </div>
             }
           >
             <div className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-4">
-                <InfoBlock label="Service" value={<span className="line-clamp-2">{selectedOrder.service_name}</span>} />
-                <InfoBlock label="Price" value={formatMoney(selectedOrder.price)} valueClassName="text-emerald-600" />
-                <InfoBlock label="Provider" value={selectedOrder.provider_name || "Manual"} />
-                <InfoBlock label="Current Status" value={<StatusBadge status={selectedOrder.status} />} />
+              <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
+                <InfoBlock
+                  label="Service"
+                  value={
+                    <span className="line-clamp-2">
+                      {selectedOrder.service_name}
+                    </span>
+                  }
+                />
+                <InfoBlock
+                  label="Price"
+                  value={formatMoney(selectedOrder.price)}
+                  valueClassName="text-emerald-600"
+                />
+                <InfoBlock
+                  label="Provider"
+                  value={selectedOrder.provider_name || "Manual"}
+                />
+                <InfoBlock
+                  label="Current Status"
+                  value={<StatusBadge status={selectedOrder.status} />}
+                />
               </div>
 
               {selectedOrder.provider_order_id && (
-                <div className="grid gap-3 md:grid-cols-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                   <button
                     type="button"
                     onClick={() => handleProviderAction("sync")}
                     disabled={providerActionLoading}
                     className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-black text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {providerActionLoading ? "Processing..." : "Sync This Order"}
+                    {providerActionLoading
+                      ? "Processing..."
+                      : "Sync This Order"}
                   </button>
 
                   <button
@@ -1589,7 +1837,9 @@ export default function AdminOrdersPage() {
                     disabled={providerActionLoading}
                     className="rounded-2xl bg-red-600 px-4 py-3 text-sm font-black text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {providerActionLoading ? "Processing..." : "Cancel Provider Order"}
+                    {providerActionLoading
+                      ? "Processing..."
+                      : "Cancel Provider Order"}
                   </button>
 
                   <button
@@ -1598,35 +1848,50 @@ export default function AdminOrdersPage() {
                     disabled={providerActionLoading}
                     className="rounded-2xl bg-purple-600 px-4 py-3 text-sm font-black text-white transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {providerActionLoading ? "Processing..." : "Request Refill"}
+                    {providerActionLoading
+                      ? "Processing..."
+                      : "Request Refill"}
                   </button>
                 </div>
               )}
 
-              <div className="grid gap-5 md:grid-cols-2">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm font-black text-slate-700">Start Count</label>
+                  <label className="mb-2 block text-sm font-black text-slate-700">
+                    Start Count
+                  </label>
+
                   <input
                     type="number"
                     value={startCount}
-                    onChange={(event) => setStartCount(Number(event.target.value))}
+                    onChange={(event) =>
+                      setStartCount(Number(event.target.value))
+                    }
                     className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-800 outline-none transition focus:border-emerald-300 focus:ring-4 focus:ring-emerald-50"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-black text-slate-700">Current Count</label>
+                  <label className="mb-2 block text-sm font-black text-slate-700">
+                    Current Count
+                  </label>
+
                   <input
                     type="number"
                     value={currentCount}
-                    onChange={(event) => setCurrentCount(Number(event.target.value))}
+                    onChange={(event) =>
+                      setCurrentCount(Number(event.target.value))
+                    }
                     className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-800 outline-none transition focus:border-emerald-300 focus:ring-4 focus:ring-emerald-50"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-black text-slate-700">Update Status</label>
+                <label className="mb-2 block text-sm font-black text-slate-700">
+                  Update Status
+                </label>
+
                 <select
                   value={newStatus}
                   onChange={(event) => setNewStatus(event.target.value)}
@@ -1649,17 +1914,19 @@ export default function AdminOrdersPage() {
             subtitle="Confirm this refund only after reviewing the user's ticket request."
             onClose={closeModal}
             footer={
-              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm font-semibold text-slate-500">
                   Refund amount:{" "}
-                  <span className="font-black text-red-600">{formatMoney(selectedOrder.price)}</span>
+                  <span className="font-black text-red-600">
+                    {formatMoney(selectedOrder.price)}
+                  </span>
                 </p>
 
-                <div className="flex flex-col gap-3 sm:flex-row">
+                <div className="flex flex-col-reverse gap-3 sm:flex-row">
                   <button
                     type="button"
                     onClick={closeModal}
-                    className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50"
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 sm:w-auto"
                   >
                     Cancel
                   </button>
@@ -1667,10 +1934,15 @@ export default function AdminOrdersPage() {
                   <button
                     type="button"
                     onClick={refundOrder}
-                    disabled={!isRefundAllowed(selectedOrder, refundEnabled) || refundingOrder}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-sm font-black text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={
+                      !isRefundAllowed(selectedOrder, refundEnabled) ||
+                      refundingOrder
+                    }
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 py-3 text-sm font-black text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                   >
-                    {refundingOrder && <Loader2 size={17} className="animate-spin" />}
+                    {refundingOrder && (
+                      <Loader2 size={17} className="animate-spin" />
+                    )}
                     {refundingOrder ? "Refunding..." : "Confirm Refund"}
                   </button>
                 </div>
@@ -1686,23 +1958,47 @@ export default function AdminOrdersPage() {
 
               {refundEnabled && selectedOrder.status !== "pending" && (
                 <div className="rounded-2xl border border-orange-100 bg-orange-50 p-4 text-sm font-bold text-orange-700">
-                  Only pending orders can be refunded with the current refund logic.
+                  Only pending orders can be refunded with the current refund
+                  logic.
                 </div>
               )}
 
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
                 <InfoBlock label="Order ID" value={selectedOrder.id} />
-                <InfoBlock label="User" value={shortUserId(selectedOrder.user_id)} />
-                <InfoBlock label="Service" value={<span className="line-clamp-2">{selectedOrder.service_name}</span>} />
-                <InfoBlock label="Current Status" value={<StatusBadge status={selectedOrder.status} />} />
-                <InfoBlock label="Order Price" value={formatMoney(selectedOrder.price)} valueClassName="text-red-600" />
-                <InfoBlock label="Created" value={`${formatDate(selectedOrder.created_at)} ${formatTime(selectedOrder.created_at)}`} />
+                <InfoBlock
+                  label="User"
+                  value={shortUserId(selectedOrder.user_id)}
+                />
+                <InfoBlock
+                  label="Service"
+                  value={
+                    <span className="line-clamp-2">
+                      {selectedOrder.service_name}
+                    </span>
+                  }
+                />
+                <InfoBlock
+                  label="Current Status"
+                  value={<StatusBadge status={selectedOrder.status} />}
+                />
+                <InfoBlock
+                  label="Order Price"
+                  value={formatMoney(selectedOrder.price)}
+                  valueClassName="text-red-600"
+                />
+                <InfoBlock
+                  label="Created"
+                  value={`${formatDate(selectedOrder.created_at)} ${formatTime(
+                    selectedOrder.created_at,
+                  )}`}
+                />
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <p className="text-sm font-semibold leading-6 text-slate-600">
-                  This will add the order price back to the user's wallet, update the order to cancelled,
-                  and create a notification for the user. Later, we can connect this directly to a Ticket ID.
+                  This will add the order price back to the user's wallet,
+                  update the order to cancelled, and create a notification for
+                  the user. Later, we can connect this directly to a Ticket ID.
                 </p>
               </div>
             </div>
