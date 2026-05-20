@@ -65,6 +65,25 @@ type Deposit = {
   created_at: string;
 };
 
+type ChildOrder = {
+  id: string;
+  service_id: string | null;
+  service_name: string;
+  link: string;
+  quantity: number;
+  base_price: number;
+  customer_price: number;
+  markup_percent: number;
+  owner_profit: number;
+  start_count: number | null;
+  current_count: number | null;
+  status: string;
+  provider_order_id: string | null;
+  provider_name: string | null;
+  comments?: string | null;
+  order_type?: string | null;
+  created_at: string;
+};
 
 type ChildService = {
   id: string;
@@ -210,6 +229,45 @@ function getDepositStatusLabel(status?: string | null) {
   return "Pending";
 }
 
+function getOrderStatusStyle(status?: string | null) {
+  const clean = String(status || "pending").toLowerCase();
+
+  if (clean === "completed") {
+    return "bg-emerald-500/10 text-emerald-200 ring-emerald-400/20";
+  }
+
+  if (clean === "processing") {
+    return "bg-blue-500/10 text-blue-200 ring-blue-400/20";
+  }
+
+  if (clean === "partial") {
+    return "bg-purple-500/10 text-purple-200 ring-purple-400/20";
+  }
+
+  if (["failed", "cancelled", "canceled", "rejected"].includes(clean)) {
+    return "bg-red-500/10 text-red-200 ring-red-400/20";
+  }
+
+  return "bg-orange-500/10 text-orange-200 ring-orange-400/20";
+}
+
+function getOrderStatusLabel(status?: string | null) {
+  const clean = String(status || "pending").toLowerCase();
+
+  if (clean === "completed") return "Completed";
+  if (clean === "processing") return "Processing";
+  if (clean === "partial") return "Partial";
+  if (clean === "failed") return "Failed";
+  if (clean === "cancelled" || clean === "canceled") return "Cancelled";
+  if (clean === "rejected") return "Rejected";
+
+  return "Pending";
+}
+
+function shortId(value?: string | null) {
+  return `#${String(value || "").slice(0, 8).toUpperCase()}`;
+}
+
 function StatCard({
   title,
   value,
@@ -300,6 +358,9 @@ export default function ChildPanelDashboardPage() {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [deposits, setDeposits] = useState<Deposit[]>([]);
   const [loadingDeposits, setLoadingDeposits] = useState(false);
+  const [orders, setOrders] = useState<ChildOrder[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [orderSearch, setOrderSearch] = useState("");
 
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -355,6 +416,39 @@ export default function ChildPanelDashboardPage() {
       approvedTotal,
     };
   }, [deposits]);
+
+  const orderStats = useMemo(() => {
+    const active = orders.filter((order) => {
+      const clean = String(order.status || "pending").toLowerCase();
+      return ["pending", "processing", "partial"].includes(clean);
+    }).length;
+
+    const completed = orders.filter(
+      (order) => String(order.status || "").toLowerCase() === "completed",
+    ).length;
+
+    return {
+      total: orders.length,
+      active,
+      completed,
+    };
+  }, [orders]);
+
+  const filteredOrders = useMemo(() => {
+    const query = orderSearch.toLowerCase().trim();
+
+    return orders.filter((order) => {
+      if (!query) return true;
+
+      return (
+        String(order.id || "").toLowerCase().includes(query) ||
+        String(order.service_name || "").toLowerCase().includes(query) ||
+        String(order.link || "").toLowerCase().includes(query) ||
+        String(order.status || "").toLowerCase().includes(query) ||
+        String(order.provider_order_id || "").toLowerCase().includes(query)
+      );
+    });
+  }, [orderSearch, orders]);
 
   const servicePlatforms = useMemo(() => {
     const priority = [
@@ -528,6 +622,51 @@ export default function ChildPanelDashboardPage() {
     }
   }
 
+  async function loadOrders(panelSlug = slug, sessionToken = getStoredToken()) {
+    if (!panelSlug || !sessionToken) return;
+
+    setLoadingOrders(true);
+
+    try {
+      const response = await fetch("/api/child-panel/customers/orders/list", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          slug: panelSlug,
+          token: sessionToken,
+        }),
+      });
+
+      const responseText = await response.text();
+      let result: any = null;
+
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        setMessage(
+          `Orders API returned non-JSON response. Status: ${response.status}. Make sure /api/child-panel/customers/orders/list is deployed.`,
+        );
+        setOrders([]);
+        return;
+      }
+
+      if (!response.ok || !result.success) {
+        setMessage(result.message || "Failed to load orders.");
+        setOrders([]);
+        return;
+      }
+
+      setOrders((result.orders || []) as ChildOrder[]);
+    } catch (error) {
+      console.error("CHILD_PANEL_ORDERS_LIST_ERROR:", error);
+      setMessage("Failed to load orders.");
+    } finally {
+      setLoadingOrders(false);
+    }
+  }
+
   async function loadDeposits(panelSlug = slug, sessionToken = getStoredToken()) {
     if (!panelSlug || !sessionToken) return;
 
@@ -603,6 +742,7 @@ export default function ChildPanelDashboardPage() {
 
       await loadServices(slug, token);
       await loadDeposits(slug, token);
+      await loadOrders(slug, token);
 
       setLoading(false);
     } catch {
@@ -763,6 +903,7 @@ export default function ChildPanelDashboardPage() {
       setOrderComments("");
       setSubmittingOrder(false);
 
+      await loadOrders(slug, token);
       await loadDashboard();
     } catch (error) {
       console.error("CHILD_PANEL_ORDER_SUBMIT_ERROR:", error);
@@ -1320,15 +1461,15 @@ export default function ChildPanelDashboardPage() {
 
               <StatCard
                 title="Total Orders"
-                value="0"
-                subtitle="Coming in orders phase"
+                value={formatNumber(orderStats.total)}
+                subtitle="All child panel orders"
                 icon={ShoppingCart}
                 primaryColor={primaryColor}
               />
 
               <StatCard
                 title="Active Orders"
-                value="0"
+                value={formatNumber(orderStats.active)}
                 subtitle="Pending / processing"
                 icon={BarChart3}
                 primaryColor={primaryColor}
@@ -1336,7 +1477,7 @@ export default function ChildPanelDashboardPage() {
 
               <StatCard
                 title="Completed"
-                value="0"
+                value={formatNumber(orderStats.completed)}
                 subtitle="Completed orders"
                 icon={CheckCircle2}
                 primaryColor={primaryColor}
@@ -1691,68 +1832,152 @@ export default function ChildPanelDashboardPage() {
 
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
               <div className="rounded-[28px] border border-white/10 bg-white/[0.05] shadow-2xl backdrop-blur">
-                <div className="flex items-center justify-between gap-4 border-b border-white/10 p-5">
+                <div className="flex flex-col gap-4 border-b border-white/10 p-5 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <h3 className="text-xl font-black">Recent Orders</h3>
                     <p className="mt-1 text-sm font-semibold text-white/45">
-                      Your latest orders will appear here.
+                      Your latest child panel orders from this dashboard.
                     </p>
                   </div>
 
-                  <div
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
-                    style={{
-                      backgroundColor: `${primaryColor}18`,
-                      color: primaryColor,
-                    }}
+                  <button
+                    type="button"
+                    onClick={() => loadOrders()}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-black text-white/75 transition hover:bg-white/[0.08]"
                   >
-                    <Package size={20} />
-                  </div>
+                    <RefreshCw size={16} />
+                    Refresh
+                  </button>
                 </div>
 
                 <div className="p-5">
                   <div className="flex h-12 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4">
                     <Search size={17} className="text-white/30" />
                     <input
-                      placeholder="Search orders..."
+                      value={orderSearch}
+                      onChange={(event) => setOrderSearch(event.target.value)}
+                      placeholder="Search order ID, service, link, or status..."
                       className="min-w-0 flex-1 bg-transparent text-sm font-bold text-white outline-none placeholder:text-white/25"
                     />
                   </div>
 
-                  <div className="mt-5 rounded-[24px] border border-dashed border-white/10 bg-black/20 p-10 text-center">
-                    <div
-                      className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl"
-                      style={{
-                        backgroundColor: `${primaryColor}18`,
-                        color: primaryColor,
-                      }}
-                    >
-                      <ShoppingCart size={28} />
+                  {loadingOrders ? (
+                    <div className="mt-5 rounded-[24px] border border-white/10 bg-black/20 p-8 text-center">
+                      <Loader2 className="mx-auto animate-spin text-white/50" size={28} />
+                      <p className="mt-3 text-sm font-bold text-white/45">
+                        Loading orders...
+                      </p>
                     </div>
+                  ) : filteredOrders.length <= 0 ? (
+                    <div className="mt-5 rounded-[24px] border border-dashed border-white/10 bg-black/20 p-10 text-center">
+                      <div
+                        className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl"
+                        style={{
+                          backgroundColor: `${primaryColor}18`,
+                          color: primaryColor,
+                        }}
+                      >
+                        <ShoppingCart size={28} />
+                      </div>
 
-                    <h4 className="mt-5 text-lg font-black">No orders yet</h4>
+                      <h4 className="mt-5 text-lg font-black">No orders found</h4>
 
-                    <p className="mt-2 text-sm font-semibold leading-6 text-white/45">
-                      Once New Order is connected, customers can place orders
-                      directly from this dashboard.
-                    </p>
+                      <p className="mt-2 text-sm font-semibold leading-6 text-white/45">
+                        Your placed orders will appear here after you submit one.
+                      </p>
 
-                    <button
-                      type="button"
-                      onClick={() => openNewOrderModal()}
-                      className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-black text-white"
-                      style={{
-                        background: `linear-gradient(135deg, ${primaryColor}, #7c3aed)`,
-                        boxShadow: getAccentShadow(primaryColor),
-                      }}
-                    >
-                      <Plus size={17} />
-                      Create First Order
-                    </button>
-                  </div>
+                      <button
+                        type="button"
+                        onClick={() => openNewOrderModal()}
+                        className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-black text-white"
+                        style={{
+                          background: `linear-gradient(135deg, ${primaryColor}, #7c3aed)`,
+                          boxShadow: getAccentShadow(primaryColor),
+                        }}
+                      >
+                        <Plus size={17} />
+                        Create First Order
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="mt-5 space-y-3">
+                      {filteredOrders.slice(0, 8).map((order) => (
+                        <div
+                          key={order.id}
+                          className="rounded-[22px] border border-white/10 bg-black/20 p-4"
+                        >
+                          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span
+                                  className="rounded-full px-3 py-1 text-xs font-black"
+                                  style={{
+                                    backgroundColor: `${primaryColor}18`,
+                                    color: primaryColor,
+                                  }}
+                                >
+                                  {shortId(order.id)}
+                                </span>
+
+                                <span
+                                  className={`rounded-full px-3 py-1 text-xs font-black ring-1 ${getOrderStatusStyle(
+                                    order.status,
+                                  )}`}
+                                >
+                                  {getOrderStatusLabel(order.status)}
+                                </span>
+
+                                {order.order_type === "custom_comments" && (
+                                  <span className="rounded-full bg-purple-500/10 px-3 py-1 text-xs font-black text-purple-200 ring-1 ring-purple-400/20">
+                                    Custom Comments
+                                  </span>
+                                )}
+                              </div>
+
+                              <h4 className="mt-3 line-clamp-2 text-sm font-black text-white">
+                                {order.service_name || "Unknown Service"}
+                              </h4>
+
+                              <a
+                                href={order.link}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mt-2 block truncate text-xs font-semibold text-blue-200 hover:text-blue-100"
+                              >
+                                {order.link}
+                              </a>
+
+                              <p className="mt-2 text-xs font-semibold text-white/35">
+                                {formatDateTime(order.created_at)}
+                              </p>
+                            </div>
+
+                            <div className="grid shrink-0 grid-cols-2 gap-3 sm:min-w-[260px]">
+                              <div className="rounded-2xl bg-white/[0.04] p-3">
+                                <p className="text-[10px] font-black uppercase tracking-wide text-white/35">
+                                  Quantity
+                                </p>
+                                <p className="mt-1 text-sm font-black text-white">
+                                  {formatNumber(order.quantity)}
+                                </p>
+                              </div>
+
+                              <div className="rounded-2xl bg-white/[0.04] p-3">
+                                <p className="text-[10px] font-black uppercase tracking-wide text-white/35">
+                                  Charge
+                                </p>
+                                <p className="mt-1 text-sm font-black text-emerald-200">
+                                  {formatMoney(order.customer_price)}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
-
               <aside className="space-y-5">
                 <div className="rounded-[28px] border border-white/10 bg-white/[0.05] p-5 shadow-2xl backdrop-blur">
                   <div className="flex items-center gap-3">
