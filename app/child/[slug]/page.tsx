@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import {
   CheckCircle2,
   Globe,
@@ -12,11 +12,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-);
 
 type ChildPanel = {
   id: string;
@@ -51,7 +46,7 @@ function getButtonStyle(color: string) {
 export default async function ChildPanelPublicPage({ params }: PageProps) {
   const { slug } = await params;
 
-  const { data: panel, error } = await supabase
+  const { data: panel, error } = await supabaseAdmin
     .from("child_panels")
     .select("*")
     .eq("panel_slug", slug)
@@ -160,7 +155,7 @@ export default async function ChildPanelPublicPage({ params }: PageProps) {
                 <span className="text-white/80">{childPanel.panel_name}</span>
               </h2>
 
-              <p className="mt-5 max-w-2xl text-base font-semibold leading-8 text-white/78">
+              <p className="mt-5 max-w-2xl text-base font-semibold leading-8 text-white/80">
                 Order followers, likes, views, subscribers, comments, and more
                 from a reseller panel powered by Ascend Service.
               </p>
@@ -250,6 +245,22 @@ export default async function ChildPanelPublicPage({ params }: PageProps) {
               </div>
             </div>
           </div>
+
+          <div className="flex flex-col gap-3 pb-6 sm:hidden">
+            <Link
+              href={`/child/${childPanel.panel_slug}/login`}
+              className="rounded-2xl bg-white/10 px-5 py-3 text-center text-sm font-black text-white ring-1 ring-white/20 transition hover:bg-white/15"
+            >
+              Login
+            </Link>
+
+            <Link
+              href={`/child/${childPanel.panel_slug}/register`}
+              className="rounded-2xl bg-white px-5 py-3 text-center text-sm font-black text-slate-950 transition hover:bg-slate-100"
+            >
+              Register
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -314,9 +325,7 @@ export default async function ChildPanelPublicPage({ params }: PageProps) {
               <Headphones size={24} />
             </div>
 
-            <h3 className="mt-5 text-lg font-black text-slate-950">
-              Support
-            </h3>
+            <h3 className="mt-5 text-lg font-black text-slate-950">Support</h3>
 
             <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
               {childPanel.support_email
