@@ -29,6 +29,60 @@ function detectPlatform(serviceName?: string | null, category?: string | null) {
   return "Other";
 }
 
+function detectOrderType(serviceName?: string | null, category?: string | null, description?: string | null) {
+  const text = `${serviceName || ""} ${category || ""} ${description || ""}`.toLowerCase();
+
+  if (
+    text.includes("custom comment") ||
+    text.includes("comments custom") ||
+    text.includes("comment custom") ||
+    text.includes("custom comments") ||
+    text.includes("comment per line") ||
+    text.includes("comments per line") ||
+    text.includes("1 per line") ||
+    text.includes("1per line") ||
+    text.includes("own comments") ||
+    text.includes("user comments")
+  ) {
+    return "custom_comments";
+  }
+
+  return "default";
+}
+
+async function getAllActiveServices() {
+  const pageSize = 1000;
+  let from = 0;
+  const allServices: any[] = [];
+
+  while (true) {
+    const to = from + pageSize - 1;
+
+    const { data, error } = await supabaseAdmin
+      .from("services")
+      .select(
+        "id, name, category, platform, description, price_per_1000, min_quantity, max_quantity, status",
+      )
+      .eq("status", "active")
+      .order("category", { ascending: true })
+      .order("name", { ascending: true })
+      .range(from, to);
+
+    if (error) throw error;
+
+    const rows = data || [];
+    allServices.push(...rows);
+
+    if (rows.length < pageSize) break;
+
+    from += pageSize;
+
+    if (from >= 50000) break;
+  }
+
+  return allServices;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -135,39 +189,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: services, error: servicesError } = await supabaseAdmin
-      .from("services")
-      .select(
-        "id, name, category, description, price_per_1000, min_quantity, max_quantity, status",
-      )
-      .eq("status", "active")
-      .order("category", { ascending: true })
-      .order("name", { ascending: true })
-      .limit(1000);
-
-    if (servicesError) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: servicesError.message,
-        },
-        { status: 500 },
-      );
-    }
-
+    const services = await getAllActiveServices();
     const markupPercent = Number(panel.markup_percent || 0);
 
-    const markedUpServices = (services || []).map((service) => {
+    const markedUpServices = services.map((service) => {
       const basePrice = Number(service.price_per_1000 || 0);
       const customerPrice = calculateMarkedUpPrice(basePrice, markupPercent);
       const ownerProfitPer1000 = Number((customerPrice - basePrice).toFixed(6));
+      const platform = service.platform || detectPlatform(service.name, service.category);
+      const orderType = detectOrderType(service.name, service.category, service.description);
 
       return {
         ...service,
-
-        // This is generated, not from your Supabase column
-        platform: detectPlatform(service.name, service.category),
-
+        platform,
+        order_type: orderType,
+        requires_custom_comments: orderType === "custom_comments",
         base_price_per_1000: basePrice,
         customer_price_per_1000: customerPrice,
         markup_percent: markupPercent,
@@ -183,15 +219,16 @@ export async function POST(request: NextRequest) {
         panel_slug: panel.panel_slug,
         markup_percent: markupPercent,
       },
+      total: markedUpServices.length,
       services: markedUpServices,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("CHILD_PANEL_SERVICES_LIST_ERROR:", error);
 
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to load services.",
+        message: error?.message || "Failed to load services.",
       },
       { status: 500 },
     );

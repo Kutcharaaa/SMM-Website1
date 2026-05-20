@@ -99,6 +99,47 @@ function calculateCharge(pricePer1000: number, quantity: number) {
   return Number(((quantity / 1000) * pricePer1000).toFixed(6));
 }
 
+function isCustomCommentsService(service?: ChildService | null) {
+  if (!service) return false;
+
+  const text = `${service.name || ""} ${service.category || ""} ${service.description || ""}`.toLowerCase();
+
+  return (
+    text.includes("custom comment") ||
+    text.includes("comments custom") ||
+    text.includes("comment custom") ||
+    text.includes("custom comments") ||
+    text.includes("comment per line") ||
+    text.includes("comments per line") ||
+    text.includes("1 per line") ||
+    text.includes("1per line") ||
+    text.includes("own comments") ||
+    text.includes("user comments")
+  );
+}
+
+function countCustomCommentLines(value: string) {
+  return value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean).length;
+}
+
+function getCustomCommentLines(value: string) {
+  return value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function getServiceMinimum(service?: ChildService | null) {
+  return Math.max(1, Number(service?.min_quantity || 1));
+}
+
+function getServiceMaximum(service?: ChildService | null) {
+  return Math.max(getServiceMinimum(service), Number(service?.max_quantity || 1000000));
+}
+
 function getAccentShadow(color: string) {
   return `0 20px 55px ${color}35`;
 }
@@ -281,6 +322,7 @@ export default function ChildPanelDashboardPage() {
   const [selectedServiceId, setSelectedServiceId] = useState("");
   const [orderLink, setOrderLink] = useState("");
   const [orderQuantity, setOrderQuantity] = useState("");
+  const [orderComments, setOrderComments] = useState("");
 
   const primaryColor = panel?.primary_color || "#ff4f8b";
 
@@ -409,11 +451,25 @@ export default function ChildPanelDashboardPage() {
     return services.find((service) => service.id === selectedServiceId) || null;
   }, [selectedServiceId, services]);
 
+  const selectedServiceRequiresComments = useMemo(() => {
+    return isCustomCommentsService(selectedService);
+  }, [selectedService]);
+
+  const customCommentLines = useMemo(() => {
+    return getCustomCommentLines(orderComments);
+  }, [orderComments]);
+
+  const customCommentQuantity = customCommentLines.length;
+
   const orderQuantityNumber = useMemo(() => {
+    if (selectedServiceRequiresComments) {
+      return customCommentQuantity;
+    }
+
     const value = Number(orderQuantity || 0);
     if (!Number.isFinite(value)) return 0;
     return Math.max(0, Math.floor(value));
-  }, [orderQuantity]);
+  }, [customCommentQuantity, orderQuantity, selectedServiceRequiresComments]);
 
   const orderCharge = useMemo(() => {
     if (!selectedService) return 0;
@@ -586,13 +642,14 @@ export default function ChildPanelDashboardPage() {
 
   function openNewOrderModal(service?: ChildService) {
     setMessage("");
+    setOrderLink("");
+    setOrderComments("");
 
-    if (service) {
-      setSelectedServiceId(service.id);
-      setOrderQuantity(String(service.min_quantity || 100));
-    } else if (!selectedServiceId && services[0]) {
-      setSelectedServiceId(services[0].id);
-      setOrderQuantity(String(services[0].min_quantity || 100));
+    const serviceToUse = service || (!selectedServiceId ? services[0] : services.find((item) => item.id === selectedServiceId));
+
+    if (serviceToUse) {
+      setSelectedServiceId(serviceToUse.id);
+      setOrderQuantity(isCustomCommentsService(serviceToUse) ? "" : String(serviceToUse.min_quantity || 100));
     }
 
     setNewOrderOpen(true);
@@ -602,6 +659,7 @@ export default function ChildPanelDashboardPage() {
     setNewOrderOpen(false);
     setOrderLink("");
     setOrderQuantity("");
+    setOrderComments("");
   }
 
   function previewOrderOnly() {
@@ -1723,7 +1781,8 @@ export default function ChildPanelDashboardPage() {
                     const serviceId = event.target.value;
                     const service = services.find((item) => item.id === serviceId) || null;
                     setSelectedServiceId(serviceId);
-                    setOrderQuantity(service ? String(service.min_quantity || 100) : "");
+                    setOrderComments("");
+                    setOrderQuantity(service ? (isCustomCommentsService(service) ? "" : String(service.min_quantity || 100)) : "");
                   }}
                   className="h-12 w-full rounded-2xl border border-white/10 bg-[#0d1024] px-4 text-sm font-bold text-white outline-none focus:border-white/30"
                 >
@@ -1746,6 +1805,17 @@ export default function ChildPanelDashboardPage() {
                       <p className="mt-2 text-sm font-semibold text-white/45">
                         {selectedService.platform || "Platform"} · {selectedService.category || "Category"}
                       </p>
+                      {selectedServiceRequiresComments && (
+                        <span
+                          className="mt-3 inline-flex rounded-full px-3 py-1 text-xs font-black"
+                          style={{
+                            backgroundColor: `${primaryColor}18`,
+                            color: primaryColor,
+                          }}
+                        >
+                          Custom Comments · 1 comment per line
+                        </span>
+                      )}
                       <p className="mt-3 text-sm font-semibold leading-6 text-white/45">
                         {selectedService.description || "No service description available."}
                       </p>
@@ -1784,7 +1854,29 @@ export default function ChildPanelDashboardPage() {
                 />
               </div>
 
-              <div className="grid gap-5 sm:grid-cols-2">
+              {selectedServiceRequiresComments ? (
+                <div>
+                  <label className="mb-2 block text-sm font-black text-white/80">
+                    Custom Comments
+                  </label>
+                  <textarea
+                    value={orderComments}
+                    onChange={(event) => setOrderComments(event.target.value)}
+                    placeholder={`Write your custom comments here.\nOne comment per line.\nExample:\nAmazing post!\nVery nice content!`}
+                    rows={8}
+                    className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-bold text-white outline-none placeholder:text-white/25 focus:border-white/30"
+                  />
+                  <div className="mt-2 flex flex-col gap-1 text-xs font-semibold text-white/40 sm:flex-row sm:items-center sm:justify-between">
+                    <span>Quantity is automatically counted from non-empty lines.</span>
+                    <span>Comments: {formatNumber(customCommentQuantity)}</span>
+                  </div>
+                  {selectedService && (
+                    <p className="mt-1 text-xs font-semibold text-white/40">
+                      Min {formatNumber(selectedService.min_quantity)} · Max {formatNumber(selectedService.max_quantity)} comments
+                    </p>
+                  )}
+                </div>
+              ) : (
                 <div>
                   <label className="mb-2 block text-sm font-black text-white/80">
                     Quantity
@@ -1802,6 +1894,20 @@ export default function ChildPanelDashboardPage() {
                     </p>
                   )}
                 </div>
+              )}
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-white/35">
+                    Order Quantity
+                  </p>
+                  <h4 className="mt-2 text-2xl font-black text-white">
+                    {formatNumber(orderQuantityNumber)}
+                  </h4>
+                  <p className="mt-1 text-xs font-semibold text-white/45">
+                    {selectedServiceRequiresComments ? "Auto-counted comments" : "Entered quantity"}
+                  </p>
+                </div>
 
                 <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
                   <p className="text-xs font-black uppercase tracking-[0.14em] text-white/35">
@@ -1817,13 +1923,22 @@ export default function ChildPanelDashboardPage() {
               </div>
 
               <div className="rounded-2xl border border-orange-400/20 bg-orange-500/10 p-4 text-sm font-bold leading-6 text-orange-100">
-                Service pricing is now connected. The final order submit will be connected in the next API step so it can safely charge balance and record owner profit.
+                {selectedServiceRequiresComments
+                  ? "Custom comments detected. Quantity is based on one non-empty comment per line. The final order API will send these comments with the order."
+                  : "Service pricing is now connected. The final order submit will be connected in the next API step so it can safely charge balance and record owner profit."}
               </div>
 
               <button
                 type="button"
                 onClick={previewOrderOnly}
-                disabled={!selectedService || !orderLink.trim() || orderQuantityNumber <= 0}
+                disabled={
+                  !selectedService ||
+                  !orderLink.trim() ||
+                  orderQuantityNumber <= 0 ||
+                  orderQuantityNumber < getServiceMinimum(selectedService) ||
+                  orderQuantityNumber > getServiceMaximum(selectedService) ||
+                  (selectedServiceRequiresComments && customCommentQuantity <= 0)
+                }
                 className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-sm font-black text-white transition disabled:cursor-not-allowed disabled:opacity-45"
                 style={{
                   background: `linear-gradient(135deg, ${primaryColor}, #7c3aed)`,
