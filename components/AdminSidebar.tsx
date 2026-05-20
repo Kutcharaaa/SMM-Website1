@@ -97,7 +97,7 @@ export default function AdminSidebar({
           roles: ["head_admin", "super_admin"],
         },
                 {
-          name: "Analytics / Reports",
+          name: "Child Panels",
           href: "/admin/child-panel",
           icon: User,
           roles: ["head_admin", "super_admin"],
