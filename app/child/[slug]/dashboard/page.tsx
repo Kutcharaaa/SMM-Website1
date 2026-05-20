@@ -275,6 +275,8 @@ export default function ChildPanelDashboardPage() {
   const [services, setServices] = useState<ChildService[]>([]);
   const [loadingServices, setLoadingServices] = useState(false);
   const [serviceSearch, setServiceSearch] = useState("");
+  const [selectedPlatformFilter, setSelectedPlatformFilter] = useState("All");
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("All");
   const [newOrderOpen, setNewOrderOpen] = useState(false);
   const [selectedServiceId, setSelectedServiceId] = useState("");
   const [orderLink, setOrderLink] = useState("");
@@ -311,20 +313,97 @@ export default function ChildPanelDashboardPage() {
     };
   }, [deposits]);
 
+  const servicePlatforms = useMemo(() => {
+    const priority = [
+      "Instagram",
+      "TikTok",
+      "YouTube",
+      "Facebook",
+      "Telegram",
+      "Spotify",
+      "Twitter",
+      "Twitch",
+      "Discord",
+      "Website",
+      "Other",
+    ];
+
+    const existing = Array.from(
+      new Set(
+        services
+          .map((service) => String(service.platform || "Other").trim() || "Other")
+          .filter(Boolean),
+      ),
+    );
+
+    return [
+      "All",
+      ...priority.filter((platform) => existing.includes(platform)),
+      ...existing
+        .filter((platform) => !priority.includes(platform))
+        .sort((a, b) => a.localeCompare(b)),
+    ];
+  }, [services]);
+
+  const serviceCategories = useMemo(() => {
+    const rows = services.filter((service) => {
+      if (selectedPlatformFilter === "All") return true;
+      return String(service.platform || "Other") === selectedPlatformFilter;
+    });
+
+    return [
+      "All",
+      ...Array.from(
+        new Set(
+          rows
+            .map((service) => String(service.category || "Uncategorized").trim())
+            .filter(Boolean),
+        ),
+      ).sort((a, b) => a.localeCompare(b)),
+    ];
+  }, [selectedPlatformFilter, services]);
+
   const filteredServices = useMemo(() => {
     const query = serviceSearch.toLowerCase().trim();
 
-    return services.filter((service) => {
-      if (!query) return true;
+    return services
+      .filter((service) => {
+        const platform = String(service.platform || "Other");
+        const category = String(service.category || "Uncategorized");
 
-      return (
-        String(service.id || "").toLowerCase().includes(query) ||
-        String(service.name || "").toLowerCase().includes(query) ||
-        String(service.platform || "").toLowerCase().includes(query) ||
-        String(service.category || "").toLowerCase().includes(query)
-      );
-    });
-  }, [serviceSearch, services]);
+        const matchesPlatform =
+          selectedPlatformFilter === "All" || platform === selectedPlatformFilter;
+
+        const matchesCategory =
+          selectedCategoryFilter === "All" || category === selectedCategoryFilter;
+
+        const matchesSearch =
+          !query ||
+          String(service.id || "").toLowerCase().includes(query) ||
+          String(service.name || "").toLowerCase().includes(query) ||
+          String(service.platform || "").toLowerCase().includes(query) ||
+          String(service.category || "").toLowerCase().includes(query);
+
+        return matchesPlatform && matchesCategory && matchesSearch;
+      })
+      .sort((a, b) => {
+        const priceA = Number(a.customer_price_per_1000 || 0);
+        const priceB = Number(b.customer_price_per_1000 || 0);
+
+        if (priceA !== priceB) return priceA - priceB;
+
+        return String(a.name || "").localeCompare(String(b.name || ""));
+      });
+  }, [
+    selectedCategoryFilter,
+    selectedPlatformFilter,
+    serviceSearch,
+    services,
+  ]);
+
+  const featuredServices = useMemo(() => {
+    return filteredServices.slice(0, 20);
+  }, [filteredServices]);
 
   const selectedService = useMemo(() => {
     return services.find((service) => service.id === selectedServiceId) || null;
@@ -1105,33 +1184,108 @@ export default function ChildPanelDashboardPage() {
             </div>
 
             <div className="rounded-[28px] border border-white/10 bg-white/[0.05] shadow-2xl backdrop-blur">
-              <div className="flex flex-col gap-4 border-b border-white/10 p-5 lg:flex-row lg:items-center lg:justify-between">
-                <div className="min-w-0">
-                  <h3 className="text-xl font-black">Services</h3>
-                  <p className="mt-1 text-sm font-semibold text-white/45">
-                    Browse available services with this panel&apos;s markup already included.
-                  </p>
+              <div className="border-b border-white/10 p-5">
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
+                        style={{
+                          backgroundColor: `${primaryColor}18`,
+                          color: primaryColor,
+                        }}
+                      >
+                        <Package size={21} />
+                      </div>
+
+                      <div className="min-w-0">
+                        <h3 className="text-xl font-black">New Order Services</h3>
+                        <p className="mt-1 text-sm font-semibold text-white/45">
+                          Choose a platform, select a category, then pick the best service.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex w-full flex-col gap-3 sm:flex-row xl:w-auto">
+                    <button
+                      type="button"
+                      onClick={() => openNewOrderModal()}
+                      className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl px-5 text-sm font-black text-white transition"
+                      style={{
+                        background: `linear-gradient(135deg, ${primaryColor}, #7c3aed)`,
+                        boxShadow: getAccentShadow(primaryColor),
+                      }}
+                    >
+                      <Plus size={17} />
+                      New Order
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => loadServices()}
+                      className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-black text-white/75 transition hover:bg-white/[0.08]"
+                    >
+                      <RefreshCw size={16} />
+                      Refresh
+                    </button>
+                  </div>
                 </div>
 
-                <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-                  <div className="flex h-12 min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 sm:min-w-[320px]">
+                <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_260px]">
+                  <div className="flex h-12 min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4">
                     <Search size={17} className="shrink-0 text-white/30" />
                     <input
                       value={serviceSearch}
                       onChange={(event) => setServiceSearch(event.target.value)}
-                      placeholder="Search service, platform, category, or ID..."
+                      placeholder="Search service name, service ID, category..."
                       className="min-w-0 flex-1 bg-transparent text-sm font-bold text-white outline-none placeholder:text-white/25"
                     />
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => loadServices()}
-                    className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-black text-white/75 transition hover:bg-white/[0.08]"
+                  <select
+                    value={selectedCategoryFilter}
+                    onChange={(event) => setSelectedCategoryFilter(event.target.value)}
+                    className="h-12 w-full rounded-2xl border border-white/10 bg-[#0d1024] px-4 text-sm font-black text-white outline-none focus:border-white/30"
                   >
-                    <RefreshCw size={16} />
-                    Refresh
-                  </button>
+                    {serviceCategories.map((item) => (
+                      <option key={item} value={item}>
+                        {item === "All" ? "All Categories" : item}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
+                  {servicePlatforms.map((platform) => {
+                    const active = selectedPlatformFilter === platform;
+
+                    return (
+                      <button
+                        key={platform}
+                        type="button"
+                        onClick={() => {
+                          setSelectedPlatformFilter(platform);
+                          setSelectedCategoryFilter("All");
+                        }}
+                        className={`shrink-0 rounded-2xl px-4 py-2 text-sm font-black transition ${
+                          active
+                            ? "text-white"
+                            : "border border-white/10 bg-white/[0.04] text-white/60 hover:bg-white/[0.08] hover:text-white"
+                        }`}
+                        style={
+                          active
+                            ? {
+                                background: `linear-gradient(135deg, ${primaryColor}, #7c3aed)`,
+                                boxShadow: getAccentShadow(primaryColor),
+                              }
+                            : undefined
+                        }
+                      >
+                        {platform === "All" ? "All Platforms" : platform}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1156,58 +1310,124 @@ export default function ChildPanelDashboardPage() {
                     </div>
                     <h4 className="mt-4 text-lg font-black">No services found</h4>
                     <p className="mt-2 text-sm font-semibold leading-6 text-white/45">
-                      Try another search term or refresh the service list.
+                      Try another platform, category, or search term.
                     </p>
                   </div>
                 ) : (
-                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                    {filteredServices.slice(0, 12).map((service) => (
-                      <button
-                        key={service.id}
-                        type="button"
-                        onClick={() => openNewOrderModal(service)}
-                        className="rounded-[22px] border border-white/10 bg-black/20 p-4 text-left transition hover:border-white/20 hover:bg-white/[0.06]"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="line-clamp-2 text-sm font-black text-white">
-                              {service.name}
-                            </p>
-                            <p className="mt-2 truncate text-xs font-semibold text-white/40">
-                              {service.platform || "Platform"} · {service.category || "Category"}
-                            </p>
-                          </div>
-                          <span
-                            className="shrink-0 rounded-full px-3 py-1 text-[10px] font-black"
-                            style={{
-                              backgroundColor: `${primaryColor}18`,
-                              color: primaryColor,
-                            }}
-                          >
-                            ID {String(service.id).slice(0, 6)}
-                          </span>
-                        </div>
+                  <div className="space-y-4">
+                    <div className="flex flex-col gap-2 rounded-[24px] border border-white/10 bg-black/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-black text-white">
+                          Showing {featuredServices.length} of {filteredServices.length} services
+                        </p>
+                        <p className="mt-1 text-xs font-semibold text-white/40">
+                          Customer prices already include the panel owner&apos;s markup.
+                        </p>
+                      </div>
 
-                        <div className="mt-4 grid grid-cols-2 gap-3">
-                          <div className="rounded-2xl bg-white/[0.04] p-3">
-                            <p className="text-[10px] font-black uppercase tracking-wide text-white/35">
-                              Price / 1K
-                            </p>
-                            <p className="mt-1 text-sm font-black text-white">
-                              {formatMoney(service.customer_price_per_1000)}
-                            </p>
+                      <div className="flex flex-wrap gap-2">
+                        <span
+                          className="rounded-full px-3 py-1 text-xs font-black"
+                          style={{
+                            backgroundColor: `${primaryColor}18`,
+                            color: primaryColor,
+                          }}
+                        >
+                          {selectedPlatformFilter === "All"
+                            ? "All Platforms"
+                            : selectedPlatformFilter}
+                        </span>
+                        <span className="rounded-full bg-white/[0.06] px-3 py-1 text-xs font-black text-white/60">
+                          {selectedCategoryFilter === "All"
+                            ? "All Categories"
+                            : selectedCategoryFilter}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="overflow-hidden rounded-[24px] border border-white/10 bg-black/20">
+                      <div className="hidden grid-cols-[1fr_130px_130px_110px] gap-4 border-b border-white/10 bg-white/[0.035] px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-white/35 lg:grid">
+                        <span>Service</span>
+                        <span>Price / 1K</span>
+                        <span>Min / Max</span>
+                        <span>Action</span>
+                      </div>
+
+                      <div className="divide-y divide-white/10">
+                        {featuredServices.map((service) => (
+                          <div
+                            key={service.id}
+                            className="grid gap-4 p-4 transition hover:bg-white/[0.035] lg:grid-cols-[1fr_130px_130px_110px] lg:items-center"
+                          >
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span
+                                  className="rounded-full px-2.5 py-1 text-[10px] font-black"
+                                  style={{
+                                    backgroundColor: `${primaryColor}18`,
+                                    color: primaryColor,
+                                  }}
+                                >
+                                  ID {String(service.id).slice(0, 6)}
+                                </span>
+                                <span className="rounded-full bg-white/[0.06] px-2.5 py-1 text-[10px] font-black text-white/55">
+                                  {service.platform || "Other"}
+                                </span>
+                                <span className="rounded-full bg-white/[0.06] px-2.5 py-1 text-[10px] font-black text-white/55">
+                                  {service.category || "Uncategorized"}
+                                </span>
+                              </div>
+
+                              <h4 className="mt-3 line-clamp-2 text-sm font-black leading-5 text-white">
+                                {service.name}
+                              </h4>
+
+                              {service.description && (
+                                <p className="mt-2 line-clamp-2 text-xs font-semibold leading-5 text-white/40">
+                                  {service.description}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="rounded-2xl bg-white/[0.04] p-3 lg:bg-transparent lg:p-0">
+                              <p className="text-[10px] font-black uppercase tracking-wide text-white/35 lg:hidden">
+                                Price / 1K
+                              </p>
+                              <p className="mt-1 text-base font-black text-white lg:mt-0">
+                                {formatMoney(service.customer_price_per_1000)}
+                              </p>
+                            </div>
+
+                            <div className="rounded-2xl bg-white/[0.04] p-3 lg:bg-transparent lg:p-0">
+                              <p className="text-[10px] font-black uppercase tracking-wide text-white/35 lg:hidden">
+                                Min / Max
+                              </p>
+                              <p className="mt-1 text-sm font-black text-white lg:mt-0">
+                                {formatNumber(service.min_quantity)} / {formatNumber(service.max_quantity)}
+                              </p>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => openNewOrderModal(service)}
+                              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl px-4 text-sm font-black text-white transition"
+                              style={{
+                                background: `linear-gradient(135deg, ${primaryColor}, #7c3aed)`,
+                              }}
+                            >
+                              <ShoppingCart size={16} />
+                              Order
+                            </button>
                           </div>
-                          <div className="rounded-2xl bg-white/[0.04] p-3">
-                            <p className="text-[10px] font-black uppercase tracking-wide text-white/35">
-                              Min / Max
-                            </p>
-                            <p className="mt-1 text-xs font-black text-white">
-                              {formatNumber(service.min_quantity)} / {formatNumber(service.max_quantity)}
-                            </p>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
+                        ))}
+                      </div>
+                    </div>
+
+                    {filteredServices.length > featuredServices.length && (
+                      <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 text-center text-sm font-bold text-white/45">
+                        Showing first {featuredServices.length} results. Use search or filters to narrow the list.
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
