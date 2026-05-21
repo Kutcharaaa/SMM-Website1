@@ -84,11 +84,12 @@ const statusOptions = [
   "partial",
   "cancelled",
   "failed",
-  "refunded",
 ];
 
 function normalizeStatus(status?: string | null) {
-  return String(status || "pending").toLowerCase().trim();
+  return String(status || "pending")
+    .toLowerCase()
+    .trim();
 }
 
 function isCancelledStatus(status?: string | null) {
@@ -107,6 +108,12 @@ function isRefundAllowed(order: Order | null, refundEnabled: boolean) {
   const status = normalizeStatus(order.status);
 
   return ["pending", "cancelled", "canceled", "failed"].includes(status);
+}
+
+function isEditAllowed(order: Order | null) {
+  if (!order) return false;
+
+  return normalizeStatus(order.status) !== "refunded";
 }
 
 function formatMoney(value: number | string | null | undefined) {
@@ -375,9 +382,7 @@ function ModalShell({
         <div className="min-h-0 overflow-y-auto p-5 sm:p-6">{children}</div>
 
         {footer && (
-          <div className="border-t border-slate-200 p-5 sm:p-6">
-            {footer}
-          </div>
+          <div className="border-t border-slate-200 p-5 sm:p-6">{footer}</div>
         )}
       </div>
     </div>
@@ -408,12 +413,13 @@ function InfoBlock({
   );
 }
 
-
 function parseRefundEnabledValue(value: unknown) {
   if (value === false) return false;
   if (value === true) return true;
 
-  const clean = String(value ?? "true").toLowerCase().trim();
+  const clean = String(value ?? "true")
+    .toLowerCase()
+    .trim();
 
   if (["false", "0", "off", "no", "disabled"].includes(clean)) {
     return false;
@@ -483,6 +489,11 @@ export default function AdminOrdersPage() {
   }, []);
 
   function openModal(order: Order, mode: Exclude<ModalMode, null>) {
+    if (mode === "manage" && !isEditAllowed(order)) {
+      setMessage("Refunded orders cannot be edited.");
+      return;
+    }
+
     setSelectedOrder(order);
     setModalMode(mode);
     setNewStatus(order.status);
@@ -799,7 +810,9 @@ export default function AdminOrdersPage() {
       (order) => normalizeStatus(order.status) === "refunded",
     ).length;
 
-    const active = orders.filter((order) => isActiveStatus(order.status)).length;
+    const active = orders.filter((order) =>
+      isActiveStatus(order.status),
+    ).length;
 
     return {
       total: orders.length,
@@ -854,10 +867,18 @@ export default function AdminOrdersPage() {
         !query ||
         String(order.id).toLowerCase().includes(query) ||
         String(order.user_id).toLowerCase().includes(query) ||
-        String(order.service_name || "").toLowerCase().includes(query) ||
-        String(order.link || "").toLowerCase().includes(query) ||
-        String(order.provider_name || "").toLowerCase().includes(query) ||
-        String(order.provider_order_id || "").toLowerCase().includes(query);
+        String(order.service_name || "")
+          .toLowerCase()
+          .includes(query) ||
+        String(order.link || "")
+          .toLowerCase()
+          .includes(query) ||
+        String(order.provider_name || "")
+          .toLowerCase()
+          .includes(query) ||
+        String(order.provider_order_id || "")
+          .toLowerCase()
+          .includes(query);
 
       const matchesQuick =
         quickFilter === "all"
@@ -875,13 +896,18 @@ export default function AdminOrdersPage() {
   }, [orders, quickFilter, search, serviceFilter, statusFilter]);
 
   const pageSizeOptions = [10, 20, 50, 100, 1000];
-  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / ordersPerPage));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredOrders.length / ordersPerPage),
+  );
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const pageStartIndex = (safeCurrentPage - 1) * ordersPerPage;
   const pageEndIndex = pageStartIndex + ordersPerPage;
   const paginatedOrders = filteredOrders.slice(pageStartIndex, pageEndIndex);
   const showingFrom =
-    filteredOrders.length <= 0 ? 0 : Math.min(pageStartIndex + 1, filteredOrders.length);
+    filteredOrders.length <= 0
+      ? 0
+      : Math.min(pageStartIndex + 1, filteredOrders.length);
   const showingTo = Math.min(pageEndIndex, filteredOrders.length);
 
   useEffect(() => {
@@ -1529,8 +1555,16 @@ export default function AdminOrdersPage() {
                               </ActionButton>
 
                               <ActionButton
-                                title="Update order"
-                                onClick={() => openModal(order, "manage")}
+                                title={
+                                  isEditAllowed(order)
+                                    ? "Update order"
+                                    : "Refunded orders cannot be edited"
+                                }
+                                onClick={() => {
+                                  if (!isEditAllowed(order)) return;
+                                  openModal(order, "manage");
+                                }}
+                                disabled={!isEditAllowed(order)}
                                 tone="green"
                               >
                                 <Pencil size={16} />
@@ -1543,7 +1577,9 @@ export default function AdminOrdersPage() {
                                     : "Refund only available for pending, cancelled, or failed orders"
                                 }
                                 onClick={() => openModal(order, "refund")}
-                                disabled={!isRefundAllowed(order, refundEnabled)}
+                                disabled={
+                                  !isRefundAllowed(order, refundEnabled)
+                                }
                                 tone="red"
                               >
                                 <RotateCcw size={16} />
@@ -1803,8 +1839,9 @@ export default function AdminOrdersPage() {
                 </div>
 
                 <p className="text-sm font-semibold leading-6 text-slate-500">
-                  Refund button is enabled for pending, cancelled, or failed orders.
-                  Users should still request refunds through Tickets first.
+                  Refund button is enabled for pending, cancelled, or failed
+                  orders. Users should still request refunds through Tickets
+                  first.
                 </p>
               </div>
             </aside>
@@ -1977,9 +2014,7 @@ export default function AdminOrdersPage() {
                     disabled={providerActionLoading}
                     className="rounded-2xl bg-purple-600 px-4 py-3 text-sm font-black text-white transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {providerActionLoading
-                      ? "Processing..."
-                      : "Request Refill"}
+                    {providerActionLoading ? "Processing..." : "Request Refill"}
                   </button>
                 </div>
               )}
@@ -2085,11 +2120,12 @@ export default function AdminOrdersPage() {
                 </div>
               )}
 
-              {refundEnabled && !isRefundAllowed(selectedOrder, refundEnabled) && (
-                <div className="rounded-2xl border border-orange-100 bg-orange-50 p-4 text-sm font-bold text-orange-700">
-                  Only pending, cancelled, or failed orders can be refunded.
-                </div>
-              )}
+              {refundEnabled &&
+                !isRefundAllowed(selectedOrder, refundEnabled) && (
+                  <div className="rounded-2xl border border-orange-100 bg-orange-50 p-4 text-sm font-bold text-orange-700">
+                    Only pending, cancelled, or failed orders can be refunded.
+                  </div>
+                )}
 
               <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
                 <InfoBlock label="Order ID" value={selectedOrder.id} />
@@ -2125,8 +2161,9 @@ export default function AdminOrdersPage() {
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <p className="text-sm font-semibold leading-6 text-slate-600">
                   This will add the order price back to the user's wallet,
-                  update the order to cancelled, and create a notification for
-                  the user. Later, we can connect this directly to a Ticket ID
+                  update the order status to refunded, and create a notification
+                  for the user. Later, we can connect this directly to a Ticket
+                  ID
                 </p>
               </div>
             </div>
