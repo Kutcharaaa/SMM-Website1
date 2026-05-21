@@ -24,13 +24,28 @@ function getServiceId(service: HighlightedService) {
   return service.provider_service_id || service.id.slice(0, 8);
 }
 
+function getBadgeClass(badge?: string | null) {
+  const clean = String(badge || "").toLowerCase();
+
+  if (clean.includes("cheap")) return "bg-green-600 text-white";
+  if (clean.includes("fast")) return "bg-blue-600 text-white";
+  if (clean.includes("refill")) return "bg-purple-600 text-white";
+  if (clean.includes("quality")) return "bg-orange-500 text-white";
+  if (clean.includes("hot")) return "bg-red-500 text-white";
+
+  return "bg-slate-900 text-white";
+}
+
 export default function HighlightedServicesTicker() {
   const [services, setServices] = useState<HighlightedService[]>([]);
+  const [visible, setVisible] = useState(true);
 
   async function loadHighlightedServices() {
     const { data, error } = await supabase
       .from("services")
-      .select("id, name, price_per_1000, provider_service_id, highlight_badge, highlight_sort")
+      .select(
+        "id, name, price_per_1000, provider_service_id, highlight_badge, highlight_sort",
+      )
       .eq("is_highlighted", true)
       .order("highlight_sort", { ascending: true })
       .limit(20);
@@ -54,14 +69,38 @@ export default function HighlightedServicesTicker() {
     return () => clearInterval(interval);
   }, []);
 
-  if (services.length <= 0) return null;
+  useEffect(() => {
+    let hideTimer: ReturnType<typeof setTimeout>;
+    let showTimer: ReturnType<typeof setTimeout>;
+
+    function startCycle() {
+      setVisible(true);
+
+      hideTimer = setTimeout(() => {
+        setVisible(false);
+
+        showTimer = setTimeout(() => {
+          startCycle();
+        }, 3 * 60 * 1000); // hidden for 3 minutes
+      }, 2 * 60 * 1000); // visible for 2 minutes
+    }
+
+    startCycle();
+
+    return () => {
+      clearTimeout(hideTimer);
+      clearTimeout(showTimer);
+    };
+  }, []);
+
+  if (!visible || services.length <= 0) return null;
 
   const tickerItems = [...services, ...services];
 
   return (
     <div className="mb-5 overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-r from-blue-50 via-white to-purple-50 shadow-sm">
       <div className="flex items-center gap-3 border-b border-blue-100/70 px-4 py-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-white">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
           <Sparkles size={18} />
         </div>
 
@@ -86,7 +125,7 @@ export default function HighlightedServicesTicker() {
                 ID {getServiceId(service)}
               </span>
 
-              <span className="text-sm font-black text-slate-950">
+              <span className="max-w-[420px] truncate text-sm font-black text-slate-950">
                 {service.name}
               </span>
 
@@ -95,7 +134,11 @@ export default function HighlightedServicesTicker() {
               </span>
 
               {service.highlight_badge && (
-                <span className="rounded-full bg-blue-600 px-2.5 py-1 text-[10px] font-black uppercase text-white">
+                <span
+                  className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${getBadgeClass(
+                    service.highlight_badge,
+                  )}`}
+                >
                   {service.highlight_badge}
                 </span>
               )}
