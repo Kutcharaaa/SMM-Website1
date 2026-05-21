@@ -51,6 +51,9 @@ type Service = {
   auto_order: boolean;
   status: string;
   created_at: string;
+  is_highlighted?: boolean | null;
+  highlight_badge?: string | null;
+  highlight_sort?: number | null;
 };
 
 type Provider = {
@@ -178,6 +181,23 @@ function StatusBadge({ status }: { status?: string | null }) {
     </span>
   );
 }
+
+function HighlightBadge({ service }: { service: Service }) {
+  if (!service.is_highlighted) {
+    return (
+      <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-500 ring-1 ring-slate-200">
+        Not Highlighted
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex rounded-full bg-yellow-50 px-3 py-1 text-xs font-black text-yellow-700 ring-1 ring-yellow-100">
+      {service.highlight_badge || "HOT"}
+    </span>
+  );
+}
+
 
 function AutoOrderSwitch({ enabled }: { enabled: boolean }) {
   return (
@@ -410,6 +430,59 @@ async function loadServices() {
   function getProviderName(id?: string | null, fallback?: string | null) {
     if (!id) return fallback || "Manual";
     return providers.find((provider) => provider.id === id)?.name || fallback || "Manual";
+  }
+
+  function getAutoHighlightBadge(service: Service) {
+    const text = `${service.name || ""} ${service.category || ""} ${
+      service.description || ""
+    }`.toLowerCase();
+
+    if (text.includes("cheap") || Number(service.price_per_1000 || 0) <= 5) {
+      return "CHEAP";
+    }
+
+    if (text.includes("fast") || text.includes("instant")) {
+      return "FAST";
+    }
+
+    if (text.includes("refill")) {
+      return "REFILL";
+    }
+
+    if (
+      text.includes("hq") ||
+      text.includes("quality") ||
+      text.includes("real")
+    ) {
+      return "HIGH QUALITY";
+    }
+
+    if (text.includes("popular") || text.includes("hot")) {
+      return "HOT";
+    }
+
+    return "HOT";
+  }
+
+  async function toggleHighlight(service: Service) {
+    const nextValue = !service.is_highlighted;
+
+    const { error } = await supabase
+      .from("services")
+      .update({
+        is_highlighted: nextValue,
+        highlight_badge: nextValue ? getAutoHighlightBadge(service) : null,
+        highlight_sort: nextValue ? Number(service.highlight_sort || 0) : 0,
+      })
+      .eq("id", service.id);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setMessage(nextValue ? "Service highlighted." : "Service unhighlighted.");
+    loadServices();
   }
 
   function resetForm() {
@@ -752,6 +825,7 @@ async function loadServices() {
     const active = services.filter((service) => normalizeStatus(service.status) === "active").length;
     const inactive = services.filter((service) => normalizeStatus(service.status) !== "active").length;
     const auto = services.filter((service) => service.auto_order).length;
+    const highlighted = services.filter((service) => service.is_highlighted).length;
     const activePercent = services.length > 0 ? (active / services.length) * 100 : 0;
     const autoPercent = services.length > 0 ? (auto / services.length) * 100 : 0;
     const averagePrice =
@@ -772,6 +846,7 @@ async function loadServices() {
       active,
       inactive,
       auto,
+      highlighted,
       activePercent,
       autoPercent,
       averagePrice,
@@ -1033,7 +1108,7 @@ async function loadServices() {
               )}
 
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1220px] text-sm">
+                <table className="w-full min-w-[1320px] text-sm">
                   <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                     <tr>
                       <th className="px-5 py-4 text-left">
@@ -1051,6 +1126,7 @@ async function loadServices() {
                       <th className="px-5 py-4 text-left">Price / 1000</th>
                       <th className="px-5 py-4 text-left">Min / Max</th>
                       <th className="px-5 py-4 text-left">Auto Order</th>
+                      <th className="px-5 py-4 text-left">Highlight</th>
                       <th className="px-5 py-4 text-left">Status</th>
                       <th className="px-5 py-4 text-left">Actions</th>
                     </tr>
@@ -1112,6 +1188,10 @@ async function loadServices() {
                         </td>
 
                         <td className="px-5 py-5 align-top">
+                          <HighlightBadge service={service} />
+                        </td>
+
+                        <td className="px-5 py-5 align-top">
                           <StatusBadge status={service.status} />
                         </td>
 
@@ -1119,6 +1199,14 @@ async function loadServices() {
                           <div className="flex items-center gap-2">
                             <ActionButton title="View service" onClick={() => openViewModal(service)}>
                               <Eye size={16} />
+                            </ActionButton>
+
+                            <ActionButton
+                              title={service.is_highlighted ? "Unhighlight service" : "Highlight service"}
+                              onClick={() => toggleHighlight(service)}
+                              tone={service.is_highlighted ? "red" : "blue"}
+                            >
+                              <Zap size={16} />
                             </ActionButton>
 
                             <ActionButton title="Edit service" onClick={() => openManage(service)} tone="blue">
@@ -1140,7 +1228,7 @@ async function loadServices() {
 
                     {filteredServices.length <= 0 && (
                       <tr>
-                        <td colSpan={10} className="px-5 py-16 text-center">
+                        <td colSpan={11} className="px-5 py-16 text-center">
                           <div className="mx-auto flex max-w-sm flex-col items-center">
                             <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-slate-50 text-slate-400 ring-1 ring-slate-100">
                               <Package size={26} />
@@ -1584,6 +1672,14 @@ async function loadServices() {
                   <InfoBlock label="Provider" value={getProviderName(selectedService.provider_id, selectedService.provider_name)} />
                   <InfoBlock label="Provider Service ID" value={selectedService.provider_service_id || "—"} />
                   <InfoBlock label="Auto Order" value={selectedService.auto_order ? "Enabled" : "Disabled"} />
+                  <InfoBlock
+                    label="Highlight"
+                    value={
+                      selectedService.is_highlighted
+                        ? selectedService.highlight_badge || "HOT"
+                        : "Not Highlighted"
+                    }
+                  />
                   <InfoBlock label="Category" value={selectedService.category || "—"} />
                   <InfoBlock label="Status" value={<StatusBadge status={selectedService.status} />} />
                   <InfoBlock label="Created" value={formatDate(selectedService.created_at)} />
