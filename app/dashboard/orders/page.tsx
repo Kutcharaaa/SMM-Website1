@@ -4,6 +4,7 @@ import DashboardGuard from "@/components/DashboardGuard";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useToast } from "@/components/ToastProvider";
 import { supabase } from "@/lib/supabase";
+import HighlightedServicesTicker from "@/components/HighlightedServicesTicker";
 import { useDisplayCurrency } from "@/lib/useDisplayCurrency";
 import {
   Check,
@@ -1084,6 +1085,7 @@ export default function OrdersPage() {
   return (
     <DashboardGuard>
       <DashboardLayout>
+                      <HighlightedServicesTicker />
         <div className="grid min-h-screen min-w-0 bg-[#f6f9fc] lg:grid-cols-[minmax(0,1fr)_390px]">
           <section className="min-w-0 p-0 sm:p-2 lg:p-0">
             <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
