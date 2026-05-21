@@ -2126,7 +2126,7 @@ export default function AdminOrdersPage() {
                 <p className="text-sm font-semibold leading-6 text-slate-600">
                   This will add the order price back to the user's wallet,
                   update the order to cancelled, and create a notification for
-                  the user. Later, we can connect this directly to a Ticket ID.
+                  the user. Later, we can connect this directly to a Ticket ID
                 </p>
               </div>
             </div>
