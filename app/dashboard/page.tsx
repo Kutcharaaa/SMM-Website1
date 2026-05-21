@@ -9,9 +9,12 @@ import TopResellers from "@/components/TopResellers";
 import RecentOrders from "@/components/RecentOrders";
 import RecentPayments from "@/components/RecentPayments";
 
+import HighlightedServicesTicker from "@/components/HighlightedServicesTicker";
+
 export default function DashboardPage() {
   return (
     <DashboardLayout>
+              <HighlightedServicesTicker />
       <div className="w-full min-w-0 space-y-6">
         <DashboardStats />
 
