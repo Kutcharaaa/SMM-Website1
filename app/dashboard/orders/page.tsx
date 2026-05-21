@@ -71,11 +71,11 @@ const networks = [
   { name: "Spotify", icon: "🎧" },
   { name: "Twitter", icon: "𝕏" },
   { name: "Twitch", icon: "🎮" },
-  { name: "Roblox", icon: "⬢" },
   { name: "Discord", icon: "💬" },
   { name: "Google", icon: "G" },
   { name: "Website", icon: "🌐" },
   { name: "Reviews", icon: "⭐" },
+  { name: "Roblox", icon: "⬢" },
   { name: "Others", icon: "＋" },
   { name: "Everything", icon: "☰" },
 ];
@@ -89,66 +89,54 @@ function normalizeServiceText(value?: string | null) {
     .trim();
 }
 
-function getServiceSearchText(service: Service) {
-  return normalizeServiceText(
-    `${service.name || ""} ${service.category || ""} ${
-      service.description || ""
-    } ${service.provider_name || ""} ${service.provider_service_id || ""}`,
-  );
+function hasWord(text: string, words: string[]) {
+  const cleanText = ` ${normalizeServiceText(text)} `;
+
+  return words.some((word) => {
+    const cleanWord = normalizeServiceText(word);
+
+    if (!cleanWord) return false;
+
+    return cleanText.includes(` ${cleanWord} `);
+  });
 }
 
-function textHasPlatformAlias(text: string, aliases: string[]) {
-  const cleanText = ` ${normalizeServiceText(text)} `;
-  const tokens = cleanText.trim().split(/\s+/).filter(Boolean);
+function detectServicePlatform(service: Service) {
+  const text = `${service.name || ""} ${service.category || ""} ${
+    service.description || ""
+  } ${service.provider_name || ""}`;
 
-  return aliases.some((alias) => {
-    const cleanAlias = normalizeServiceText(alias);
+  if (hasWord(text, ["instagram", "insta", "ig"])) return "Instagram";
+  if (hasWord(text, ["facebook", "fb"])) return "Facebook";
+  if (hasWord(text, ["youtube", "yt", "youtube shorts"])) return "YouTube";
+  if (hasWord(text, ["tiktok", "tik tok"])) return "TikTok";
+  if (hasWord(text, ["telegram", "tg"])) return "Telegram";
+  if (hasWord(text, ["spotify"])) return "Spotify";
+  if (hasWord(text, ["twitter", "twitter x", "x"])) return "Twitter";
+  if (hasWord(text, ["twitch"])) return "Twitch";
+  if (hasWord(text, ["discord"])) return "Discord";
+  if (hasWord(text, ["google"])) return "Google";
+  if (hasWord(text, ["roblox", "rblx", "robux"])) return "Roblox";
 
-    if (!cleanAlias) return false;
+  // Reviews before Website, because some review services can contain website words.
+  if (hasWord(text, ["reviews", "review"])) return "Reviews";
+  if (hasWord(text, ["website", "web site", "site traffic"])) {
+    return "Website";
+  }
 
-    // Short aliases like IG, FB, YT, TG, and X must match exact words only.
-    // This prevents wrong matches like "high" matching IG or "max" matching X.
-    if (cleanAlias.length <= 2) {
-      return tokens.includes(cleanAlias);
-    }
-
-    return cleanText.includes(` ${cleanAlias} `);
-  });
+  return "Others";
 }
 
 function serviceMatchesNetwork(service: Service, selectedNetwork: string) {
   if (selectedNetwork === "Everything") return true;
 
-  const text = getServiceSearchText(service);
-
-  const aliases: Record<string, string[]> = {
-    Instagram: ["instagram", "insta", "ig"],
-    Facebook: ["facebook", "fb"],
-    YouTube: ["youtube", "yt", "youtube shorts"],
-    TikTok: ["tiktok", "tik tok"],
-    Telegram: ["telegram", "tg"],
-    Spotify: ["spotify"],
-    Twitter: ["twitter", "twitter x", "x"],
-    Roblox: ["Roblox", "rblx", "robux"],
-    Twitch: ["twitch"],
-    Discord: ["discord"],
-    Google: ["google"],
-    Website: ["website", "web site", "website traffic", "site traffic"],
-    Reviews: ["reviews", "review"],
-  };
+  const detectedPlatform = detectServicePlatform(service);
 
   if (selectedNetwork === "Others") {
-    return !networks
-      .filter((item) => item.name !== "Others" && item.name !== "Everything")
-      .some((item) =>
-        textHasPlatformAlias(text, aliases[item.name] || [item.name]),
-      );
+    return detectedPlatform === "Others";
   }
 
-  return textHasPlatformAlias(
-    text,
-    aliases[selectedNetwork] || [selectedNetwork],
-  );
+  return detectedPlatform === selectedNetwork;
 }
 
 function getPublicServiceId(service: Service | null) {
@@ -356,7 +344,6 @@ function getPlatformSvg(name: string) {
     );
   }
 
-
   if (clean.includes("twitch")) {
     return (
       <PlatformSvg>
@@ -365,18 +352,18 @@ function getPlatformSvg(name: string) {
     );
   }
 
-  if (clean.includes("roblox")) {
-  return (
-    <PlatformSvg>
-      <path d="M5.3 2 22 5.3 18.7 22 2 18.7 5.3 2Zm5.2 7.1-.9 4.4 4.4.9.9-4.4-4.4-.9Z" />
-    </PlatformSvg>
-  );
-}
-
   if (clean.includes("discord")) {
     return (
       <PlatformSvg>
         <path d="M18.6 5.3A15 15 0 0 0 15 4.2l-.4.8a13.5 13.5 0 0 0-5.2 0L9 4.2a15 15 0 0 0-3.6 1.1C3.1 8.7 2.5 12 2.8 15.3a14.6 14.6 0 0 0 4.5 2.3l.9-1.5a9.2 9.2 0 0 1-1.4-.7l.3-.2a10.8 10.8 0 0 0 9.8 0l.3.2a9.2 9.2 0 0 1-1.4.7l.9 1.5a14.6 14.6 0 0 0 4.5-2.3c.4-3.8-.7-7-3.2-10ZM8.8 13.5c-.9 0-1.6-.8-1.6-1.7s.7-1.7 1.6-1.7 1.6.8 1.6 1.7-.7 1.7-1.6 1.7Zm6.4 0c-.9 0-1.6-.8-1.6-1.7s.7-1.7 1.6-1.7 1.6.8 1.6 1.7-.7 1.7-1.6 1.7Z" />
+      </PlatformSvg>
+    );
+  }
+
+  if (clean.includes("roblox")) {
+    return (
+      <PlatformSvg>
+        <path d="M5.3 2 22 5.3 18.7 22 2 18.7 5.3 2Zm5.2 7.1-.9 4.4 4.4.9.9-4.4-4.4-.9Z" />
       </PlatformSvg>
     );
   }
@@ -749,18 +736,6 @@ export default function OrdersPage() {
   }, [orders, orderSearch, statusFilter]);
 
   const networkServices = useMemo(() => {
-    if (network === "Everything") return services;
-
-    if (network === "Others") {
-      return services.filter((service) => {
-        return !networks
-          .filter(
-            (item) => item.name !== "Others" && item.name !== "Everything",
-          )
-          .some((item) => serviceMatchesNetwork(service, item.name));
-      });
-    }
-
     return services.filter((service) => serviceMatchesNetwork(service, network));
   }, [services, network]);
 
@@ -771,18 +746,14 @@ export default function OrdersPage() {
   }, [networkServices]);
 
   const filteredServices = useMemo(() => {
-    const keyword = serviceSearch.toLowerCase().trim();
-    const normalizedKeyword = normalizeServiceText(keyword);
+    const normalizedKeyword = normalizeServiceText(serviceSearch);
 
-    // Always start from selected platform services.
-    // Before, search used ALL services, so platform buttons were ignored while searching.
     let rows = [...networkServices];
 
     if (category) {
       rows = rows.filter(
         (service) =>
-          normalizeServiceText(service.category) ===
-          normalizeServiceText(category),
+          normalizeServiceText(service.category) === normalizeServiceText(category),
       );
     }
 
@@ -1394,30 +1365,29 @@ export default function OrdersPage() {
                   <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                     <StepHeader step="1" title="Choose Platform" />
 
-<div className="mt-4 flex gap-2 overflow-x-auto pb-2">
-  {networks.map((item) => (
-<button
-  key={item.name}
-  type="button"
-  onClick={() => {
-    setNetwork(item.name);
-    setCategory("");
-    setSelectedServiceId("");
-    setServiceSearch("");
-    setServiceFilter("all");
-  }}
-  className={`flex h-9 w-fit min-w-max shrink-0 items-center gap-2 rounded-xl border px-3 text-left transition ${
-    network === item.name
-      ? "border-blue-600 bg-blue-50 text-blue-700"
-      : "border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50/40"
-  }`}
->
-  <PlatformIcon name={item.name} />
-
-<span className="whitespace-nowrap text-xs font-black leading-none">
-  {item.name}
-</span>
-</button>
+                    <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
+                      {networks.map((item) => (
+                        <button
+                          key={item.name}
+                          type="button"
+                          onClick={() => {
+                            setNetwork(item.name);
+                            setCategory("");
+                            setSelectedServiceId("");
+                            setServiceSearch("");
+                            setServiceFilter("all");
+                          }}
+                          className={`flex h-9 w-fit min-w-max shrink-0 items-center gap-2 rounded-xl border px-3 text-left transition ${
+                            network === item.name
+                              ? "border-blue-600 bg-blue-50 text-blue-700"
+                              : "border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50/40"
+                          }`}
+                        >
+                          <PlatformIcon name={item.name} />
+                          <span className="whitespace-nowrap text-xs font-black leading-none">
+                            {item.name}
+                          </span>
+                        </button>
                       ))}
                     </div>
                   </div>
