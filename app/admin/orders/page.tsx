@@ -106,12 +106,7 @@ function isRefundAllowed(order: Order | null, refundEnabled: boolean) {
 
   const status = normalizeStatus(order.status);
 
-  return (
-    status === "pending" ||
-    status === "cancelled" ||
-    status === "canceled" ||
-    status === "failed"
-  );
+  return ["pending", "cancelled", "canceled", "failed"].includes(status);
 }
 
 function formatMoney(value: number | string | null | undefined) {
@@ -413,6 +408,20 @@ function InfoBlock({
   );
 }
 
+
+function parseRefundEnabledValue(value: unknown) {
+  if (value === false) return false;
+  if (value === true) return true;
+
+  const clean = String(value ?? "true").toLowerCase().trim();
+
+  if (["false", "0", "off", "no", "disabled"].includes(clean)) {
+    return false;
+  }
+
+  return true;
+}
+
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -460,7 +469,7 @@ export default function AdminOrdersPage() {
       .eq("key", "refund_enabled")
       .single();
 
-    setRefundEnabled(setting?.value === "true");
+    setRefundEnabled(parseRefundEnabledValue(setting?.value));
   }
 
   useEffect(() => {
