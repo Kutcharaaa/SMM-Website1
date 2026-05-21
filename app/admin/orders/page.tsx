@@ -101,9 +101,25 @@ function isActiveStatus(status?: string | null) {
   return clean === "pending" || clean === "processing" || clean === "partial";
 }
 
+function isRefundableStatus(status?: string | null) {
+  const clean = normalizeStatus(status);
+
+  return (
+    clean === "pending" ||
+    clean === "cancelled" ||
+    clean === "canceled" ||
+    clean === "failed"
+  );
+}
+
 function isRefundAllowed(order: Order | null, refundEnabled: boolean) {
   if (!order || !refundEnabled) return false;
-  return normalizeStatus(order.status) === "pending";
+
+  const clean = normalizeStatus(order.status);
+
+  if (clean === "refunded") return false;
+
+  return isRefundableStatus(clean);
 }
 
 function formatMoney(value: number | string | null | undefined) {
@@ -676,8 +692,14 @@ export default function AdminOrdersPage() {
       return;
     }
 
-    if (selectedOrder.status !== "pending") {
-      setMessage("Only pending orders can be refunded.");
+    if (!isRefundableStatus(selectedOrder.status)) {
+      setMessage("Only pending, cancelled, or failed orders can be refunded.");
+      setRefundingOrder(false);
+      return;
+    }
+
+    if (normalizeStatus(selectedOrder.status) === "refunded") {
+      setMessage("This order is already refunded.");
       setRefundingOrder(false);
       return;
     }
@@ -714,7 +736,7 @@ export default function AdminOrdersPage() {
     const { error: orderError } = await supabase
       .from("orders")
       .update({
-        status: "cancelled",
+        status: "refunded",
       })
       .eq("id", selectedOrder.id);
 
@@ -727,9 +749,9 @@ export default function AdminOrdersPage() {
     await supabase.from("notifications").insert({
       user_id: selectedOrder.user_id,
       title: "Order Refunded",
-      message: `Your pending order was cancelled and ₱${refundAmount.toFixed(
+      message: `Your order for ${selectedOrder.service_name} was refunded and ₱${refundAmount.toFixed(
         2,
-      )} was refunded to your wallet.`,
+      )} was returned to your wallet.`,
       type: "order_refunded",
       is_read: false,
     });
@@ -1516,7 +1538,7 @@ export default function AdminOrdersPage() {
                                 title={
                                   isRefundAllowed(order, refundEnabled)
                                     ? "Refund order"
-                                    : "Refund only available for pending orders"
+                                    : "Refund available for pending, cancelled, or failed orders"
                                 }
                                 onClick={() => openModal(order, "refund")}
                                 disabled={!isRefundAllowed(order, refundEnabled)}
@@ -1779,7 +1801,7 @@ export default function AdminOrdersPage() {
                 </div>
 
                 <p className="text-sm font-semibold leading-6 text-slate-500">
-                  Refund button is only enabled for pending orders. Users should
+                  Refund button is enabled for pending, cancelled, or failed orders. Users should
                   still request refunds through Tickets first.
                 </p>
               </div>
@@ -2061,9 +2083,9 @@ export default function AdminOrdersPage() {
                 </div>
               )}
 
-              {refundEnabled && selectedOrder.status !== "pending" && (
+              {refundEnabled && !isRefundableStatus(selectedOrder.status) && (
                 <div className="rounded-2xl border border-orange-100 bg-orange-50 p-4 text-sm font-bold text-orange-700">
-                  Only pending orders can be refunded with the current refund
+                  Only pending, cancelled, or failed orders can be refunded with the current refund
                   logic.
                 </div>
               )}
