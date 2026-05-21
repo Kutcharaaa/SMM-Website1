@@ -75,7 +75,6 @@ const networks = [
   { name: "Google", icon: "G" },
   { name: "Website", icon: "🌐" },
   { name: "Reviews", icon: "⭐" },
-  { name: "Roblox", icon: "⬢" },
   { name: "Others", icon: "＋" },
   { name: "Everything", icon: "☰" },
 ];
@@ -83,60 +82,51 @@ const networks = [
 function normalizeServiceText(value?: string | null) {
   return String(value || "")
     .toLowerCase()
-    .replace(/&/g, " and ")
-    .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function hasWord(text: string, words: string[]) {
-  const cleanText = ` ${normalizeServiceText(text)} `;
-
-  return words.some((word) => {
-    const cleanWord = normalizeServiceText(word);
-
-    if (!cleanWord) return false;
-
-    return cleanText.includes(` ${cleanWord} `);
-  });
-}
-
-function detectServicePlatform(service: Service) {
-  const text = `${service.name || ""} ${service.category || ""} ${
-    service.description || ""
-  } ${service.provider_name || ""}`;
-
-  if (hasWord(text, ["instagram", "insta", "ig"])) return "Instagram";
-  if (hasWord(text, ["facebook", "fb"])) return "Facebook";
-  if (hasWord(text, ["youtube", "yt", "youtube shorts"])) return "YouTube";
-  if (hasWord(text, ["tiktok", "tik tok"])) return "TikTok";
-  if (hasWord(text, ["telegram", "tg"])) return "Telegram";
-  if (hasWord(text, ["spotify"])) return "Spotify";
-  if (hasWord(text, ["twitter", "twitter x", "x"])) return "Twitter";
-  if (hasWord(text, ["twitch"])) return "Twitch";
-  if (hasWord(text, ["discord"])) return "Discord";
-  if (hasWord(text, ["google"])) return "Google";
-  if (hasWord(text, ["roblox", "rblx", "robux"])) return "Roblox";
-
-  // Reviews before Website, because some review services can contain website words.
-  if (hasWord(text, ["reviews", "review"])) return "Reviews";
-  if (hasWord(text, ["website", "web site", "site traffic"])) {
-    return "Website";
-  }
-
-  return "Others";
+    .replace(/[^a-z0-9]/g, "");
 }
 
 function serviceMatchesNetwork(service: Service, selectedNetwork: string) {
   if (selectedNetwork === "Everything") return true;
 
-  const detectedPlatform = detectServicePlatform(service);
+  const text = normalizeServiceText(
+    `${service.name || ""} ${service.category || ""} ${
+      service.description || ""
+    } ${service.provider_name || ""} ${service.provider_service_id || ""}`,
+  );
 
-  if (selectedNetwork === "Others") {
-    return detectedPlatform === "Others";
-  }
+  const aliases: Record<string, string[]> = {
+    Instagram: ["instagram", "insta", "ig"],
+    Facebook: ["facebook", "fb"],
+    YouTube: ["youtube", "yt", "youtubeshorts"],
+    TikTok: [
+      "tiktok",
+      "tiktokshop",
+      "tiktokservice",
+      "tiktokservices",
+      "tiktokfollowers",
+      "tiktoklikes",
+      "tiktokviews",
+      "tiktokshares",
+      "tiktokcomments",
+      "tiktoklive",
+      "tik",
+      "tok",
+    ],
+    Telegram: ["telegram", "tg"],
+    Spotify: ["spotify"],
+    Twitter: ["twitter", "x", "twitterx"],
+    Twitch: ["twitch"],
+    Discord: ["discord"],
+    Google: ["google", "googlereviews"],
+    Website: ["website", "site", "websitereviews"],
+    Reviews: ["reviews", "review"],
+  };
 
-  return detectedPlatform === selectedNetwork;
+  const selectedAliases = aliases[selectedNetwork] || [selectedNetwork];
+
+  return selectedAliases.some((alias) =>
+    text.includes(normalizeServiceText(alias)),
+  );
 }
 
 function getPublicServiceId(service: Service | null) {
@@ -266,7 +256,7 @@ function StepHeader({ step, title }: { step: string; title: string }) {
 
 function PlatformIcon({ name }: { name: string }) {
   return (
-    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-sm">
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-lg">
       {getPlatformSvg(name)}
     </span>
   );
@@ -356,14 +346,6 @@ function getPlatformSvg(name: string) {
     return (
       <PlatformSvg>
         <path d="M18.6 5.3A15 15 0 0 0 15 4.2l-.4.8a13.5 13.5 0 0 0-5.2 0L9 4.2a15 15 0 0 0-3.6 1.1C3.1 8.7 2.5 12 2.8 15.3a14.6 14.6 0 0 0 4.5 2.3l.9-1.5a9.2 9.2 0 0 1-1.4-.7l.3-.2a10.8 10.8 0 0 0 9.8 0l.3.2a9.2 9.2 0 0 1-1.4.7l.9 1.5a14.6 14.6 0 0 0 4.5-2.3c.4-3.8-.7-7-3.2-10ZM8.8 13.5c-.9 0-1.6-.8-1.6-1.7s.7-1.7 1.6-1.7 1.6.8 1.6 1.7-.7 1.7-1.6 1.7Zm6.4 0c-.9 0-1.6-.8-1.6-1.7s.7-1.7 1.6-1.7 1.6.8 1.6 1.7-.7 1.7-1.6 1.7Z" />
-      </PlatformSvg>
-    );
-  }
-
-  if (clean.includes("roblox")) {
-    return (
-      <PlatformSvg>
-        <path d="M5.3 2 22 5.3 18.7 22 2 18.7 5.3 2Zm5.2 7.1-.9 4.4 4.4.9.9-4.4-4.4-.9Z" />
       </PlatformSvg>
     );
   }
@@ -575,6 +557,8 @@ export default function OrdersPage() {
 
   const [orderSearch, setOrderSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [ordersPage, setOrdersPage] = useState(1);
+  const [ordersPerPage, setOrdersPerPage] = useState(10);
 
   const [network, setNetwork] = useState("Everything");
   const [category, setCategory] = useState("");
@@ -699,7 +683,7 @@ export default function OrdersPage() {
 
     const interval = setInterval(() => {
       refreshOrders();
-    }, 30000);
+    }, 3000);
 
     return () => clearInterval(interval);
   }, []);
@@ -735,7 +719,48 @@ export default function OrdersPage() {
     });
   }, [orders, orderSearch, statusFilter]);
 
+  const totalOrderPages = useMemo(() => {
+    return Math.max(1, Math.ceil(filteredOrders.length / ordersPerPage));
+  }, [filteredOrders.length, ordersPerPage]);
+
+  const safeOrdersPage = Math.min(ordersPage, totalOrderPages);
+
+  const paginatedOrders = useMemo(() => {
+    const startIndex = (safeOrdersPage - 1) * ordersPerPage;
+    return filteredOrders.slice(startIndex, startIndex + ordersPerPage);
+  }, [filteredOrders, ordersPerPage, safeOrdersPage]);
+
+  const firstOrderIndex =
+    filteredOrders.length <= 0 ? 0 : (safeOrdersPage - 1) * ordersPerPage + 1;
+
+  const lastOrderIndex = Math.min(
+    safeOrdersPage * ordersPerPage,
+    filteredOrders.length,
+  );
+
+  useEffect(() => {
+    setOrdersPage(1);
+  }, [orderSearch, statusFilter, ordersPerPage]);
+
+  useEffect(() => {
+    if (ordersPage > totalOrderPages) {
+      setOrdersPage(totalOrderPages);
+    }
+  }, [ordersPage, totalOrderPages]);
+
   const networkServices = useMemo(() => {
+    if (network === "Everything") return services;
+
+    if (network === "Others") {
+      return services.filter((service) => {
+        return !networks
+          .filter(
+            (item) => item.name !== "Others" && item.name !== "Everything",
+          )
+          .some((item) => serviceMatchesNetwork(service, item.name));
+      });
+    }
+
     return services.filter((service) => serviceMatchesNetwork(service, network));
   }, [services, network]);
 
@@ -746,25 +771,27 @@ export default function OrdersPage() {
   }, [networkServices]);
 
   const filteredServices = useMemo(() => {
-    const normalizedKeyword = normalizeServiceText(serviceSearch);
+    const keyword = serviceSearch.toLowerCase().trim();
 
-    let rows = [...networkServices];
+    let rows = keyword ? services : networkServices;
 
-    if (category) {
+    if (!keyword && category) {
       rows = rows.filter(
         (service) =>
           normalizeServiceText(service.category) === normalizeServiceText(category),
       );
     }
 
-    if (normalizedKeyword) {
+    if (keyword) {
       rows = rows.filter((service) => {
+        const normalizedKeyword = normalizeServiceText(keyword);
+
         const searchableText = normalizeServiceText(
-          `${getPublicServiceId(service)} ${service.id || ""} ${
-            service.name || ""
-          } ${service.category || ""} ${service.description || ""} ${
-            service.provider_service_id || ""
-          } ${service.provider_name || ""}`,
+          `${getPublicServiceId(service)} ${service.name || ""} ${
+            service.category || ""
+          } ${service.description || ""} ${service.provider_service_id || ""} ${
+            service.provider_name || ""
+          }`,
         );
 
         return searchableText.includes(normalizedKeyword);
@@ -811,6 +838,7 @@ export default function OrdersPage() {
       return Number(a.price_per_1000 || 0) - Number(b.price_per_1000 || 0);
     });
   }, [
+    services,
     networkServices,
     category,
     serviceSearch,
@@ -1145,7 +1173,7 @@ export default function OrdersPage() {
                         </td>
                       </tr>
                     ) : (
-                      filteredOrders.map((order) => (
+                      paginatedOrders.map((order) => (
                         <tr
                           key={order.id}
                           className={`border-t border-slate-100 transition hover:bg-slate-50 ${
@@ -1214,7 +1242,7 @@ export default function OrdersPage() {
                     No orders found.
                   </div>
                 ) : (
-                  filteredOrders.map((order) => (
+                  paginatedOrders.map((order) => (
                     <button
                       key={order.id}
                       type="button"
@@ -1267,6 +1295,94 @@ export default function OrdersPage() {
                     </button>
                   ))
                 )}
+              </div>
+
+              <div className="flex flex-col gap-4 border-t border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-1">
+                  <p className="text-sm font-bold text-slate-600">
+                    Showing{" "}
+                    <span className="font-black text-slate-950">
+                      {firstOrderIndex}
+                    </span>{" "}
+                    to{" "}
+                    <span className="font-black text-slate-950">
+                      {lastOrderIndex}
+                    </span>{" "}
+                    of{" "}
+                    <span className="font-black text-slate-950">
+                      {filteredOrders.length}
+                    </span>{" "}
+                    orders
+                  </p>
+                  <p className="text-xs font-semibold text-slate-400">
+                    Page {safeOrdersPage} of {totalOrderPages}
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <select
+                    value={ordersPerPage}
+                    onChange={(e) => {
+                      setOrdersPerPage(Number(e.target.value));
+                      setOrdersPage(1);
+                    }}
+                    className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-black text-slate-700 outline-none transition focus:border-blue-500"
+                  >
+                    {[10, 20, 50, 100, 1000].map((size) => (
+                      <option key={size} value={size}>
+                        {size} per page
+                      </option>
+                    ))}
+                  </select>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setOrdersPage(1)}
+                      disabled={safeOrdersPage <= 1}
+                      className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      First
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOrdersPage((current) => Math.max(1, current - 1))
+                      }
+                      disabled={safeOrdersPage <= 1}
+                      className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Prev
+                    </button>
+
+                    <span className="flex h-11 min-w-11 items-center justify-center rounded-xl bg-blue-600 px-3 text-xs font-black text-white">
+                      {safeOrdersPage}
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOrdersPage((current) =>
+                          Math.min(totalOrderPages, current + 1),
+                        )
+                      }
+                      disabled={safeOrdersPage >= totalOrderPages}
+                      className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Next
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setOrdersPage(totalOrderPages)}
+                      disabled={safeOrdersPage >= totalOrderPages}
+                      className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Last
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </section>
@@ -1365,7 +1481,7 @@ export default function OrdersPage() {
                   <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                     <StepHeader step="1" title="Choose Platform" />
 
-                    <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
+                    <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
                       {networks.map((item) => (
                         <button
                           key={item.name}
@@ -1377,14 +1493,14 @@ export default function OrdersPage() {
                             setServiceSearch("");
                             setServiceFilter("all");
                           }}
-                          className={`flex h-9 w-fit min-w-max shrink-0 items-center gap-2 rounded-xl border px-3 text-left transition ${
+                          className={`flex min-w-0 items-center gap-3 rounded-2xl border p-3 text-left transition ${
                             network === item.name
                               ? "border-blue-600 bg-blue-50 text-blue-700"
                               : "border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50/40"
                           }`}
                         >
                           <PlatformIcon name={item.name} />
-                          <span className="whitespace-nowrap text-xs font-black leading-none">
+                          <span className="min-w-0 truncate text-xs font-black sm:text-sm">
                             {item.name}
                           </span>
                         </button>
