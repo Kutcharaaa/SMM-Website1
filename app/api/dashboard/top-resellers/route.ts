@@ -83,7 +83,7 @@ async function loadAllProfiles() {
   while (true) {
     const { data, error } = await supabaseAdmin
       .from("profiles")
-      .select("id, username, reseller_level, total_spent")
+      .select("id, username, reseller_level, total_spent, avatar_url")
       .range(from, from + size - 1);
 
     if (error) {
@@ -162,13 +162,14 @@ export async function GET() {
       .map(([userId, stats]) => {
         const profile = profileMap.get(userId);
 
-        return {
-          id: userId,
-          username: profile?.username || "User",
-          reseller_level: profile?.reseller_level || "Reseller",
-          total_spent: Number(stats.total_spent.toFixed(2)),
-          total_orders: stats.total_orders,
-        };
+return {
+  id: userId,
+  username: profile?.username || "User",
+  reseller_level: profile?.reseller_level || "Reseller",
+  avatar_url: (profile as any)?.avatar_url || null,
+  total_spent: Number(stats.total_spent.toFixed(2)),
+  total_orders: stats.total_orders,
+};
       })
       .filter((item) => item.total_spent > 0)
       .sort((a, b) => b.total_spent - a.total_spent)

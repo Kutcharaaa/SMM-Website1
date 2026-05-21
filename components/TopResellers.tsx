@@ -1,12 +1,13 @@
 "use client";
 
-import { Crown, Gem, ShieldCheck, Trophy, X } from "lucide-react";
+import { ShieldCheck, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 type Reseller = {
   id: string;
   username: string | null;
   reseller_level: string | null;
+  avatar_url?: string | null;
   total_spent: number | null;
   total_orders: number;
 };
@@ -30,34 +31,36 @@ function formatMoney(value: number | string | null | undefined) {
   })}`;
 }
 
-function getLevelConfig(level: string | null) {
-  const clean = String(level || "");
+function ResellerAvatar({
+  reseller,
+  index,
+}: {
+  reseller: Reseller;
+  index: number;
+}) {
+  const fallback = maskName(reseller.username || "User")
+    .charAt(0)
+    .toUpperCase();
 
-  if (clean === "Elite Partner" || clean === "Ascend Partner") {
-    return {
-      icon: Trophy,
-      color: "from-[#0038ff] to-[#00c6ff]",
-    };
-  }
+  return (
+    <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-violet-500 to-purple-400 text-white">
+      {reseller.avatar_url ? (
+        <img
+          src={reseller.avatar_url}
+          alt={reseller.username || "User"}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-xs font-black">
+          {fallback || <ShieldCheck size={16} />}
+        </div>
+      )}
 
-  if (clean === "Premium Partner") {
-    return {
-      icon: Gem,
-      color: "from-emerald-500 to-green-400",
-    };
-  }
-
-  if (clean === "Master Reseller") {
-    return {
-      icon: Crown,
-      color: "from-amber-500 to-yellow-400",
-    };
-  }
-
-  return {
-    icon: ShieldCheck,
-    color: "from-violet-500 to-purple-400",
-  };
+      <div className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-slate-950 text-[9px] font-black text-white ring-2 ring-white">
+        {index + 1}
+      </div>
+    </div>
+  );
 }
 
 function ResellerRow({
@@ -69,27 +72,21 @@ function ResellerRow({
   index: number;
   compact?: boolean;
 }) {
-  const level = reseller.reseller_level || "Reseller";
-  const config = getLevelConfig(level);
-  const Icon = config.icon;
-
   return (
     <div
-      className={`flex items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-white ${
-        compact ? "px-4 py-4" : "px-4 py-4"
+      className={`flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-white ${
+        compact ? "px-3 py-2.5" : "px-3 py-2"
       }`}
     >
       <div className="flex min-w-0 items-center gap-3">
-        <div
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${config.color} text-white shadow-sm`}
-        >
-          <Icon size={20} />
-        </div>
+        <ResellerAvatar reseller={reseller} index={index} />
 
         <div className="min-w-0">
-          <p className="text-xs font-black text-slate-400">Top {index + 1}</p>
+          <p className="text-[11px] font-black text-slate-400">
+            Top {index + 1}
+          </p>
 
-          <p className="mt-1 truncate text-sm font-black text-slate-950">
+          <p className="mt-0.5 truncate text-sm font-black text-slate-950">
             {maskName(reseller.username || "User")}
           </p>
         </div>
@@ -100,7 +97,7 @@ function ResellerRow({
           {formatMoney(reseller.total_spent)}
         </p>
 
-        <p className="mt-1 text-xs font-bold text-slate-400">
+        <p className="mt-0.5 text-[11px] font-bold text-slate-400">
           {Number(reseller.total_orders || 0).toLocaleString("en-PH")}{" "}
           {Number(reseller.total_orders || 0) === 1 ? "order" : "orders"}
         </p>
@@ -124,7 +121,6 @@ export default function TopResellers() {
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        console.error("Top resellers error:", result.message);
         setTopResellers([]);
         setAllRankings([]);
         setLoading(false);
@@ -134,7 +130,7 @@ export default function TopResellers() {
       const rows = (result.rankings || []) as Reseller[];
 
       setAllRankings(rows);
-      setTopResellers(rows.slice(0, 3));
+      setTopResellers(rows.slice(0, 5));
       setLoading(false);
     } catch (error) {
       console.error("TOP_RESELLERS_LOAD_ERROR:", error);
@@ -156,7 +152,7 @@ export default function TopResellers() {
 
   return (
     <>
-      <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <h3 className="min-w-0 truncate text-[17px] font-black text-slate-950">
             Top Resellers
@@ -171,13 +167,13 @@ export default function TopResellers() {
           </button>
         </div>
 
-        <div className="mt-5 space-y-4">
+        <div className="mt-3 space-y-2">
           {loading ? (
-            <div className="rounded-2xl border border-slate-100 p-6 text-center text-sm font-semibold text-slate-500">
+            <div className="rounded-xl border border-slate-100 p-5 text-center text-sm font-semibold text-slate-500">
               Loading top resellers...
             </div>
           ) : topResellers.length <= 0 ? (
-            <div className="rounded-2xl border border-slate-100 p-6 text-center text-sm text-slate-500">
+            <div className="rounded-xl border border-slate-100 p-5 text-center text-sm text-slate-500">
               No reseller rankings yet.
             </div>
           ) : (
@@ -221,7 +217,7 @@ export default function TopResellers() {
                   No reseller rankings yet.
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {allRankings.map((reseller, index) => (
                     <ResellerRow
                       key={reseller.id}
