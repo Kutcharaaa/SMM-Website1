@@ -101,25 +101,17 @@ function isActiveStatus(status?: string | null) {
   return clean === "pending" || clean === "processing" || clean === "partial";
 }
 
-function isRefundableStatus(status?: string | null) {
-  const clean = normalizeStatus(status);
-
-  return (
-    clean === "pending" ||
-    clean === "cancelled" ||
-    clean === "canceled" ||
-    clean === "failed"
-  );
-}
-
 function isRefundAllowed(order: Order | null, refundEnabled: boolean) {
   if (!order || !refundEnabled) return false;
 
-  const clean = normalizeStatus(order.status);
+  const status = normalizeStatus(order.status);
 
-  if (clean === "refunded") return false;
-
-  return isRefundableStatus(clean);
+  return (
+    status === "pending" ||
+    status === "cancelled" ||
+    status === "canceled" ||
+    status === "failed"
+  );
 }
 
 function formatMoney(value: number | string | null | undefined) {
@@ -692,14 +684,15 @@ export default function AdminOrdersPage() {
       return;
     }
 
-    if (!isRefundableStatus(selectedOrder.status)) {
-      setMessage("Only pending, cancelled, or failed orders can be refunded.");
-      setRefundingOrder(false);
-      return;
-    }
+    const refundableStatus = normalizeStatus(selectedOrder.status);
 
-    if (normalizeStatus(selectedOrder.status) === "refunded") {
-      setMessage("This order is already refunded.");
+    if (
+      refundableStatus !== "pending" &&
+      refundableStatus !== "cancelled" &&
+      refundableStatus !== "canceled" &&
+      refundableStatus !== "failed"
+    ) {
+      setMessage("Only pending, cancelled, or failed orders can be refunded.");
       setRefundingOrder(false);
       return;
     }
@@ -1538,7 +1531,7 @@ export default function AdminOrdersPage() {
                                 title={
                                   isRefundAllowed(order, refundEnabled)
                                     ? "Refund order"
-                                    : "Refund available for pending, cancelled, or failed orders"
+                                    : "Refund only available for pending, cancelled, or failed orders"
                                 }
                                 onClick={() => openModal(order, "refund")}
                                 disabled={!isRefundAllowed(order, refundEnabled)}
@@ -1801,8 +1794,8 @@ export default function AdminOrdersPage() {
                 </div>
 
                 <p className="text-sm font-semibold leading-6 text-slate-500">
-                  Refund button is enabled for pending, cancelled, or failed orders. Users should
-                  still request refunds through Tickets first.
+                  Refund button is enabled for pending, cancelled, or failed orders.
+                  Users should still request refunds through Tickets first.
                 </p>
               </div>
             </aside>
@@ -2083,10 +2076,9 @@ export default function AdminOrdersPage() {
                 </div>
               )}
 
-              {refundEnabled && !isRefundableStatus(selectedOrder.status) && (
+              {refundEnabled && !isRefundAllowed(selectedOrder, refundEnabled) && (
                 <div className="rounded-2xl border border-orange-100 bg-orange-50 p-4 text-sm font-bold text-orange-700">
-                  Only pending, cancelled, or failed orders can be refunded with the current refund
-                  logic.
+                  Only pending, cancelled, or failed orders can be refunded.
                 </div>
               )}
 
