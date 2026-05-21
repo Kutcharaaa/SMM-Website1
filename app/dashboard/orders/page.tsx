@@ -82,50 +82,70 @@ const networks = [
 function normalizeServiceText(value?: string | null) {
   return String(value || "")
     .toLowerCase()
-    .replace(/[^a-z0-9]/g, "");
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getServiceSearchText(service: Service) {
+  return normalizeServiceText(
+    `${service.name || ""} ${service.category || ""} ${
+      service.description || ""
+    } ${service.provider_name || ""} ${service.provider_service_id || ""}`,
+  );
+}
+
+function textHasPlatformAlias(text: string, aliases: string[]) {
+  const cleanText = ` ${normalizeServiceText(text)} `;
+  const tokens = cleanText.trim().split(/\s+/).filter(Boolean);
+
+  return aliases.some((alias) => {
+    const cleanAlias = normalizeServiceText(alias);
+
+    if (!cleanAlias) return false;
+
+    // Short aliases like IG, FB, YT, TG, and X must match exact words only.
+    // This prevents wrong matches like "high" matching IG or "max" matching X.
+    if (cleanAlias.length <= 2) {
+      return tokens.includes(cleanAlias);
+    }
+
+    return cleanText.includes(` ${cleanAlias} `);
+  });
 }
 
 function serviceMatchesNetwork(service: Service, selectedNetwork: string) {
   if (selectedNetwork === "Everything") return true;
 
-  const text = normalizeServiceText(
-    `${service.name || ""} ${service.category || ""} ${
-      service.description || ""
-    } ${service.provider_name || ""} ${service.provider_service_id || ""}`,
-  );
+  const text = getServiceSearchText(service);
 
   const aliases: Record<string, string[]> = {
     Instagram: ["instagram", "insta", "ig"],
     Facebook: ["facebook", "fb"],
-    YouTube: ["youtube", "yt", "youtubeshorts"],
-    TikTok: [
-      "tiktok",
-      "tiktokshop",
-      "tiktokservice",
-      "tiktokservices",
-      "tiktokfollowers",
-      "tiktoklikes",
-      "tiktokviews",
-      "tiktokshares",
-      "tiktokcomments",
-      "tiktoklive",
-      "tik",
-      "tok",
-    ],
+    YouTube: ["youtube", "yt", "youtube shorts"],
+    TikTok: ["tiktok", "tik tok"],
     Telegram: ["telegram", "tg"],
     Spotify: ["spotify"],
-    Twitter: ["twitter", "x", "twitterx"],
+    Twitter: ["twitter", "twitter x", "x"],
     Twitch: ["twitch"],
     Discord: ["discord"],
-    Google: ["google", "googlereviews"],
-    Website: ["website", "site", "websitereviews"],
+    Google: ["google"],
+    Website: ["website", "web site", "website traffic", "site traffic"],
     Reviews: ["reviews", "review"],
   };
 
-  const selectedAliases = aliases[selectedNetwork] || [selectedNetwork];
+  if (selectedNetwork === "Others") {
+    return !networks
+      .filter((item) => item.name !== "Others" && item.name !== "Everything")
+      .some((item) =>
+        textHasPlatformAlias(text, aliases[item.name] || [item.name]),
+      );
+  }
 
-  return selectedAliases.some((alias) =>
-    text.includes(normalizeServiceText(alias)),
+  return textHasPlatformAlias(
+    text,
+    aliases[selectedNetwork] || [selectedNetwork],
   );
 }
 
@@ -681,7 +701,7 @@ export default function OrdersPage() {
 
     const interval = setInterval(() => {
       refreshOrders();
-    }, 3000);
+    }, 30000);
 
     return () => clearInterval(interval);
   }, []);
@@ -741,26 +761,28 @@ export default function OrdersPage() {
 
   const filteredServices = useMemo(() => {
     const keyword = serviceSearch.toLowerCase().trim();
+    const normalizedKeyword = normalizeServiceText(keyword);
 
-    let rows = keyword ? services : networkServices;
+    // Always start from selected platform services.
+    // Before, search used ALL services, so platform buttons were ignored while searching.
+    let rows = [...networkServices];
 
-    if (!keyword && category) {
+    if (category) {
       rows = rows.filter(
         (service) =>
-          normalizeServiceText(service.category) === normalizeServiceText(category),
+          normalizeServiceText(service.category) ===
+          normalizeServiceText(category),
       );
     }
 
-    if (keyword) {
+    if (normalizedKeyword) {
       rows = rows.filter((service) => {
-        const normalizedKeyword = normalizeServiceText(keyword);
-
         const searchableText = normalizeServiceText(
-          `${getPublicServiceId(service)} ${service.name || ""} ${
-            service.category || ""
-          } ${service.description || ""} ${service.provider_service_id || ""} ${
-            service.provider_name || ""
-          }`,
+          `${getPublicServiceId(service)} ${service.id || ""} ${
+            service.name || ""
+          } ${service.category || ""} ${service.description || ""} ${
+            service.provider_service_id || ""
+          } ${service.provider_name || ""}`,
         );
 
         return searchableText.includes(normalizedKeyword);
@@ -807,7 +829,6 @@ export default function OrdersPage() {
       return Number(a.price_per_1000 || 0) - Number(b.price_per_1000 || 0);
     });
   }, [
-    services,
     networkServices,
     category,
     serviceSearch,
