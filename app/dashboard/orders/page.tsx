@@ -276,7 +276,7 @@ function StepHeader({ step, title }: { step: string; title: string }) {
 
 function PlatformIcon({ name }: { name: string }) {
   return (
-    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-lg">
+    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-sm">
       {getPlatformSvg(name)}
     </span>
   );
@@ -1383,29 +1383,30 @@ export default function OrdersPage() {
                   <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                     <StepHeader step="1" title="Choose Platform" />
 
-                    <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+                    <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-7">
                       {networks.map((item) => (
-                        <button
-                          key={item.name}
-                          type="button"
-                          onClick={() => {
-                            setNetwork(item.name);
-                            setCategory("");
-                            setSelectedServiceId("");
-                            setServiceSearch("");
-                            setServiceFilter("all");
-                          }}
-                          className={`flex min-w-0 items-center gap-3 rounded-2xl border p-3 text-left transition ${
-                            network === item.name
-                              ? "border-blue-600 bg-blue-50 text-blue-700"
-                              : "border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50/40"
-                          }`}
-                        >
-                          <PlatformIcon name={item.name} />
-                          <span className="min-w-0 truncate text-xs font-black sm:text-sm">
-                            {item.name}
-                          </span>
-                        </button>
+<button
+  key={item.name}
+  type="button"
+  onClick={() => {
+    setNetwork(item.name);
+    setCategory("");
+    setSelectedServiceId("");
+    setServiceSearch("");
+    setServiceFilter("all");
+  }}
+  className={`flex min-w-0 items-center gap-2 rounded-xl border px-2.5 py-2 text-left transition ${
+    network === item.name
+      ? "border-blue-600 bg-blue-50 text-blue-700"
+      : "border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50/40"
+  }`}
+>
+  <PlatformIcon name={item.name} />
+
+  <span className="min-w-0 whitespace-nowrap text-[11px] font-black sm:text-xs">
+    {item.name}
+  </span>
+</button>
                       ))}
                     </div>
                   </div>
