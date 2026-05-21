@@ -71,6 +71,7 @@ const networks = [
   { name: "Spotify", icon: "🎧" },
   { name: "Twitter", icon: "𝕏" },
   { name: "Twitch", icon: "🎮" },
+  { name: "Roblox", icon: "⬢" },
   { name: "Discord", icon: "💬" },
   { name: "Google", icon: "G" },
   { name: "Website", icon: "🌐" },
@@ -128,6 +129,7 @@ function serviceMatchesNetwork(service: Service, selectedNetwork: string) {
     Telegram: ["telegram", "tg"],
     Spotify: ["spotify"],
     Twitter: ["twitter", "twitter x", "x"],
+    Roblox: ["Roblox", "rblx", "robux"],
     Twitch: ["twitch"],
     Discord: ["discord"],
     Google: ["google"],
@@ -354,6 +356,7 @@ function getPlatformSvg(name: string) {
     );
   }
 
+
   if (clean.includes("twitch")) {
     return (
       <PlatformSvg>
@@ -361,6 +364,14 @@ function getPlatformSvg(name: string) {
       </PlatformSvg>
     );
   }
+
+  if (clean.includes("roblox")) {
+  return (
+    <PlatformSvg>
+      <path d="M5.3 2 22 5.3 18.7 22 2 18.7 5.3 2Zm5.2 7.1-.9 4.4 4.4.9.9-4.4-4.4-.9Z" />
+    </PlatformSvg>
+  );
+}
 
   if (clean.includes("discord")) {
     return (
