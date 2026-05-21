@@ -1,7 +1,7 @@
 "use client";
 
 import { supabase } from "@/lib/supabase";
-import { Trophy, Crown, Gem, ShieldCheck, X } from "lucide-react";
+import { Crown, Gem, ShieldCheck, Trophy, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 type Reseller = {
@@ -13,13 +13,31 @@ type Reseller = {
 };
 
 function maskName(name: string) {
-  return name
+  const cleanName = String(name || "User").trim();
+
+  if (!cleanName) return "Us******";
+
+  return cleanName
     .split(" ")
+    .filter(Boolean)
     .map((part) => {
-      if (part.length <= 2) return part[0] + "***";
-      return part.slice(0, 2) + "*".repeat(part.length - 2);
+      if (part.length === 1) return `${part[0]}*******`;
+      return `${part.slice(0, 2)}******`;
     })
     .join(" ");
+}
+
+function formatPeso(value: number | string | null | undefined) {
+  return `₱${Number(value || 0).toLocaleString("en-PH", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function formatOrders(value: number | string | null | undefined) {
+  const count = Number(value || 0);
+
+  return `${count.toLocaleString("en-PH")} ${count === 1 ? "order" : "orders"}`;
 }
 
 function getLevelConfig(level: string) {
@@ -27,6 +45,8 @@ function getLevelConfig(level: string) {
     return {
       icon: Trophy,
       color: "from-[#0038ff] to-[#00c6ff]",
+      textColor: "text-blue-600",
+      bgColor: "bg-blue-50",
     };
   }
 
@@ -34,6 +54,8 @@ function getLevelConfig(level: string) {
     return {
       icon: Gem,
       color: "from-emerald-500 to-green-400",
+      textColor: "text-emerald-600",
+      bgColor: "bg-emerald-50",
     };
   }
 
@@ -41,12 +63,16 @@ function getLevelConfig(level: string) {
     return {
       icon: Crown,
       color: "from-amber-500 to-yellow-400",
+      textColor: "text-amber-600",
+      bgColor: "bg-amber-50",
     };
   }
 
   return {
     icon: ShieldCheck,
     color: "from-violet-500 to-purple-400",
+    textColor: "text-violet-600",
+    bgColor: "bg-violet-50",
   };
 }
 
@@ -128,44 +154,51 @@ export default function TopResellers() {
     const Icon = config.icon;
 
     return (
-      <div className="flex min-w-0 flex-col gap-4 rounded-2xl border border-slate-100 p-4 transition hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-          <div
-            className={`flex ${
-              compact ? "h-11 w-11" : "h-12 w-12 sm:h-14 sm:w-14"
-            } shrink-0 items-center justify-center rounded-2xl bg-gradient-to-r ${
-              config.color
-            } text-white shadow-lg`}
-          >
-            <Icon size={compact ? 21 : 26} />
-          </div>
-
-          <div className="min-w-0">
-            <div className="flex min-w-0 items-center gap-2">
-              <span className="shrink-0 text-xs font-black text-slate-400">
-                #{index + 1}
-              </span>
-
-              <h4 className="min-w-0 truncate text-sm font-black text-slate-950">
-                {maskName(reseller.username || "User")}
-              </h4>
+      <div
+        className={`rounded-2xl border border-slate-100 bg-white transition hover:border-slate-200 hover:bg-slate-50 ${
+          compact ? "p-4" : "p-4"
+        }`}
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <div
+              className={`flex ${
+                compact ? "h-11 w-11" : "h-12 w-12"
+              } shrink-0 items-center justify-center rounded-2xl bg-gradient-to-r ${
+                config.color
+              } text-white shadow-lg`}
+            >
+              <Icon size={compact ? 20 : 22} />
             </div>
 
-            <p className="mt-1 truncate text-xs font-semibold text-slate-500">
-              {level}
+            <div className="min-w-0">
+              <p className="text-xs font-black text-slate-400">
+                Top {index + 1}
+              </p>
+
+              <h4 className="mt-1 truncate text-sm font-black text-slate-950">
+                {maskName(reseller.username || "User")}
+              </h4>
+
+              {compact && (
+                <span
+                  className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[10px] font-black ${config.bgColor} ${config.textColor}`}
+                >
+                  {level}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="shrink-0 text-right">
+            <h5 className="text-sm font-black text-slate-950">
+              {formatPeso(reseller.total_spent)}
+            </h5>
+
+            <p className="mt-1 text-xs font-semibold text-slate-400">
+              {formatOrders(reseller.total_orders)}
             </p>
           </div>
-        </div>
-
-        <div className="min-w-0 text-left sm:text-right">
-          <h5 className="truncate text-sm font-black text-slate-950">
-            ₱{Number(reseller.total_spent || 0).toLocaleString()}
-          </h5>
-
-          <p className="mt-1 truncate text-xs font-semibold text-slate-400">
-            {Number(reseller.total_orders || 0).toLocaleString()}{" "}
-            {Number(reseller.total_orders || 0) === 1 ? "order" : "orders"}
-          </p>
         </div>
       </div>
     );
@@ -182,15 +215,15 @@ export default function TopResellers() {
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="shrink-0 text-xs font-black text-blue-600 hover:text-blue-700"
+            className="shrink-0 text-xs font-black text-blue-600 transition hover:text-blue-700"
           >
             View Rankings
           </button>
         </div>
 
-        <div className="mt-5 space-y-4">
+        <div className="mt-5 space-y-3">
           {topResellers.length <= 0 ? (
-            <div className="rounded-2xl border border-slate-100 p-6 text-center text-sm text-slate-500">
+            <div className="rounded-2xl border border-slate-100 p-6 text-center text-sm font-semibold text-slate-500">
               No reseller rankings yet.
             </div>
           ) : (
@@ -214,7 +247,7 @@ export default function TopResellers() {
                   Top Reseller Rankings
                 </h3>
 
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm font-semibold text-slate-500">
                   Top 50 resellers ranked by total spent.
                 </p>
               </div>
@@ -230,7 +263,7 @@ export default function TopResellers() {
 
             <div className="min-h-0 overflow-y-auto p-4 sm:p-5">
               {allRankings.length <= 0 ? (
-                <div className="rounded-2xl border border-slate-100 p-10 text-center text-sm text-slate-500">
+                <div className="rounded-2xl border border-slate-100 p-10 text-center text-sm font-semibold text-slate-500">
                   No reseller rankings yet.
                 </div>
               ) : (
