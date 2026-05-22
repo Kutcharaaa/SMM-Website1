@@ -128,7 +128,7 @@ export async function GET() {
     return NextResponse.json(
       {
         success: false,
-        message: "Failed to calculate service delivery times",
+        message: "Failed to calculate service delivery times.",
         deliveryTimes: [],
       },
       { status: 500 },
