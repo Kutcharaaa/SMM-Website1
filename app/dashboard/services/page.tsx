@@ -54,6 +54,13 @@ type Service = {
   description: string;
 };
 
+type DeliveryTime = {
+  service_name: string;
+  fastest_seconds: number;
+  average_seconds: number;
+  completed_orders: number;
+};
+
 const SERVICES_PER_PAGE = 15;
 
 const platforms = [
@@ -159,6 +166,33 @@ function getSpeed(tags: string[], fastest: string, average: string) {
   return "Standard";
 }
 
+function formatDeliveryTime(seconds?: number | null) {
+  const totalSeconds = Math.round(Number(seconds || 0));
+
+  if (!totalSeconds || totalSeconds <= 0) {
+    return "Not specified";
+  }
+
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
+
+  if (days > 0) {
+    return hours > 0 ? `${days}d ${hours}h` : `${days}d`;
+  }
+
+  if (hours > 0) {
+    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+  }
+
+  if (minutes > 0) {
+    return secs > 0 ? `${minutes}m ${secs}s` : `${minutes}m`;
+  }
+
+  return `${secs}s`;
+}
+
 function getFastestMinutes(value: string) {
   const text = value.toLowerCase().trim();
   const number = Number(text.match(/\d+(\.\d+)?/)?.[0] || 999999);
@@ -181,6 +215,39 @@ function getPlatformCount(services: Service[], platform: string) {
 function getServiceIdNumber(value: string) {
   const numberOnly = value.replace(/\D/g, "");
   return Number(numberOnly || 0);
+}
+
+async function loadServiceDeliveryTimesMap() {
+  const map: Record<string, DeliveryTime> = {};
+
+  try {
+    const response = await fetch("/api/services/delivery-times", {
+      cache: "no-store",
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      return map;
+    }
+
+    for (const item of (result.deliveryTimes || []) as DeliveryTime[]) {
+      const serviceName = String(item.service_name || "").trim();
+
+      if (!serviceName) continue;
+
+      map[serviceName] = {
+        service_name: serviceName,
+        fastest_seconds: Number(item.fastest_seconds || 0),
+        average_seconds: Number(item.average_seconds || 0),
+        completed_orders: Number(item.completed_orders || 0),
+      };
+    }
+  } catch (error) {
+    console.error("DELIVERY_TIMES_LOAD_ERROR:", error);
+  }
+
+  return map;
 }
 
 export default function DashboardServicesPage() {
@@ -245,6 +312,8 @@ export default function DashboardServicesPage() {
       );
     });
 
+    const deliveryTimesMap = await loadServiceDeliveryTimesMap();
+
     const formatted = activeServices.map((service) => {
       const name = service.name || "Unnamed Service";
       const category = service.category || "General";
@@ -252,8 +321,13 @@ export default function DashboardServicesPage() {
       const combinedText = `${name} ${category} ${description}`;
       const platformName = detectPlatform(combinedText);
       const tags = parseTags(service.service_tags, service);
-      const fastest = service.fastest_delivery || "Not specified";
-      const average = service.average_delivery || "Not specified";
+      const deliveryStats = deliveryTimesMap[name];
+      const fastest = deliveryStats
+        ? formatDeliveryTime(deliveryStats.fastest_seconds)
+        : service.fastest_delivery || "Not specified";
+      const average = deliveryStats
+        ? formatDeliveryTime(deliveryStats.average_seconds)
+        : service.average_delivery || "Not specified";
 
       return {
         id: service.id,
