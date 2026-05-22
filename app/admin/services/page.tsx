@@ -357,6 +357,8 @@ export default function AdminServicesPage() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [autoOrderFilter, setAutoOrderFilter] = useState<AutoOrderFilter>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [servicesPerPage, setServicesPerPage] = useState(15);
 
   const [bulkProviderId, setBulkProviderId] = useState("");
 
@@ -911,6 +913,35 @@ async function loadServices() {
     });
   }, [autoOrderFilter, categoryFilter, providerFilter, search, services, statusFilter]);
 
+  const pageSizeOptions = [15, 50, 100, 250, 500, 1000];
+  const totalPages = Math.max(1, Math.ceil(filteredServices.length / servicesPerPage));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const pageStartIndex = (safeCurrentPage - 1) * servicesPerPage;
+  const pageEndIndex = pageStartIndex + servicesPerPage;
+  const paginatedServices = filteredServices.slice(pageStartIndex, pageEndIndex);
+  const showingFrom =
+    filteredServices.length <= 0
+      ? 0
+      : Math.min(pageStartIndex + 1, filteredServices.length);
+  const showingTo = Math.min(pageEndIndex, filteredServices.length);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    autoOrderFilter,
+    categoryFilter,
+    providerFilter,
+    search,
+    servicesPerPage,
+    statusFilter,
+  ]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   const allFilteredSelected =
     filteredServices.length > 0 && filteredServices.every((service) => selectedIds.includes(service.id));
 
@@ -1133,7 +1164,7 @@ async function loadServices() {
                   </thead>
 
                   <tbody>
-                    {filteredServices.map((service) => (
+                    {paginatedServices.map((service) => (
                       <tr key={service.id} className="border-t border-slate-100 transition hover:bg-slate-50/70">
                         <td className="px-5 py-5 align-top">
                           <input
@@ -1245,13 +1276,87 @@ async function loadServices() {
                 </table>
               </div>
 
-              <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 text-sm font-semibold text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-                <p>
-                  Showing <span className="font-black text-slate-800">{filteredServices.length}</span>{" "}
-                  of <span className="font-black text-slate-800">{services.length}</span> services
-                </p>
+              <div className="flex flex-col gap-4 border-t border-slate-100 px-5 py-4 text-sm font-semibold text-slate-500 xl:flex-row xl:items-center xl:justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <p>
+                    Showing <span className="font-black text-slate-800">{showingFrom}</span>{" "}
+                    to <span className="font-black text-slate-800">{showingTo}</span>{" "}
+                    of <span className="font-black text-slate-800">{filteredServices.length}</span>{" "}
+                    filtered services
+                  </p>
 
-                <div className="grid w-full grid-cols-1 gap-3 sm:w-auto sm:grid-cols-3 xl:flex xl:flex-wrap xl:items-center">
+                  <span className="hidden text-slate-300 sm:inline">•</span>
+
+                  <p>
+                    Total: <span className="font-black text-slate-800">{services.length}</span>{" "}
+                    services
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black uppercase tracking-wide text-slate-400">
+                      Rows
+                    </span>
+
+                    <select
+                      value={servicesPerPage}
+                      onChange={(event) => {
+                        setServicesPerPage(Number(event.target.value));
+                        setCurrentPage(1);
+                      }}
+                      className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm font-black text-slate-700 outline-none transition hover:border-slate-300 focus:border-blue-400"
+                    >
+                      {pageSizeOptions.map((size) => (
+                        <option key={size} value={size}>
+                          {size} / page
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(1)}
+                      disabled={safeCurrentPage <= 1}
+                      className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      First
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                      disabled={safeCurrentPage <= 1}
+                      className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Prev
+                    </button>
+
+                    <div className="flex h-10 min-w-[96px] items-center justify-center rounded-xl bg-slate-100 px-3 text-xs font-black text-slate-700">
+                      {safeCurrentPage} / {totalPages}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                      disabled={safeCurrentPage >= totalPages}
+                      className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Next
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(totalPages)}
+                      disabled={safeCurrentPage >= totalPages}
+                      className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-xs font-black text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Last
+                    </button>
+                  </div>
+
                   <button
                     type="button"
                     onClick={deleteAllServices}
@@ -1262,7 +1367,7 @@ async function loadServices() {
                     Delete All
                   </button>
 
-                  <p>Auto-refreshing every 15 seconds</p>
+                  <p className="text-xs font-bold text-slate-400">Auto-refreshing every 15 seconds</p>
                 </div>
               </div>
             </div>
