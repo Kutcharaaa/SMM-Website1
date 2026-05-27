@@ -76,21 +76,25 @@ function isCustomCommentService(service: {
   name?: string | null;
   category?: string | null;
   description?: string | null;
+  type?: string | null;
 }) {
   const text = `${service.name || ""} ${service.category || ""} ${
     service.description || ""
-  }`
+  } ${service.type || ""}`
     .toLowerCase()
-    .replace(/[^a-z0-9 ]/g, " ");
+    .replace(/[^a-z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
-  return (
-    text.includes("comments custom") ||
-    text.includes("comment custom") ||
-    text.includes("custom comments") ||
-    text.includes("custom comment") ||
-    text.includes("custom comment package") ||
-    text.includes("custom comments package")
-  );
+  const hasCommentWord =
+    text.includes("comment") || text.includes("comments");
+
+  const hasCustomWord =
+    text.includes("custom") ||
+    text.includes("comment package") ||
+    text.includes("comments package");
+
+  return hasCommentWord && hasCustomWord;
 }
 
 export async function POST(req: Request) {
@@ -245,6 +249,7 @@ export async function POST(req: Request) {
       formData.append("link", link);
 
       if (customComments) {
+        formData.append("quantity", String(qty));
         formData.append("comments", comments);
       } else {
         formData.append("quantity", String(qty));
