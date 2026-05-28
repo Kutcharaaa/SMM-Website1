@@ -346,7 +346,11 @@ function getTypeConfig(type: string) {
   };
 }
 
-function getPromoSummary(enabled: boolean, promoType: PromoType | string, config: PromoConfig) {
+function getPromoSummary(
+  enabled: boolean,
+  promoType: PromoType | string,
+  config: PromoConfig,
+) {
   if (!enabled || !promoType) return "No promo applied";
 
   if (promoType === "add_funds_bonus") {
@@ -610,15 +614,18 @@ export default function AdminAnnouncementsPage() {
 
   function openEditModal(item: Announcement) {
     const itemConfig = normalizeConfig(item.promo_config);
-    const fallbackConfig: PromoConfig = itemConfig && Object.keys(itemConfig).length > 0
-      ? itemConfig
-      : {
-          minAmount: toNumber(item.promo_min_amount),
-          bonusPercent: toNumber(item.promo_bonus_percent),
-          discountPercent: toNumber(item.promo_discount_percent || item.promo_bonus_percent),
-          platform: item.promo_platform || "Facebook",
-          serviceId: item.promo_service_id || "",
-        };
+    const fallbackConfig: PromoConfig =
+      itemConfig && Object.keys(itemConfig).length > 0
+        ? itemConfig
+        : {
+            minAmount: toNumber(item.promo_min_amount),
+            bonusPercent: toNumber(item.promo_bonus_percent),
+            discountPercent: toNumber(
+              item.promo_discount_percent || item.promo_bonus_percent,
+            ),
+            platform: item.promo_platform || "Facebook",
+            serviceId: item.promo_service_id || "",
+          };
 
     setEditingAnnouncement(item);
     setTitle(item.title || "");
@@ -649,38 +656,61 @@ export default function AdminAnnouncementsPage() {
   }
 
   async function handleImageUpload(file: File | null) {
-    if (!file) return;
+    if (!file) {
+      setMessage("No image selected.");
+      return;
+    }
 
     if (!file.type.startsWith("image/")) {
       setMessage("Please upload a valid image file.");
       return;
     }
 
-    setUploadingImage(true);
-    setMessage("");
+    const maxSize = 8 * 1024 * 1024;
 
-    const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "-");
-    const filePath = `${Date.now()}-${safeName}`;
-
-    const { error } = await supabase.storage
-      .from("announcement-images")
-      .upload(filePath, file, {
-        cacheControl: "3600",
-        upsert: true,
-      });
-
-    if (error) {
-      setMessage(error.message);
-      setUploadingImage(false);
+    if (file.size > maxSize) {
+      setMessage("Image is too large. Please upload an image below 8MB.");
       return;
     }
 
-    const { data } = supabase.storage
-      .from("announcement-images")
-      .getPublicUrl(filePath);
+    setUploadingImage(true);
+    setMessage("");
 
-    setImageUrl(data.publicUrl);
-    setUploadingImage(false);
+    try {
+      const fileExt = file.name.split(".").pop()?.toLowerCase() || "png";
+      const filePath = `announcements/${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("announcement-images")
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: file.type,
+        });
+
+      if (uploadError) {
+        setMessage(`Image upload failed: ${uploadError.message}`);
+        setUploadingImage(false);
+        return;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from("announcement-images")
+        .getPublicUrl(uploadData.path);
+
+      if (!publicUrlData?.publicUrl) {
+        setMessage("Image uploaded, but public URL was not generated.");
+        setUploadingImage(false);
+        return;
+      }
+
+      setImageUrl(publicUrlData.publicUrl);
+      setMessage("Image uploaded successfully.");
+    } catch (error: any) {
+      setMessage(`Image upload failed: ${error?.message || "Unknown error"}`);
+    } finally {
+      setUploadingImage(false);
+    }
   }
 
   function validatePromoSettings() {
@@ -879,11 +909,9 @@ export default function AdminAnnouncementsPage() {
 
   const filteredAnnouncements = useMemo(() => {
     return announcements.filter((item) => {
-      const matchesTab =
-        activeTab === "all" ? true : item.status === activeTab;
+      const matchesTab = activeTab === "all" ? true : item.status === activeTab;
 
-      const matchesType =
-        typeFilter === "all" ? true : item.type === typeFilter;
+      const matchesType = typeFilter === "all" ? true : item.type === typeFilter;
 
       const keyword = search.toLowerCase();
 
@@ -897,10 +925,6 @@ export default function AdminAnnouncementsPage() {
 
   const publishedCount = announcements.filter(
     (item) => item.status === "published",
-  ).length;
-
-  const hiddenCount = announcements.filter(
-    (item) => item.status === "hidden",
   ).length;
 
   const popupCount = announcements.filter((item) => item.show_popup).length;
@@ -1267,6 +1291,12 @@ export default function AdminAnnouncementsPage() {
                         <p className="mt-1 text-sm font-semibold text-slate-500">
                           Upload image for popup modal.
                         </p>
+
+                        {imageUrl && (
+                          <p className="mt-2 text-xs font-black text-green-600">
+                            Image uploaded successfully.
+                          </p>
+                        )}
                       </div>
 
                       <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-black text-white hover:bg-slate-800">
@@ -1492,9 +1522,15 @@ export default function AdminAnnouncementsPage() {
                       <option value="">No Promo</option>
                       <option value="add_funds_bonus">Add Funds Bonus</option>
                       <option value="platform_discount">Platform Discount</option>
-                      <option value="service_discount">Specific Service Discount</option>
-                      <option value="bulk_quantity_discount">Bulk Quantity Discount</option>
-                      <option value="minimum_spend_discount">Minimum Spend Discount</option>
+                      <option value="service_discount">
+                        Specific Service Discount
+                      </option>
+                      <option value="bulk_quantity_discount">
+                        Bulk Quantity Discount
+                      </option>
+                      <option value="minimum_spend_discount">
+                        Minimum Spend Discount
+                      </option>
                       <option value="new_user_promo">New User Promo</option>
                       <option value="reseller_only_promo">Reseller-Only Promo</option>
                       <option value="promo_code">Promo Code</option>
@@ -1527,7 +1563,9 @@ export default function AdminAnnouncementsPage() {
 
                   {promoEnabled && promoType === "platform_discount" && (
                     <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
-                      <h4 className="font-black text-slate-950">Platform Discount</h4>
+                      <h4 className="font-black text-slate-950">
+                        Platform Discount
+                      </h4>
                       <p className="mt-1 text-sm font-semibold text-slate-600">
                         Example: 10% off on all Facebook services.
                       </p>
