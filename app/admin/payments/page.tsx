@@ -67,6 +67,35 @@ type PaymentMethod = {
   [key: string]: unknown;
 };
 
+
+type PromoConfig = {
+  minAmount?: number;
+  bonusPercent?: number;
+  target?: "first_order" | "first_add_funds";
+  [key: string]: unknown;
+};
+
+type AddFundsBonusPromo = {
+  id: string;
+  title: string;
+  minAmount: number;
+  bonusPercent: number;
+};
+
+type AnnouncementPromoRow = {
+  id: string;
+  title: string;
+  status: string;
+  promo_enabled: boolean | null;
+  promo_type: string | null;
+  promo_config: PromoConfig | null;
+  promo_min_amount?: number | string | null;
+  promo_bonus_percent?: number | string | null;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  created_at?: string | null;
+};
+
 type StatusFilter = "all" | "pending" | "approved" | "rejected";
 
 const statusOptions: { label: string; value: StatusFilter }[] = [
@@ -401,6 +430,81 @@ function InfoBlock({
   );
 }
 
+
+function toNumber(value: unknown) {
+  const number = Number(value || 0);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function isPromoDateActive(promo: AnnouncementPromoRow) {
+  const now = Date.now();
+
+  if (promo.starts_at) {
+    const startTime = new Date(promo.starts_at).getTime();
+
+    if (Number.isFinite(startTime) && now < startTime) {
+      return false;
+    }
+  }
+
+  if (promo.ends_at) {
+    const endTime = new Date(promo.ends_at).getTime();
+
+    if (Number.isFinite(endTime) && now > endTime) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function getPromoMinAmount(promo: AnnouncementPromoRow) {
+  return toNumber(promo.promo_config?.minAmount ?? promo.promo_min_amount ?? 0);
+}
+
+function getPromoBonusPercent(promo: AnnouncementPromoRow) {
+  return toNumber(
+    promo.promo_config?.bonusPercent ?? promo.promo_bonus_percent ?? 0,
+  );
+}
+
+async function getActiveAddFundsBonusPromo(
+  depositAmount: number,
+): Promise<AddFundsBonusPromo | null> {
+  const { data, error } = await supabase
+    .from("announcements")
+    .select(
+      "id, title, status, promo_enabled, promo_type, promo_config, promo_min_amount, promo_bonus_percent, starts_at, ends_at, created_at",
+    )
+    .eq("status", "published")
+    .eq("promo_enabled", true)
+    .eq("promo_type", "add_funds_bonus")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("ADD_FUNDS_PROMO_LOOKUP_ERROR:", error.message);
+    return null;
+  }
+
+  const promos = ((data || []) as AnnouncementPromoRow[])
+    .filter((promo) => isPromoDateActive(promo))
+    .map((promo) => ({
+      id: promo.id,
+      title: promo.title,
+      minAmount: getPromoMinAmount(promo),
+      bonusPercent: getPromoBonusPercent(promo),
+    }))
+    .filter(
+      (promo) =>
+        promo.minAmount > 0 &&
+        promo.bonusPercent > 0 &&
+        depositAmount >= promo.minAmount,
+    )
+    .sort((a, b) => b.minAmount - a.minAmount);
+
+  return promos[0] || null;
+}
+
 export default function AdminPaymentsPage() {
   const [deposits, setDeposits] = useState<Deposit[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
@@ -625,15 +729,35 @@ useEffect(() => {
       return;
     }
 
-    const creditAmount = Number(deposit.wallet_credit || deposit.amount || 0);
+    const baseCreditAmount = Number(deposit.wallet_credit || deposit.amount || 0);
 
-    if (creditAmount <= 0) {
+    if (baseCreditAmount <= 0) {
       setMessage("Invalid deposit amount.");
       return;
     }
 
+    const activePromo = await getActiveAddFundsBonusPromo(baseCreditAmount);
+
+    const promoBonusAmount = activePromo
+      ? Number(
+          ((baseCreditAmount * activePromo.bonusPercent) / 100).toFixed(2),
+        )
+      : 0;
+
+    const finalWalletCredit = Number(
+      (baseCreditAmount + promoBonusAmount).toFixed(2),
+    );
+
     const confirmApprove = confirm(
-      `Approve this deposit and add ₱${creditAmount.toFixed(2)} to the user's wallet?`,
+      activePromo
+        ? `Approve this deposit?\n\nBase credit: ₱${baseCreditAmount.toFixed(
+            2,
+          )}\nPromo: ${activePromo.title} (+${activePromo.bonusPercent}%)\nBonus: ₱${promoBonusAmount.toFixed(
+            2,
+          )}\nTotal wallet credit: ₱${finalWalletCredit.toFixed(2)}`
+        : `Approve this deposit and add ₱${baseCreditAmount.toFixed(
+            2,
+          )} to the user's wallet?`,
     );
 
     if (!confirmApprove) return;
@@ -683,7 +807,10 @@ useEffect(() => {
         }
 
         const currentCashBalance = Number(cashAccount?.balance || 0);
-        const newCashBalance = currentCashBalance + creditAmount;
+
+        // Cash account receives only the real paid amount.
+        // Promo bonus is virtual wallet credit only.
+        const newCashBalance = currentCashBalance + baseCreditAmount;
 
         const { error: cashUpdateError } = await supabase
           .from("cash_accounts")
@@ -701,8 +828,12 @@ useEffect(() => {
         await supabase.from("cash_movements").insert({
           cash_account_id: cashAccountId,
           type: "deposit",
-          amount: creditAmount,
-          description: `Deposit approved (${deposit.method})`,
+          amount: baseCreditAmount,
+          description: activePromo
+            ? `Deposit approved (${deposit.method}) · Promo bonus ₱${promoBonusAmount.toFixed(
+                2,
+              )} applied to wallet only`
+            : `Deposit approved (${deposit.method})`,
           reference_type: "deposit",
           reference_id: deposit.id,
         });
@@ -716,7 +847,7 @@ useEffect(() => {
       }
 
       const currentBalance = Number(profile.balance || 0);
-      const newBalance = currentBalance + creditAmount;
+      const newBalance = currentBalance + finalWalletCredit;
 
       const { error: balanceError } = await supabase
         .from("profiles")
@@ -748,24 +879,42 @@ useEffect(() => {
         return;
       }
 
+      // Affiliate commission uses only the real paid amount, not the promo bonus.
       const affiliateMessage = await createAffiliateCommissionForDeposit(
         deposit,
-        creditAmount,
+        baseCreditAmount,
       );
 
       await supabase.from("notifications").insert({
         user_id: deposit.user_id,
-        title: "Deposit Approved",
-        message: `Your deposit has been approved. ₱${creditAmount.toFixed(
-          2,
-        )} has been added to your wallet.`,
+        title: activePromo ? "Deposit Approved with Promo Bonus" : "Deposit Approved",
+        message: activePromo
+          ? `Your deposit has been approved. ₱${baseCreditAmount.toFixed(
+              2,
+            )} was added plus a promo bonus of ₱${promoBonusAmount.toFixed(
+              2,
+            )}. Total wallet credit: ₱${finalWalletCredit.toFixed(2)}.`
+          : `Your deposit has been approved. ₱${baseCreditAmount.toFixed(
+              2,
+            )} has been added to your wallet.`,
         type: "deposit_approved",
         is_read: false,
       });
 
       await sendDepositEmail(deposit.id, "approved");
 
-      setMessage(`Deposit approved and reviewer recorded.${affiliateMessage || ""}`);
+      setMessage(
+        activePromo
+          ? `Deposit approved. Base: ₱${baseCreditAmount.toFixed(
+              2,
+            )}, bonus: ₱${promoBonusAmount.toFixed(
+              2,
+            )}, total wallet credit: ₱${finalWalletCredit.toFixed(2)}.${
+              affiliateMessage || ""
+            }`
+          : `Deposit approved and reviewer recorded.${affiliateMessage || ""}`,
+      );
+
       setSelectedDeposit(null);
       setShowRejectBox(false);
       setRejectReason("");
