@@ -26,11 +26,13 @@ import {
 type PromoType =
   | ""
   | "add_funds_bonus"
+  | "first_add_funds_bonus"
   | "platform_discount"
   | "service_discount"
+  | "category_discount"
   | "bulk_quantity_discount"
   | "minimum_spend_discount"
-  | "new_user_promo"
+  | "new_user_first_order_discount"
   | "reseller_only_promo"
   | "promo_code";
 
@@ -39,10 +41,10 @@ type PromoConfig = {
   bonusPercent?: number;
   discountPercent?: number;
   platform?: string;
+  category?: string;
   serviceId?: string;
   minQuantity?: number;
   minSpend?: number;
-  target?: "first_order" | "first_add_funds";
   requiredLevel?: string;
   code?: string;
   usageLimit?: number;
@@ -138,6 +140,20 @@ const promoTemplates: PromoTemplate[] = [
     },
   },
   {
+    label: "+10% bonus on first Add Funds",
+    title: "First Add Funds Bonus",
+    description:
+      "New users can get an additional 10% bonus on their first Add Funds worth ₱500 or more.",
+    type: "promotion",
+    show_popup: true,
+    promo_enabled: true,
+    promo_type: "first_add_funds_bonus",
+    promo_config: {
+      minAmount: 500,
+      bonusPercent: 10,
+    },
+  },
+  {
     label: "10% off all Facebook Services",
     title: "Facebook Services Discount",
     description:
@@ -163,6 +179,20 @@ const promoTemplates: PromoTemplate[] = [
     promo_config: {
       serviceId: "32",
       discountPercent: 5,
+    },
+  },
+  {
+    label: "10% off TikTok Followers category",
+    title: "TikTok Followers Category Discount",
+    description:
+      "Limited promo: Enjoy 10% discount on TikTok Followers category services while the promo is active.",
+    type: "promotion",
+    show_popup: true,
+    promo_enabled: true,
+    promo_type: "category_discount",
+    promo_config: {
+      category: "TikTok Followers",
+      discountPercent: 10,
     },
   },
   {
@@ -202,9 +232,8 @@ const promoTemplates: PromoTemplate[] = [
     type: "promotion",
     show_popup: true,
     promo_enabled: true,
-    promo_type: "new_user_promo",
+    promo_type: "new_user_first_order_discount",
     promo_config: {
-      target: "first_order",
       discountPercent: 10,
     },
   },
@@ -346,17 +375,19 @@ function getTypeConfig(type: string) {
   };
 }
 
-function getPromoSummary(
-  enabled: boolean,
-  promoType: PromoType | string,
-  config: PromoConfig,
-) {
+function getPromoSummary(enabled: boolean, promoType: PromoType | string, config: PromoConfig) {
   if (!enabled || !promoType) return "No promo applied";
 
   if (promoType === "add_funds_bonus") {
     return `+${toNumber(config.bonusPercent)}% bonus on every ${formatMoney(
       config.minAmount || 0,
     )} Add Funds`;
+  }
+
+  if (promoType === "first_add_funds_bonus") {
+    return `+${toNumber(config.bonusPercent)}% bonus on first Add Funds of at least ${formatMoney(
+      config.minAmount || 0,
+    )}`;
   }
 
   if (promoType === "platform_discount") {
@@ -369,6 +400,12 @@ function getPromoSummary(
     return `${toNumber(config.discountPercent)}% off Service ID ${
       config.serviceId || "—"
     }`;
+  }
+
+  if (promoType === "category_discount") {
+    return `${toNumber(config.discountPercent)}% off ${
+      config.category || "selected"
+    } category`;
   }
 
   if (promoType === "bulk_quantity_discount") {
@@ -387,10 +424,8 @@ function getPromoSummary(
     )}`;
   }
 
-  if (promoType === "new_user_promo") {
-    return `${toNumber(config.discountPercent)}% off ${
-      config.target === "first_add_funds" ? "first Add Funds" : "first order"
-    }`;
+  if (promoType === "new_user_first_order_discount") {
+    return `${toNumber(config.discountPercent)}% off new user's first order`;
   }
 
   if (promoType === "reseller_only_promo") {
@@ -414,10 +449,10 @@ function buildPromoConfig({
   promoBonusPercent,
   promoDiscountPercent,
   promoPlatform,
+  promoCategory,
   promoServiceId,
   promoMinQuantity,
   promoMinSpend,
-  promoTarget,
   promoRequiredLevel,
   promoCode,
   promoUsageLimit,
@@ -427,15 +462,22 @@ function buildPromoConfig({
   promoBonusPercent: string;
   promoDiscountPercent: string;
   promoPlatform: string;
+  promoCategory: string;
   promoServiceId: string;
   promoMinQuantity: string;
   promoMinSpend: string;
-  promoTarget: "first_order" | "first_add_funds";
   promoRequiredLevel: string;
   promoCode: string;
   promoUsageLimit: string;
 }): PromoConfig {
   if (promoType === "add_funds_bonus") {
+    return {
+      minAmount: toNumber(promoMinAmount),
+      bonusPercent: toNumber(promoBonusPercent),
+    };
+  }
+
+  if (promoType === "first_add_funds_bonus") {
     return {
       minAmount: toNumber(promoMinAmount),
       bonusPercent: toNumber(promoBonusPercent),
@@ -456,6 +498,13 @@ function buildPromoConfig({
     };
   }
 
+  if (promoType === "category_discount") {
+    return {
+      category: promoCategory.trim(),
+      discountPercent: toNumber(promoDiscountPercent),
+    };
+  }
+
   if (promoType === "bulk_quantity_discount") {
     return {
       minQuantity: toNumber(promoMinQuantity),
@@ -471,9 +520,8 @@ function buildPromoConfig({
     };
   }
 
-  if (promoType === "new_user_promo") {
+  if (promoType === "new_user_first_order_discount") {
     return {
-      target: promoTarget,
       discountPercent: toNumber(promoDiscountPercent),
     };
   }
@@ -524,12 +572,10 @@ export default function AdminAnnouncementsPage() {
   const [promoBonusPercent, setPromoBonusPercent] = useState("0");
   const [promoDiscountPercent, setPromoDiscountPercent] = useState("0");
   const [promoPlatform, setPromoPlatform] = useState("Facebook");
+  const [promoCategory, setPromoCategory] = useState("");
   const [promoServiceId, setPromoServiceId] = useState("");
   const [promoMinQuantity, setPromoMinQuantity] = useState("10000");
   const [promoMinSpend, setPromoMinSpend] = useState("500");
-  const [promoTarget, setPromoTarget] = useState<"first_order" | "first_add_funds">(
-    "first_order",
-  );
   const [promoRequiredLevel, setPromoRequiredLevel] = useState("Power Reseller");
   const [promoCode, setPromoCode] = useState("");
   const [promoUsageLimit, setPromoUsageLimit] = useState("0");
@@ -565,12 +611,10 @@ export default function AdminAnnouncementsPage() {
     setPromoBonusPercent(String(nextConfig.bonusPercent ?? "0"));
     setPromoDiscountPercent(String(nextConfig.discountPercent ?? "0"));
     setPromoPlatform(String(nextConfig.platform || "Facebook"));
+    setPromoCategory(String(nextConfig.category || ""));
     setPromoServiceId(String(nextConfig.serviceId || ""));
     setPromoMinQuantity(String(nextConfig.minQuantity ?? "10000"));
     setPromoMinSpend(String(nextConfig.minSpend ?? "500"));
-    setPromoTarget(
-      nextConfig.target === "first_add_funds" ? "first_add_funds" : "first_order",
-    );
     setPromoRequiredLevel(String(nextConfig.requiredLevel || "Power Reseller"));
     setPromoCode(String(nextConfig.code || ""));
     setPromoUsageLimit(String(nextConfig.usageLimit ?? "0"));
@@ -584,10 +628,10 @@ export default function AdminAnnouncementsPage() {
     setPromoBonusPercent("0");
     setPromoDiscountPercent("0");
     setPromoPlatform("Facebook");
+    setPromoCategory("");
     setPromoServiceId("");
     setPromoMinQuantity("10000");
     setPromoMinSpend("500");
-    setPromoTarget("first_order");
     setPromoRequiredLevel("Power Reseller");
     setPromoCode("");
     setPromoUsageLimit("0");
@@ -614,18 +658,15 @@ export default function AdminAnnouncementsPage() {
 
   function openEditModal(item: Announcement) {
     const itemConfig = normalizeConfig(item.promo_config);
-    const fallbackConfig: PromoConfig =
-      itemConfig && Object.keys(itemConfig).length > 0
-        ? itemConfig
-        : {
-            minAmount: toNumber(item.promo_min_amount),
-            bonusPercent: toNumber(item.promo_bonus_percent),
-            discountPercent: toNumber(
-              item.promo_discount_percent || item.promo_bonus_percent,
-            ),
-            platform: item.promo_platform || "Facebook",
-            serviceId: item.promo_service_id || "",
-          };
+    const fallbackConfig: PromoConfig = itemConfig && Object.keys(itemConfig).length > 0
+      ? itemConfig
+      : {
+          minAmount: toNumber(item.promo_min_amount),
+          bonusPercent: toNumber(item.promo_bonus_percent),
+          discountPercent: toNumber(item.promo_discount_percent || item.promo_bonus_percent),
+          platform: item.promo_platform || "Facebook",
+          serviceId: item.promo_service_id || "",
+        };
 
     setEditingAnnouncement(item);
     setTitle(item.title || "");
@@ -656,61 +697,38 @@ export default function AdminAnnouncementsPage() {
   }
 
   async function handleImageUpload(file: File | null) {
-    if (!file) {
-      setMessage("No image selected.");
-      return;
-    }
+    if (!file) return;
 
     if (!file.type.startsWith("image/")) {
       setMessage("Please upload a valid image file.");
       return;
     }
 
-    const maxSize = 8 * 1024 * 1024;
-
-    if (file.size > maxSize) {
-      setMessage("Image is too large. Please upload an image below 8MB.");
-      return;
-    }
-
     setUploadingImage(true);
     setMessage("");
 
-    try {
-      const fileExt = file.name.split(".").pop()?.toLowerCase() || "png";
-      const filePath = `announcements/${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
+    const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "-");
+    const filePath = `${Date.now()}-${safeName}`;
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("announcement-images")
-        .upload(filePath, file, {
-          cacheControl: "3600",
-          upsert: false,
-          contentType: file.type,
-        });
+    const { error } = await supabase.storage
+      .from("announcement-images")
+      .upload(filePath, file, {
+        cacheControl: "3600",
+        upsert: true,
+      });
 
-      if (uploadError) {
-        setMessage(`Image upload failed: ${uploadError.message}`);
-        setUploadingImage(false);
-        return;
-      }
-
-      const { data: publicUrlData } = supabase.storage
-        .from("announcement-images")
-        .getPublicUrl(uploadData.path);
-
-      if (!publicUrlData?.publicUrl) {
-        setMessage("Image uploaded, but public URL was not generated.");
-        setUploadingImage(false);
-        return;
-      }
-
-      setImageUrl(publicUrlData.publicUrl);
-      setMessage("Image uploaded successfully.");
-    } catch (error: any) {
-      setMessage(`Image upload failed: ${error?.message || "Unknown error"}`);
-    } finally {
+    if (error) {
+      setMessage(error.message);
       setUploadingImage(false);
+      return;
     }
+
+    const { data } = supabase.storage
+      .from("announcement-images")
+      .getPublicUrl(filePath);
+
+    setImageUrl(data.publicUrl);
+    setUploadingImage(false);
   }
 
   function validatePromoSettings() {
@@ -721,7 +739,7 @@ export default function AdminAnnouncementsPage() {
       return false;
     }
 
-    if (promoType === "add_funds_bonus") {
+    if (promoType === "add_funds_bonus" || promoType === "first_add_funds_bonus") {
       if (toNumber(promoMinAmount) <= 0) {
         setMessage("Add Funds Bonus needs a minimum amount.");
         return false;
@@ -737,9 +755,10 @@ export default function AdminAnnouncementsPage() {
       [
         "platform_discount",
         "service_discount",
+        "category_discount",
         "bulk_quantity_discount",
         "minimum_spend_discount",
-        "new_user_promo",
+        "new_user_first_order_discount",
         "reseller_only_promo",
         "promo_code",
       ].includes(promoType)
@@ -752,6 +771,11 @@ export default function AdminAnnouncementsPage() {
 
     if (promoType === "service_discount" && !promoServiceId.trim()) {
       setMessage("Specific Service Discount needs a service ID.");
+      return false;
+    }
+
+    if (promoType === "category_discount" && !promoCategory.trim()) {
+      setMessage("Category Discount needs a category name.");
       return false;
     }
 
@@ -789,10 +813,10 @@ export default function AdminAnnouncementsPage() {
       promoBonusPercent,
       promoDiscountPercent,
       promoPlatform,
+      promoCategory,
       promoServiceId,
       promoMinQuantity,
       promoMinSpend,
-      promoTarget,
       promoRequiredLevel,
       promoCode,
       promoUsageLimit,
@@ -823,10 +847,10 @@ export default function AdminAnnouncementsPage() {
           promoBonusPercent,
           promoDiscountPercent,
           promoPlatform,
+          promoCategory,
           promoServiceId,
           promoMinQuantity,
           promoMinSpend,
-          promoTarget,
           promoRequiredLevel,
           promoCode,
           promoUsageLimit,
@@ -844,11 +868,13 @@ export default function AdminAnnouncementsPage() {
       promo_type: promoEnabled ? promoType : null,
       promo_config: finalPromoConfig,
       promo_min_amount:
-        promoEnabled && promoType === "add_funds_bonus"
+        promoEnabled &&
+        (promoType === "add_funds_bonus" || promoType === "first_add_funds_bonus")
           ? toNumber(finalPromoConfig.minAmount)
           : 0,
       promo_bonus_percent:
-        promoEnabled && promoType === "add_funds_bonus"
+        promoEnabled &&
+        (promoType === "add_funds_bonus" || promoType === "first_add_funds_bonus")
           ? toNumber(finalPromoConfig.bonusPercent)
           : 0,
       promo_discount_percent:
@@ -909,9 +935,11 @@ export default function AdminAnnouncementsPage() {
 
   const filteredAnnouncements = useMemo(() => {
     return announcements.filter((item) => {
-      const matchesTab = activeTab === "all" ? true : item.status === activeTab;
+      const matchesTab =
+        activeTab === "all" ? true : item.status === activeTab;
 
-      const matchesType = typeFilter === "all" ? true : item.type === typeFilter;
+      const matchesType =
+        typeFilter === "all" ? true : item.type === typeFilter;
 
       const keyword = search.toLowerCase();
 
@@ -925,6 +953,10 @@ export default function AdminAnnouncementsPage() {
 
   const publishedCount = announcements.filter(
     (item) => item.status === "published",
+  ).length;
+
+  const hiddenCount = announcements.filter(
+    (item) => item.status === "hidden",
   ).length;
 
   const popupCount = announcements.filter((item) => item.show_popup).length;
@@ -1291,12 +1323,6 @@ export default function AdminAnnouncementsPage() {
                         <p className="mt-1 text-sm font-semibold text-slate-500">
                           Upload image for popup modal.
                         </p>
-
-                        {imageUrl && (
-                          <p className="mt-2 text-xs font-black text-green-600">
-                            Image uploaded successfully.
-                          </p>
-                        )}
                       </div>
 
                       <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-black text-white hover:bg-slate-800">
@@ -1521,17 +1547,23 @@ export default function AdminAnnouncementsPage() {
                     >
                       <option value="">No Promo</option>
                       <option value="add_funds_bonus">Add Funds Bonus</option>
+                      <option value="first_add_funds_bonus">
+                        First Add Funds Bonus
+                      </option>
                       <option value="platform_discount">Platform Discount</option>
                       <option value="service_discount">
                         Specific Service Discount
                       </option>
+                      <option value="category_discount">Category Discount</option>
                       <option value="bulk_quantity_discount">
                         Bulk Quantity Discount
                       </option>
                       <option value="minimum_spend_discount">
                         Minimum Spend Discount
                       </option>
-                      <option value="new_user_promo">New User Promo</option>
+                      <option value="new_user_first_order_discount">
+                        New User First Order Discount
+                      </option>
                       <option value="reseller_only_promo">Reseller-Only Promo</option>
                       <option value="promo_code">Promo Code</option>
                     </select>
@@ -1561,11 +1593,35 @@ export default function AdminAnnouncementsPage() {
                     </div>
                   )}
 
+                  {promoEnabled && promoType === "first_add_funds_bonus" && (
+                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                      <h4 className="font-black text-slate-950">
+                        First Add Funds Bonus
+                      </h4>
+                      <p className="mt-1 text-sm font-semibold text-slate-600">
+                        Example: user&apos;s first Add Funds is ₱500, gets +10%, wallet credit becomes ₱550.
+                      </p>
+
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        <InputBox
+                          label="Minimum First Add Funds Amount"
+                          value={promoMinAmount}
+                          onChange={setPromoMinAmount}
+                          placeholder="500"
+                        />
+                        <InputBox
+                          label="Bonus Percent"
+                          value={promoBonusPercent}
+                          onChange={setPromoBonusPercent}
+                          placeholder="10"
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   {promoEnabled && promoType === "platform_discount" && (
                     <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
-                      <h4 className="font-black text-slate-950">
-                        Platform Discount
-                      </h4>
+                      <h4 className="font-black text-slate-950">Platform Discount</h4>
                       <p className="mt-1 text-sm font-semibold text-slate-600">
                         Example: 10% off on all Facebook services.
                       </p>
@@ -1619,6 +1675,33 @@ export default function AdminAnnouncementsPage() {
                           value={promoDiscountPercent}
                           onChange={setPromoDiscountPercent}
                           placeholder="5"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {promoEnabled && promoType === "category_discount" && (
+                    <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
+                      <h4 className="font-black text-slate-950">
+                        Category Discount
+                      </h4>
+                      <p className="mt-1 text-sm font-semibold text-slate-600">
+                        Example: 10% off all TikTok Followers category services.
+                      </p>
+
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        <InputBox
+                          label="Category Name"
+                          value={promoCategory}
+                          onChange={setPromoCategory}
+                          placeholder="TikTok Followers"
+                          type="text"
+                        />
+                        <InputBox
+                          label="Discount Percent"
+                          value={promoDiscountPercent}
+                          onChange={setPromoDiscountPercent}
+                          placeholder="10"
                         />
                       </div>
                     </div>
@@ -1693,40 +1776,26 @@ export default function AdminAnnouncementsPage() {
                     </div>
                   )}
 
-                  {promoEnabled && promoType === "new_user_promo" && (
-                    <div className="rounded-2xl border border-cyan-100 bg-cyan-50 p-4">
-                      <h4 className="font-black text-slate-950">New User Promo</h4>
-                      <p className="mt-1 text-sm font-semibold text-slate-600">
-                        Example: first order gets 10% off.
-                      </p>
+                  {promoEnabled &&
+                    promoType === "new_user_first_order_discount" && (
+                      <div className="rounded-2xl border border-cyan-100 bg-cyan-50 p-4">
+                        <h4 className="font-black text-slate-950">
+                          New User First Order Discount
+                        </h4>
+                        <p className="mt-1 text-sm font-semibold text-slate-600">
+                          Example: new users get 10% discount on their first order only.
+                        </p>
 
-                      <div className="mt-4 grid gap-4 md:grid-cols-2">
-                        <div>
-                          <label className="mb-2 block text-sm font-black text-slate-700">
-                            Target
-                          </label>
-                          <select
-                            value={promoTarget}
-                            onChange={(e) =>
-                              setPromoTarget(
-                                e.target.value as "first_order" | "first_add_funds",
-                              )
-                            }
-                            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none"
-                          >
-                            <option value="first_order">First Order</option>
-                            <option value="first_add_funds">First Add Funds</option>
-                          </select>
+                        <div className="mt-4 grid gap-4 md:grid-cols-2">
+                          <InputBox
+                            label="Discount Percent"
+                            value={promoDiscountPercent}
+                            onChange={setPromoDiscountPercent}
+                            placeholder="10"
+                          />
                         </div>
-                        <InputBox
-                          label="Discount / Bonus Percent"
-                          value={promoDiscountPercent}
-                          onChange={setPromoDiscountPercent}
-                          placeholder="10"
-                        />
                       </div>
-                    </div>
-                  )}
+                    )}
 
                   {promoEnabled && promoType === "reseller_only_promo" && (
                     <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
@@ -1809,10 +1878,10 @@ export default function AdminAnnouncementsPage() {
                           promoBonusPercent,
                           promoDiscountPercent,
                           promoPlatform,
+                          promoCategory,
                           promoServiceId,
                           promoMinQuantity,
                           promoMinSpend,
-                          promoTarget,
                           promoRequiredLevel,
                           promoCode,
                           promoUsageLimit,
