@@ -6,7 +6,6 @@ import AdminLayout from "@/components/AdminLayout";
 import { supabase } from "@/lib/supabase";
 import {
   CalendarDays,
-  EyeOff,
   Gift,
   ImageIcon,
   Info,
@@ -24,6 +23,31 @@ import {
   X,
 } from "lucide-react";
 
+type PromoType =
+  | ""
+  | "add_funds_bonus"
+  | "platform_discount"
+  | "service_discount"
+  | "bulk_quantity_discount"
+  | "minimum_spend_discount"
+  | "new_user_promo"
+  | "reseller_only_promo"
+  | "promo_code";
+
+type PromoConfig = {
+  minAmount?: number;
+  bonusPercent?: number;
+  discountPercent?: number;
+  platform?: string;
+  serviceId?: string;
+  minQuantity?: number;
+  minSpend?: number;
+  target?: "first_order" | "first_add_funds";
+  requiredLevel?: string;
+  code?: string;
+  usageLimit?: number;
+};
+
 type Announcement = {
   id: string;
   title: string;
@@ -34,9 +58,13 @@ type Announcement = {
   image_url?: string | null;
   show_popup?: boolean | null;
   promo_enabled?: boolean | null;
-  promo_type?: string | null;
+  promo_type?: PromoType | string | null;
+  promo_config?: PromoConfig | null;
   promo_min_amount?: number | string | null;
   promo_bonus_percent?: number | string | null;
+  promo_discount_percent?: number | string | null;
+  promo_platform?: string | null;
+  promo_service_id?: string | null;
   starts_at?: string | null;
   ends_at?: string | null;
 };
@@ -48,12 +76,37 @@ type PromoTemplate = {
   type: string;
   show_popup: boolean;
   promo_enabled: boolean;
-  promo_type: string;
-  promo_min_amount: string;
-  promo_bonus_percent: string;
+  promo_type: PromoType;
+  promo_config: PromoConfig;
 };
 
 const typeOptions = ["update", "maintenance", "feature", "promotion", "info"];
+
+const platformOptions = [
+  "Facebook",
+  "TikTok",
+  "Instagram",
+  "YouTube",
+  "Roblox",
+  "Telegram",
+  "Spotify",
+  "Twitter",
+  "Twitch",
+  "Discord",
+  "Google",
+  "Website",
+  "Reviews",
+];
+
+const resellerLevels = [
+  "New Reseller",
+  "Power Reseller",
+  "Pro Reseller",
+  "Master Reseller",
+  "Premium Partner",
+  "Elite Partner",
+  "Ascend Partner",
+];
 
 const promoTemplates: PromoTemplate[] = [
   {
@@ -65,8 +118,10 @@ const promoTemplates: PromoTemplate[] = [
     show_popup: true,
     promo_enabled: true,
     promo_type: "add_funds_bonus",
-    promo_min_amount: "500",
-    promo_bonus_percent: "10",
+    promo_config: {
+      minAmount: 500,
+      bonusPercent: 10,
+    },
   },
   {
     label: "+5% bonus on every ₱1,000 Add Funds",
@@ -77,20 +132,110 @@ const promoTemplates: PromoTemplate[] = [
     show_popup: true,
     promo_enabled: true,
     promo_type: "add_funds_bonus",
-    promo_min_amount: "1000",
-    promo_bonus_percent: "5",
+    promo_config: {
+      minAmount: 1000,
+      bonusPercent: 5,
+    },
   },
   {
-    label: "10% Discount to all Facebook Services",
+    label: "10% off all Facebook Services",
     title: "Facebook Services Discount",
     description:
-      "Limited promo: Enjoy 10% discount on selected Facebook services while the promo is active.",
+      "Limited promo: Enjoy 10% discount on all Facebook services while the promo is active.",
+    type: "promotion",
+    show_popup: true,
+    promo_enabled: true,
+    promo_type: "platform_discount",
+    promo_config: {
+      platform: "Facebook",
+      discountPercent: 10,
+    },
+  },
+  {
+    label: "5% off Service ID 32",
+    title: "Specific Service Discount",
+    description:
+      "Limited promo: Enjoy 5% discount on selected service ID 32 while the promo is active.",
     type: "promotion",
     show_popup: true,
     promo_enabled: true,
     promo_type: "service_discount",
-    promo_min_amount: "0",
-    promo_bonus_percent: "10",
+    promo_config: {
+      serviceId: "32",
+      discountPercent: 5,
+    },
+  },
+  {
+    label: "5% off 10,000+ quantity orders",
+    title: "Bulk Quantity Discount",
+    description:
+      "Order 10,000 quantity or more and get 5% discount automatically while this promo is active.",
+    type: "promotion",
+    show_popup: true,
+    promo_enabled: true,
+    promo_type: "bulk_quantity_discount",
+    promo_config: {
+      minQuantity: 10000,
+      discountPercent: 5,
+      platform: "all",
+    },
+  },
+  {
+    label: "Spend ₱500 and get 5% off",
+    title: "Minimum Spend Discount",
+    description:
+      "Spend at least ₱500 in one order and get 5% discount while this promo is active.",
+    type: "promotion",
+    show_popup: true,
+    promo_enabled: true,
+    promo_type: "minimum_spend_discount",
+    promo_config: {
+      minSpend: 500,
+      discountPercent: 5,
+    },
+  },
+  {
+    label: "New user first order gets 10% off",
+    title: "New User First Order Promo",
+    description:
+      "New users can get 10% discount on their first order while this promo is active.",
+    type: "promotion",
+    show_popup: true,
+    promo_enabled: true,
+    promo_type: "new_user_promo",
+    promo_config: {
+      target: "first_order",
+      discountPercent: 10,
+    },
+  },
+  {
+    label: "Power Resellers get 3% off",
+    title: "Reseller Exclusive Discount",
+    description:
+      "Power Reseller and qualified reseller users can get 3% discount while this promo is active.",
+    type: "promotion",
+    show_popup: true,
+    promo_enabled: true,
+    promo_type: "reseller_only_promo",
+    promo_config: {
+      requiredLevel: "Power Reseller",
+      discountPercent: 3,
+    },
+  },
+  {
+    label: "Promo code ASCEND10 for 10% off",
+    title: "Promo Code Discount",
+    description:
+      "Use promo code ASCEND10 to get 10% discount while the promo is active.",
+    type: "promotion",
+    show_popup: true,
+    promo_enabled: true,
+    promo_type: "promo_code",
+    promo_config: {
+      code: "ASCEND10",
+      discountPercent: 10,
+      usageLimit: 100,
+    },
   },
   {
     label: "Weekend Promo Announcement Only",
@@ -101,13 +246,19 @@ const promoTemplates: PromoTemplate[] = [
     show_popup: true,
     promo_enabled: false,
     promo_type: "",
-    promo_min_amount: "0",
-    promo_bonus_percent: "0",
+    promo_config: {},
   },
 ];
 
 function formatType(type: string) {
   return type.charAt(0).toUpperCase() + type.slice(1);
+}
+
+function formatMoney(value: number | string | null | undefined) {
+  return `₱${Number(value || 0).toLocaleString("en-PH", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 }
 
 function formatDateTime(value?: string | null) {
@@ -143,6 +294,16 @@ function dateTimeLocalToIso(value: string) {
   if (Number.isNaN(date.getTime())) return null;
 
   return date.toISOString();
+}
+
+function toNumber(value: unknown) {
+  const number = Number(value || 0);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function normalizeConfig(config: unknown): PromoConfig {
+  if (!config || typeof config !== "object") return {};
+  return config as PromoConfig;
 }
 
 function getTypeConfig(type: string) {
@@ -185,9 +346,156 @@ function getTypeConfig(type: string) {
   };
 }
 
+function getPromoSummary(enabled: boolean, promoType: PromoType | string, config: PromoConfig) {
+  if (!enabled || !promoType) return "No promo applied";
+
+  if (promoType === "add_funds_bonus") {
+    return `+${toNumber(config.bonusPercent)}% bonus on every ${formatMoney(
+      config.minAmount || 0,
+    )} Add Funds`;
+  }
+
+  if (promoType === "platform_discount") {
+    return `${toNumber(config.discountPercent)}% off all ${
+      config.platform || "selected"
+    } services`;
+  }
+
+  if (promoType === "service_discount") {
+    return `${toNumber(config.discountPercent)}% off Service ID ${
+      config.serviceId || "—"
+    }`;
+  }
+
+  if (promoType === "bulk_quantity_discount") {
+    const platform =
+      config.platform && config.platform !== "all"
+        ? ` on ${config.platform} services`
+        : "";
+    return `${toNumber(config.discountPercent)}% off ${toNumber(
+      config.minQuantity,
+    ).toLocaleString("en-PH")}+ quantity orders${platform}`;
+  }
+
+  if (promoType === "minimum_spend_discount") {
+    return `${toNumber(config.discountPercent)}% off orders worth at least ${formatMoney(
+      config.minSpend || 0,
+    )}`;
+  }
+
+  if (promoType === "new_user_promo") {
+    return `${toNumber(config.discountPercent)}% off ${
+      config.target === "first_add_funds" ? "first Add Funds" : "first order"
+    }`;
+  }
+
+  if (promoType === "reseller_only_promo") {
+    return `${toNumber(config.discountPercent)}% off for ${
+      config.requiredLevel || "selected reseller level"
+    }`;
+  }
+
+  if (promoType === "promo_code") {
+    return `Code ${String(config.code || "PROMO").toUpperCase()} gives ${toNumber(
+      config.discountPercent,
+    )}% off`;
+  }
+
+  return "Promo applied";
+}
+
+function buildPromoConfig({
+  promoType,
+  promoMinAmount,
+  promoBonusPercent,
+  promoDiscountPercent,
+  promoPlatform,
+  promoServiceId,
+  promoMinQuantity,
+  promoMinSpend,
+  promoTarget,
+  promoRequiredLevel,
+  promoCode,
+  promoUsageLimit,
+}: {
+  promoType: PromoType;
+  promoMinAmount: string;
+  promoBonusPercent: string;
+  promoDiscountPercent: string;
+  promoPlatform: string;
+  promoServiceId: string;
+  promoMinQuantity: string;
+  promoMinSpend: string;
+  promoTarget: "first_order" | "first_add_funds";
+  promoRequiredLevel: string;
+  promoCode: string;
+  promoUsageLimit: string;
+}): PromoConfig {
+  if (promoType === "add_funds_bonus") {
+    return {
+      minAmount: toNumber(promoMinAmount),
+      bonusPercent: toNumber(promoBonusPercent),
+    };
+  }
+
+  if (promoType === "platform_discount") {
+    return {
+      platform: promoPlatform || "Facebook",
+      discountPercent: toNumber(promoDiscountPercent),
+    };
+  }
+
+  if (promoType === "service_discount") {
+    return {
+      serviceId: promoServiceId.trim(),
+      discountPercent: toNumber(promoDiscountPercent),
+    };
+  }
+
+  if (promoType === "bulk_quantity_discount") {
+    return {
+      minQuantity: toNumber(promoMinQuantity),
+      discountPercent: toNumber(promoDiscountPercent),
+      platform: promoPlatform || "all",
+    };
+  }
+
+  if (promoType === "minimum_spend_discount") {
+    return {
+      minSpend: toNumber(promoMinSpend),
+      discountPercent: toNumber(promoDiscountPercent),
+    };
+  }
+
+  if (promoType === "new_user_promo") {
+    return {
+      target: promoTarget,
+      discountPercent: toNumber(promoDiscountPercent),
+    };
+  }
+
+  if (promoType === "reseller_only_promo") {
+    return {
+      requiredLevel: promoRequiredLevel || "Power Reseller",
+      discountPercent: toNumber(promoDiscountPercent),
+    };
+  }
+
+  if (promoType === "promo_code") {
+    return {
+      code: promoCode.trim().toUpperCase(),
+      discountPercent: toNumber(promoDiscountPercent),
+      usageLimit: toNumber(promoUsageLimit),
+    };
+  }
+
+  return {};
+}
+
 export default function AdminAnnouncementsPage() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [open, setOpen] = useState(false);
+  const [promoSettingsOpen, setPromoSettingsOpen] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] =
     useState<Announcement | null>(null);
 
@@ -205,9 +513,23 @@ export default function AdminAnnouncementsPage() {
   const [uploadingImage, setUploadingImage] = useState(false);
 
   const [promoEnabled, setPromoEnabled] = useState(false);
-  const [promoType, setPromoType] = useState("");
+  const [promoType, setPromoType] = useState<PromoType>("");
+  const [promoConfig, setPromoConfig] = useState<PromoConfig>({});
+
   const [promoMinAmount, setPromoMinAmount] = useState("0");
   const [promoBonusPercent, setPromoBonusPercent] = useState("0");
+  const [promoDiscountPercent, setPromoDiscountPercent] = useState("0");
+  const [promoPlatform, setPromoPlatform] = useState("Facebook");
+  const [promoServiceId, setPromoServiceId] = useState("");
+  const [promoMinQuantity, setPromoMinQuantity] = useState("10000");
+  const [promoMinSpend, setPromoMinSpend] = useState("500");
+  const [promoTarget, setPromoTarget] = useState<"first_order" | "first_add_funds">(
+    "first_order",
+  );
+  const [promoRequiredLevel, setPromoRequiredLevel] = useState("Power Reseller");
+  const [promoCode, setPromoCode] = useState("");
+  const [promoUsageLimit, setPromoUsageLimit] = useState("0");
+
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
 
@@ -231,6 +553,42 @@ export default function AdminAnnouncementsPage() {
     loadAnnouncements();
   }, []);
 
+  function setPromoStateFromConfig(nextType: PromoType, nextConfig: PromoConfig) {
+    setPromoType(nextType);
+    setPromoConfig(nextConfig);
+
+    setPromoMinAmount(String(nextConfig.minAmount ?? "0"));
+    setPromoBonusPercent(String(nextConfig.bonusPercent ?? "0"));
+    setPromoDiscountPercent(String(nextConfig.discountPercent ?? "0"));
+    setPromoPlatform(String(nextConfig.platform || "Facebook"));
+    setPromoServiceId(String(nextConfig.serviceId || ""));
+    setPromoMinQuantity(String(nextConfig.minQuantity ?? "10000"));
+    setPromoMinSpend(String(nextConfig.minSpend ?? "500"));
+    setPromoTarget(
+      nextConfig.target === "first_add_funds" ? "first_add_funds" : "first_order",
+    );
+    setPromoRequiredLevel(String(nextConfig.requiredLevel || "Power Reseller"));
+    setPromoCode(String(nextConfig.code || ""));
+    setPromoUsageLimit(String(nextConfig.usageLimit ?? "0"));
+  }
+
+  function resetPromoFields() {
+    setPromoEnabled(false);
+    setPromoType("");
+    setPromoConfig({});
+    setPromoMinAmount("0");
+    setPromoBonusPercent("0");
+    setPromoDiscountPercent("0");
+    setPromoPlatform("Facebook");
+    setPromoServiceId("");
+    setPromoMinQuantity("10000");
+    setPromoMinSpend("500");
+    setPromoTarget("first_order");
+    setPromoRequiredLevel("Power Reseller");
+    setPromoCode("");
+    setPromoUsageLimit("0");
+  }
+
   function resetForm() {
     setTitle("");
     setDescription("");
@@ -238,10 +596,7 @@ export default function AdminAnnouncementsPage() {
     setStatus("published");
     setImageUrl("");
     setShowPopup(false);
-    setPromoEnabled(false);
-    setPromoType("");
-    setPromoMinAmount("0");
-    setPromoBonusPercent("0");
+    resetPromoFields();
     setStartsAt("");
     setEndsAt("");
     setEditingAnnouncement(null);
@@ -254,6 +609,17 @@ export default function AdminAnnouncementsPage() {
   }
 
   function openEditModal(item: Announcement) {
+    const itemConfig = normalizeConfig(item.promo_config);
+    const fallbackConfig: PromoConfig = itemConfig && Object.keys(itemConfig).length > 0
+      ? itemConfig
+      : {
+          minAmount: toNumber(item.promo_min_amount),
+          bonusPercent: toNumber(item.promo_bonus_percent),
+          discountPercent: toNumber(item.promo_discount_percent || item.promo_bonus_percent),
+          platform: item.promo_platform || "Facebook",
+          serviceId: item.promo_service_id || "",
+        };
+
     setEditingAnnouncement(item);
     setTitle(item.title || "");
     setDescription(item.description || "");
@@ -262,9 +628,7 @@ export default function AdminAnnouncementsPage() {
     setImageUrl(item.image_url || "");
     setShowPopup(Boolean(item.show_popup));
     setPromoEnabled(Boolean(item.promo_enabled));
-    setPromoType(item.promo_type || "");
-    setPromoMinAmount(String(item.promo_min_amount ?? "0"));
-    setPromoBonusPercent(String(item.promo_bonus_percent ?? "0"));
+    setPromoStateFromConfig((item.promo_type || "") as PromoType, fallbackConfig);
     setStartsAt(toDateTimeLocal(item.starts_at));
     setEndsAt(toDateTimeLocal(item.ends_at));
     setMessage("");
@@ -281,9 +645,7 @@ export default function AdminAnnouncementsPage() {
     setType(template.type);
     setShowPopup(template.show_popup);
     setPromoEnabled(template.promo_enabled);
-    setPromoType(template.promo_type);
-    setPromoMinAmount(template.promo_min_amount);
-    setPromoBonusPercent(template.promo_bonus_percent);
+    setPromoStateFromConfig(template.promo_type, template.promo_config);
   }
 
   async function handleImageUpload(file: File | null) {
@@ -321,6 +683,96 @@ export default function AdminAnnouncementsPage() {
     setUploadingImage(false);
   }
 
+  function validatePromoSettings() {
+    if (!promoEnabled) return true;
+
+    if (!promoType) {
+      setMessage("Please select a promo type.");
+      return false;
+    }
+
+    if (promoType === "add_funds_bonus") {
+      if (toNumber(promoMinAmount) <= 0) {
+        setMessage("Add Funds Bonus needs a minimum amount.");
+        return false;
+      }
+
+      if (toNumber(promoBonusPercent) <= 0) {
+        setMessage("Add Funds Bonus needs a bonus percent.");
+        return false;
+      }
+    }
+
+    if (
+      [
+        "platform_discount",
+        "service_discount",
+        "bulk_quantity_discount",
+        "minimum_spend_discount",
+        "new_user_promo",
+        "reseller_only_promo",
+        "promo_code",
+      ].includes(promoType)
+    ) {
+      if (toNumber(promoDiscountPercent) <= 0) {
+        setMessage("This promo needs a discount percent.");
+        return false;
+      }
+    }
+
+    if (promoType === "service_discount" && !promoServiceId.trim()) {
+      setMessage("Specific Service Discount needs a service ID.");
+      return false;
+    }
+
+    if (promoType === "bulk_quantity_discount" && toNumber(promoMinQuantity) <= 0) {
+      setMessage("Bulk Quantity Discount needs a minimum quantity.");
+      return false;
+    }
+
+    if (promoType === "minimum_spend_discount" && toNumber(promoMinSpend) <= 0) {
+      setMessage("Minimum Spend Discount needs a minimum spend amount.");
+      return false;
+    }
+
+    if (promoType === "promo_code" && !promoCode.trim()) {
+      setMessage("Promo Code discount needs a promo code.");
+      return false;
+    }
+
+    return true;
+  }
+
+  function confirmPromoSettings() {
+    if (!promoEnabled) {
+      resetPromoFields();
+      setPromoSettingsOpen(false);
+      setMessage("");
+      return;
+    }
+
+    if (!validatePromoSettings()) return;
+
+    const config = buildPromoConfig({
+      promoType,
+      promoMinAmount,
+      promoBonusPercent,
+      promoDiscountPercent,
+      promoPlatform,
+      promoServiceId,
+      promoMinQuantity,
+      promoMinSpend,
+      promoTarget,
+      promoRequiredLevel,
+      promoCode,
+      promoUsageLimit,
+    });
+
+    setPromoConfig(config);
+    setPromoSettingsOpen(false);
+    setMessage("");
+  }
+
   async function handleSave() {
     if (!title.trim()) {
       setMessage("Announcement title is required.");
@@ -332,10 +784,24 @@ export default function AdminAnnouncementsPage() {
       return;
     }
 
-    if (promoEnabled && !promoType) {
-      setMessage("Please select a promo type.");
-      return;
-    }
+    if (!validatePromoSettings()) return;
+
+    const finalPromoConfig = promoEnabled
+      ? buildPromoConfig({
+          promoType,
+          promoMinAmount,
+          promoBonusPercent,
+          promoDiscountPercent,
+          promoPlatform,
+          promoServiceId,
+          promoMinQuantity,
+          promoMinSpend,
+          promoTarget,
+          promoRequiredLevel,
+          promoCode,
+          promoUsageLimit,
+        })
+      : {};
 
     const payload = {
       title: title.trim(),
@@ -346,8 +812,27 @@ export default function AdminAnnouncementsPage() {
       show_popup: showPopup,
       promo_enabled: promoEnabled,
       promo_type: promoEnabled ? promoType : null,
-      promo_min_amount: promoEnabled ? Number(promoMinAmount || 0) : 0,
-      promo_bonus_percent: promoEnabled ? Number(promoBonusPercent || 0) : 0,
+      promo_config: finalPromoConfig,
+      promo_min_amount:
+        promoEnabled && promoType === "add_funds_bonus"
+          ? toNumber(finalPromoConfig.minAmount)
+          : 0,
+      promo_bonus_percent:
+        promoEnabled && promoType === "add_funds_bonus"
+          ? toNumber(finalPromoConfig.bonusPercent)
+          : 0,
+      promo_discount_percent:
+        promoEnabled && "discountPercent" in finalPromoConfig
+          ? toNumber(finalPromoConfig.discountPercent)
+          : 0,
+      promo_platform:
+        promoEnabled && "platform" in finalPromoConfig
+          ? String(finalPromoConfig.platform || "")
+          : null,
+      promo_service_id:
+        promoEnabled && "serviceId" in finalPromoConfig
+          ? String(finalPromoConfig.serviceId || "")
+          : null,
       starts_at: dateTimeLocalToIso(startsAt),
       ends_at: dateTimeLocalToIso(endsAt),
     };
@@ -389,6 +874,8 @@ export default function AdminAnnouncementsPage() {
 
     loadAnnouncements();
   }
+
+  const promoSummary = getPromoSummary(promoEnabled, promoType, promoConfig);
 
   const filteredAnnouncements = useMemo(() => {
     return announcements.filter((item) => {
@@ -560,6 +1047,7 @@ export default function AdminAnnouncementsPage() {
                     filteredAnnouncements.map((item) => {
                       const config = getTypeConfig(item.type);
                       const Icon = config.icon;
+                      const itemPromoConfig = normalizeConfig(item.promo_config);
 
                       return (
                         <tr key={item.id} className="border-t border-slate-100">
@@ -612,16 +1100,18 @@ export default function AdminAnnouncementsPage() {
 
                           <td className="p-5">
                             <span
-                              className={`rounded-lg px-3 py-1 text-xs font-black ${
+                              className={`inline-flex max-w-[220px] rounded-lg px-3 py-1 text-xs font-black ${
                                 item.promo_enabled
                                   ? "bg-green-50 text-green-600"
                                   : "bg-slate-100 text-slate-500"
                               }`}
                             >
                               {item.promo_enabled
-                                ? `${item.promo_bonus_percent || 0}% ${
-                                    item.promo_type || "promo"
-                                  }`
+                                ? getPromoSummary(
+                                    true,
+                                    item.promo_type || "",
+                                    itemPromoConfig,
+                                  )
                                 : "No Promo"}
                             </span>
                           </td>
@@ -856,90 +1346,36 @@ export default function AdminAnnouncementsPage() {
                   </div>
 
                   <div className="rounded-2xl border border-green-100 bg-green-50 p-4">
-                    <div className="flex items-start gap-3">
-                      <Gift size={20} className="mt-0.5 text-green-600" />
-                      <div className="min-w-0 flex-1">
-                        <h4 className="font-black text-slate-950">
-                          Promo Settings
-                        </h4>
-                        <p className="mt-1 text-sm font-semibold text-slate-600">
-                          Use this for promos like +10% on every ₱500 Add Funds.
-                        </p>
+                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                      <div className="flex items-start gap-3">
+                        <Gift size={20} className="mt-0.5 text-green-600" />
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-black text-slate-950">
+                            Promo Settings
+                          </h4>
+                          <p className="mt-1 text-sm font-semibold text-slate-600">
+                            Configure Add Funds bonus, discounts, promo codes, and reseller promos.
+                          </p>
+                        </div>
                       </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setPromoSettingsOpen(true)}
+                        className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-3 text-sm font-black text-white transition hover:bg-green-700"
+                      >
+                        <Settings size={17} />
+                        Promo Settings
+                      </button>
                     </div>
 
-                    <div className="mt-4 grid gap-4 md:grid-cols-2">
-                      <button
-                        type="button"
-                        onClick={() => setPromoEnabled(true)}
-                        className={`rounded-2xl border p-4 text-left transition ${
-                          promoEnabled
-                            ? "border-green-300 bg-white ring-4 ring-green-100"
-                            : "border-green-100 bg-white/70 hover:bg-white"
-                        }`}
-                      >
-                        <span className="font-black text-slate-900">
-                          Promo Enabled
-                        </span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPromoEnabled(false);
-                          setPromoType("");
-                          setPromoMinAmount("0");
-                          setPromoBonusPercent("0");
-                        }}
-                        className={`rounded-2xl border p-4 text-left transition ${
-                          !promoEnabled
-                            ? "border-slate-300 bg-white ring-4 ring-slate-100"
-                            : "border-green-100 bg-white/70 hover:bg-white"
-                        }`}
-                      >
-                        <span className="font-black text-slate-900">
-                          Promo Disabled
-                        </span>
-                      </button>
-
-                      <select
-                        value={promoType}
-                        onChange={(e) => setPromoType(e.target.value)}
-                        disabled={!promoEnabled}
-                        className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none disabled:opacity-50"
-                      >
-                        <option value="">Select promo type</option>
-                        <option value="add_funds_bonus">Add Funds Bonus</option>
-                        <option value="service_discount">
-                          Service Discount Later
-                        </option>
-                      </select>
-
-                      <input
-                        type="number"
-                        value={promoMinAmount}
-                        onChange={(e) => setPromoMinAmount(e.target.value)}
-                        placeholder="Minimum amount"
-                        disabled={!promoEnabled}
-                        className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none disabled:opacity-50"
-                      />
-
-                      <input
-                        type="number"
-                        value={promoBonusPercent}
-                        onChange={(e) => setPromoBonusPercent(e.target.value)}
-                        placeholder="Bonus percent"
-                        disabled={!promoEnabled}
-                        className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none disabled:opacity-50"
-                      />
-
-                      <div className="rounded-2xl border border-green-200 bg-white px-4 py-3 text-sm font-bold text-green-700">
-                        Example: ₱500 + {promoBonusPercent || 0}% = ₱
-                        {(
-                          500 +
-                          500 * (Number(promoBonusPercent || 0) / 100)
-                        ).toFixed(2)}
-                      </div>
+                    <div className="mt-4 rounded-2xl border border-green-200 bg-white px-4 py-3">
+                      <p className="text-xs font-black uppercase tracking-[0.12em] text-green-600">
+                        Final Promo Output
+                      </p>
+                      <p className="mt-1 text-sm font-black text-slate-900">
+                        {promoSummary}
+                      </p>
                     </div>
                   </div>
 
@@ -981,9 +1417,425 @@ export default function AdminAnnouncementsPage() {
               </div>
             </div>
           )}
+
+          {promoSettingsOpen && (
+            <div className="fixed inset-0 z-[120] flex items-center justify-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm">
+              <div className="my-6 w-full max-w-2xl rounded-3xl bg-white shadow-2xl">
+                <div className="flex items-center justify-between border-b border-slate-100 p-6">
+                  <div>
+                    <h3 className="text-2xl font-black text-slate-950">
+                      Promo Settings
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-500">
+                      Select a promo type. Different promo types have different settings.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => setPromoSettingsOpen(false)}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="max-h-[75vh] space-y-5 overflow-y-auto p-6">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() => setPromoEnabled(true)}
+                      className={`rounded-2xl border p-4 text-left transition ${
+                        promoEnabled
+                          ? "border-green-300 bg-green-50 ring-4 ring-green-50"
+                          : "border-slate-200 bg-white hover:bg-slate-50"
+                      }`}
+                    >
+                      <span className="font-black text-slate-900">
+                        Promo Enabled
+                      </span>
+                      <p className="mt-1 text-xs font-semibold text-slate-500">
+                        Promo will be saved with this announcement.
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={resetPromoFields}
+                      className={`rounded-2xl border p-4 text-left transition ${
+                        !promoEnabled
+                          ? "border-slate-300 bg-slate-50 ring-4 ring-slate-50"
+                          : "border-slate-200 bg-white hover:bg-slate-50"
+                      }`}
+                    >
+                      <span className="font-black text-slate-900">
+                        Promo Disabled
+                      </span>
+                      <p className="mt-1 text-xs font-semibold text-slate-500">
+                        Announcement only, no automatic promo.
+                      </p>
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-black text-slate-700">
+                      Promo Type
+                    </label>
+                    <select
+                      value={promoType}
+                      onChange={(e) => {
+                        setPromoEnabled(Boolean(e.target.value));
+                        setPromoType(e.target.value as PromoType);
+                        setPromoConfig({});
+                      }}
+                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none"
+                    >
+                      <option value="">No Promo</option>
+                      <option value="add_funds_bonus">Add Funds Bonus</option>
+                      <option value="platform_discount">Platform Discount</option>
+                      <option value="service_discount">Specific Service Discount</option>
+                      <option value="bulk_quantity_discount">Bulk Quantity Discount</option>
+                      <option value="minimum_spend_discount">Minimum Spend Discount</option>
+                      <option value="new_user_promo">New User Promo</option>
+                      <option value="reseller_only_promo">Reseller-Only Promo</option>
+                      <option value="promo_code">Promo Code</option>
+                    </select>
+                  </div>
+
+                  {promoEnabled && promoType === "add_funds_bonus" && (
+                    <div className="rounded-2xl border border-green-100 bg-green-50 p-4">
+                      <h4 className="font-black text-slate-950">Add Funds Bonus</h4>
+                      <p className="mt-1 text-sm font-semibold text-slate-600">
+                        Example: customer adds ₱500, gets +10%, wallet credit becomes ₱550.
+                      </p>
+
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        <InputBox
+                          label="Minimum Add Funds Amount"
+                          value={promoMinAmount}
+                          onChange={setPromoMinAmount}
+                          placeholder="500"
+                        />
+                        <InputBox
+                          label="Bonus Percent"
+                          value={promoBonusPercent}
+                          onChange={setPromoBonusPercent}
+                          placeholder="10"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {promoEnabled && promoType === "platform_discount" && (
+                    <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                      <h4 className="font-black text-slate-950">Platform Discount</h4>
+                      <p className="mt-1 text-sm font-semibold text-slate-600">
+                        Example: 10% off on all Facebook services.
+                      </p>
+
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        <div>
+                          <label className="mb-2 block text-sm font-black text-slate-700">
+                            Platform
+                          </label>
+                          <select
+                            value={promoPlatform}
+                            onChange={(e) => setPromoPlatform(e.target.value)}
+                            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none"
+                          >
+                            {platformOptions.map((platform) => (
+                              <option key={platform} value={platform}>
+                                {platform}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <InputBox
+                          label="Discount Percent"
+                          value={promoDiscountPercent}
+                          onChange={setPromoDiscountPercent}
+                          placeholder="10"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {promoEnabled && promoType === "service_discount" && (
+                    <div className="rounded-2xl border border-purple-100 bg-purple-50 p-4">
+                      <h4 className="font-black text-slate-950">
+                        Specific Service Discount
+                      </h4>
+                      <p className="mt-1 text-sm font-semibold text-slate-600">
+                        Example: 5% off on Service ID 32.
+                      </p>
+
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        <InputBox
+                          label="Service ID"
+                          value={promoServiceId}
+                          onChange={setPromoServiceId}
+                          placeholder="32"
+                          type="text"
+                        />
+                        <InputBox
+                          label="Discount Percent"
+                          value={promoDiscountPercent}
+                          onChange={setPromoDiscountPercent}
+                          placeholder="5"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {promoEnabled && promoType === "bulk_quantity_discount" && (
+                    <div className="rounded-2xl border border-orange-100 bg-orange-50 p-4">
+                      <h4 className="font-black text-slate-950">
+                        Bulk Quantity Discount
+                      </h4>
+                      <p className="mt-1 text-sm font-semibold text-slate-600">
+                        Example: order 10,000+ quantity and get 5% off.
+                      </p>
+
+                      <div className="mt-4 grid gap-4 md:grid-cols-3">
+                        <InputBox
+                          label="Minimum Quantity"
+                          value={promoMinQuantity}
+                          onChange={setPromoMinQuantity}
+                          placeholder="10000"
+                        />
+                        <InputBox
+                          label="Discount Percent"
+                          value={promoDiscountPercent}
+                          onChange={setPromoDiscountPercent}
+                          placeholder="5"
+                        />
+                        <div>
+                          <label className="mb-2 block text-sm font-black text-slate-700">
+                            Platform
+                          </label>
+                          <select
+                            value={promoPlatform}
+                            onChange={(e) => setPromoPlatform(e.target.value)}
+                            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none"
+                          >
+                            <option value="all">All Platforms</option>
+                            {platformOptions.map((platform) => (
+                              <option key={platform} value={platform}>
+                                {platform}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {promoEnabled && promoType === "minimum_spend_discount" && (
+                    <div className="rounded-2xl border border-pink-100 bg-pink-50 p-4">
+                      <h4 className="font-black text-slate-950">
+                        Minimum Spend Discount
+                      </h4>
+                      <p className="mt-1 text-sm font-semibold text-slate-600">
+                        Example: spend ₱500 on one order and get 5% off.
+                      </p>
+
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        <InputBox
+                          label="Minimum Order Price"
+                          value={promoMinSpend}
+                          onChange={setPromoMinSpend}
+                          placeholder="500"
+                        />
+                        <InputBox
+                          label="Discount Percent"
+                          value={promoDiscountPercent}
+                          onChange={setPromoDiscountPercent}
+                          placeholder="5"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {promoEnabled && promoType === "new_user_promo" && (
+                    <div className="rounded-2xl border border-cyan-100 bg-cyan-50 p-4">
+                      <h4 className="font-black text-slate-950">New User Promo</h4>
+                      <p className="mt-1 text-sm font-semibold text-slate-600">
+                        Example: first order gets 10% off.
+                      </p>
+
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        <div>
+                          <label className="mb-2 block text-sm font-black text-slate-700">
+                            Target
+                          </label>
+                          <select
+                            value={promoTarget}
+                            onChange={(e) =>
+                              setPromoTarget(
+                                e.target.value as "first_order" | "first_add_funds",
+                              )
+                            }
+                            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none"
+                          >
+                            <option value="first_order">First Order</option>
+                            <option value="first_add_funds">First Add Funds</option>
+                          </select>
+                        </div>
+                        <InputBox
+                          label="Discount / Bonus Percent"
+                          value={promoDiscountPercent}
+                          onChange={setPromoDiscountPercent}
+                          placeholder="10"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {promoEnabled && promoType === "reseller_only_promo" && (
+                    <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
+                      <h4 className="font-black text-slate-950">
+                        Reseller-Only Promo
+                      </h4>
+                      <p className="mt-1 text-sm font-semibold text-slate-600">
+                        Example: Power Resellers get extra 3% discount.
+                      </p>
+
+                      <div className="mt-4 grid gap-4 md:grid-cols-2">
+                        <div>
+                          <label className="mb-2 block text-sm font-black text-slate-700">
+                            Required Reseller Level
+                          </label>
+                          <select
+                            value={promoRequiredLevel}
+                            onChange={(e) => setPromoRequiredLevel(e.target.value)}
+                            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none"
+                          >
+                            {resellerLevels.map((level) => (
+                              <option key={level} value={level}>
+                                {level}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <InputBox
+                          label="Discount Percent"
+                          value={promoDiscountPercent}
+                          onChange={setPromoDiscountPercent}
+                          placeholder="3"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {promoEnabled && promoType === "promo_code" && (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <h4 className="font-black text-slate-950">Promo Code</h4>
+                      <p className="mt-1 text-sm font-semibold text-slate-600">
+                        Example: ASCEND10 gives 10% off.
+                      </p>
+
+                      <div className="mt-4 grid gap-4 md:grid-cols-3">
+                        <InputBox
+                          label="Promo Code"
+                          value={promoCode}
+                          onChange={setPromoCode}
+                          placeholder="ASCEND10"
+                          type="text"
+                        />
+                        <InputBox
+                          label="Discount Percent"
+                          value={promoDiscountPercent}
+                          onChange={setPromoDiscountPercent}
+                          placeholder="10"
+                        />
+                        <InputBox
+                          label="Usage Limit"
+                          value={promoUsageLimit}
+                          onChange={setPromoUsageLimit}
+                          placeholder="100"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="rounded-2xl border border-green-200 bg-white px-4 py-3">
+                    <p className="text-xs font-black uppercase tracking-[0.12em] text-green-600">
+                      Preview Output
+                    </p>
+                    <p className="mt-1 text-sm font-black text-slate-900">
+                      {getPromoSummary(
+                        promoEnabled,
+                        promoType,
+                        buildPromoConfig({
+                          promoType,
+                          promoMinAmount,
+                          promoBonusPercent,
+                          promoDiscountPercent,
+                          promoPlatform,
+                          promoServiceId,
+                          promoMinQuantity,
+                          promoMinSpend,
+                          promoTarget,
+                          promoRequiredLevel,
+                          promoCode,
+                          promoUsageLimit,
+                        }),
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setPromoSettingsOpen(false)}
+                      className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 hover:bg-slate-50"
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={confirmPromoSettings}
+                      className="rounded-2xl bg-green-600 px-5 py-3 text-sm font-black text-white hover:bg-green-700"
+                    >
+                      Confirm Promo Settings
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </AdminLayout>
     </AdminGuard>
+  );
+}
+
+function InputBox({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "number",
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  type?: string;
+}) {
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-black text-slate-700">
+        {label}
+      </label>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none"
+      />
+    </div>
   );
 }
 
