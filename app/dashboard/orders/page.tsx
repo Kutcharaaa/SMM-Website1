@@ -63,6 +63,40 @@ type Profile = {
   balance: number;
 };
 
+type PromoConfig = {
+  minAmount?: number;
+  bonusPercent?: number;
+  discountPercent?: number;
+  platform?: string;
+  category?: string;
+  serviceId?: string;
+  minQuantity?: number;
+  minSpend?: number;
+  requiredLevel?: string;
+  code?: string;
+  usageLimit?: number;
+};
+
+type ActivePromo = {
+  id: string;
+  title: string;
+  promo_type: string | null;
+  promo_config: PromoConfig | null;
+  promo_discount_percent?: number | string | null;
+  promo_platform?: string | null;
+  promo_service_id?: string | null;
+  starts_at?: string | null;
+  ends_at?: string | null;
+};
+
+type PromoPreview = {
+  promo: ActivePromo;
+  label: string;
+  discountPercent: number;
+  discountAmount: number;
+  finalCharge: number;
+};
+
 const networks = [
   { name: "Instagram", icon: "📸" },
   { name: "Facebook", icon: "📘" },
@@ -600,12 +634,173 @@ function OrderDetailsCard({
   );
 }
 
+
+function toNumber(value: unknown) {
+  const number = Number(value || 0);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function getPromoConfig(promo: ActivePromo): PromoConfig {
+  if (!promo.promo_config || typeof promo.promo_config !== "object") {
+    return {};
+  }
+
+  return promo.promo_config;
+}
+
+function promoIsCurrentlyActive(promo: ActivePromo) {
+  const now = Date.now();
+
+  if (promo.starts_at) {
+    const startsAt = new Date(promo.starts_at).getTime();
+    if (!Number.isNaN(startsAt) && startsAt > now) return false;
+  }
+
+  if (promo.ends_at) {
+    const endsAt = new Date(promo.ends_at).getTime();
+    if (!Number.isNaN(endsAt) && endsAt < now) return false;
+  }
+
+  return true;
+}
+
+function getPromoDiscountPercent(promo: ActivePromo) {
+  const config = getPromoConfig(promo);
+  return toNumber(config.discountPercent || promo.promo_discount_percent || 0);
+}
+
+function serviceMatchesPromoPlatform(service: Service, platform?: string | null) {
+  if (!platform || platform === "all") return true;
+
+  return (
+    normalizeServiceText(detectServicePlatform(service)) ===
+    normalizeServiceText(platform)
+  );
+}
+
+function serviceMatchesPromoCategory(service: Service, category?: string | null) {
+  if (!category) return false;
+
+  const serviceCategory = normalizeServiceText(service.category);
+  const promoCategory = normalizeServiceText(category);
+
+  return (
+    serviceCategory === promoCategory ||
+    serviceCategory.includes(promoCategory) ||
+    promoCategory.includes(serviceCategory)
+  );
+}
+
+function serviceMatchesPromoServiceId(service: Service, serviceId?: string | null) {
+  if (!serviceId) return false;
+
+  const promoServiceId = normalizeServiceText(serviceId);
+  const publicServiceId = normalizeServiceText(getPublicServiceId(service));
+  const internalServiceId = normalizeServiceText(service.id);
+  const providerServiceId = normalizeServiceText(service.provider_service_id);
+
+  return (
+    promoServiceId === publicServiceId ||
+    promoServiceId === internalServiceId ||
+    promoServiceId === providerServiceId
+  );
+}
+
+function getAutomaticPromoPreview({
+  promos,
+  service,
+  quantity,
+  originalCharge,
+  isFirstOrder,
+}: {
+  promos: ActivePromo[];
+  service: Service | null;
+  quantity: number;
+  originalCharge: number;
+  isFirstOrder: boolean;
+}): PromoPreview | null {
+  if (!service || originalCharge <= 0) return null;
+
+  const candidates: PromoPreview[] = [];
+
+  promos.forEach((promo) => {
+    if (!promoIsCurrentlyActive(promo)) return;
+
+    const promoType = String(promo.promo_type || "");
+    const config = getPromoConfig(promo);
+    const discountPercent = getPromoDiscountPercent(promo);
+
+    if (discountPercent <= 0) return;
+
+    let matched = false;
+    let label = promo.title || "Active Promo";
+
+    if (promoType === "platform_discount") {
+      matched = serviceMatchesPromoPlatform(service, config.platform || promo.promo_platform);
+      label = `${discountPercent}% OFF ${config.platform || promo.promo_platform || "selected platform"}`;
+    }
+
+    if (promoType === "service_discount") {
+      matched = serviceMatchesPromoServiceId(
+        service,
+        config.serviceId || promo.promo_service_id,
+      );
+      label = `${discountPercent}% OFF selected service`;
+    }
+
+    if (promoType === "category_discount") {
+      matched = serviceMatchesPromoCategory(service, config.category);
+      label = `${discountPercent}% OFF ${config.category || "selected category"}`;
+    }
+
+    if (promoType === "bulk_quantity_discount") {
+      const minQuantity = toNumber(config.minQuantity);
+      const platformMatches = serviceMatchesPromoPlatform(service, config.platform || "all");
+
+      matched = quantity >= minQuantity && platformMatches;
+      label = `${discountPercent}% OFF ${minQuantity.toLocaleString("en-PH")}+ quantity orders`;
+    }
+
+    if (promoType === "minimum_spend_discount") {
+      const minSpend = toNumber(config.minSpend);
+      matched = originalCharge >= minSpend;
+      label = `${discountPercent}% OFF orders worth at least ₱${minSpend.toLocaleString("en-PH")}`;
+    }
+
+    if (promoType === "new_user_first_order_discount") {
+      matched = isFirstOrder;
+      label = `${discountPercent}% OFF your first order`;
+    }
+
+    if (!matched) return;
+
+    const discountAmount = Math.max(
+      0,
+      originalCharge * (Math.min(discountPercent, 100) / 100),
+    );
+
+    candidates.push({
+      promo,
+      label,
+      discountPercent,
+      discountAmount,
+      finalCharge: Math.max(0, originalCharge - discountAmount),
+    });
+  });
+
+  if (candidates.length <= 0) return null;
+
+  return candidates.sort((a, b) => b.discountAmount - a.discountAmount)[0];
+}
+
+
 export default function OrdersPage() {
   const { showToast } = useToast();
   const { formatAmount } = useDisplayCurrency();
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [activePromos, setActivePromos] = useState<ActivePromo[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
 
   const [loading, setLoading] = useState(true);
@@ -653,7 +848,43 @@ export default function OrdersPage() {
     setLoading(false);
   }
 
+  async function loadActivePromos() {
+    const { data, error } = await supabase
+      .from("announcements")
+      .select(
+        "id,title,promo_type,promo_config,promo_discount_percent,promo_platform,promo_service_id,starts_at,ends_at",
+      )
+      .eq("status", "published")
+      .eq("promo_enabled", true)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("LOAD_PROMOS_ERROR:", error.message);
+      setActivePromos([]);
+      return;
+    }
+
+    const orderPromoTypes = [
+      "platform_discount",
+      "service_discount",
+      "category_discount",
+      "bulk_quantity_discount",
+      "minimum_spend_discount",
+      "new_user_first_order_discount",
+      "reseller_only_promo",
+      "promo_code",
+    ];
+
+    setActivePromos(
+      ((data || []) as ActivePromo[]).filter((promo) =>
+        orderPromoTypes.includes(String(promo.promo_type || "")),
+      ),
+    );
+  }
+
   async function loadOrderData() {
+    await loadActivePromos();
+
     let allServices: Service[] = [];
     let from = 0;
     const batchSize = 1000;
@@ -921,6 +1152,19 @@ export default function OrdersPage() {
     ? (Number(orderQuantity || 0) / 1000) *
       Number(selectedService.price_per_1000)
     : 0;
+
+  const activeOrderPromo = useMemo(() => {
+    return getAutomaticPromoPreview({
+      promos: activePromos,
+      service: selectedService,
+      quantity: Number(orderQuantity || 0),
+      originalCharge: estimatedCharge,
+      isFirstOrder: orders.length <= 0,
+    });
+  }, [activePromos, selectedService, orderQuantity, estimatedCharge, orders.length]);
+
+  const promoDiscountAmount = activeOrderPromo?.discountAmount || 0;
+  const finalEstimatedCharge = activeOrderPromo?.finalCharge ?? estimatedCharge;
 
   const canPlaceOrder = Boolean(
     selectedService && link && orderQuantity && Number(orderQuantity) > 0,
@@ -1892,10 +2136,54 @@ export default function OrdersPage() {
                         }
                       />
 
+                      {activeOrderPromo && (
+                        <div className="rounded-2xl border border-green-100 bg-green-50 p-4">
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-600 text-white">
+                              <Tag size={17} />
+                            </div>
+
+                            <div className="min-w-0">
+                              <p className="text-xs font-black uppercase tracking-wide text-green-600">
+                                Active Promo
+                              </p>
+                              <p className="mt-1 text-sm font-black text-slate-900">
+                                {activeOrderPromo.label}
+                              </p>
+                              <p className="mt-1 text-xs font-semibold text-green-700">
+                                Discount applied automatically at checkout.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       <SideDetail
-                        label="Estimated Charge"
+                        label={activeOrderPromo ? "Original Charge" : "Estimated Charge"}
                         value={formatAmount(estimatedCharge)}
                       />
+
+                      {activeOrderPromo && (
+                        <>
+                          <SideDetail
+                            label="Promo Discount"
+                            value={
+                              <span className="text-green-600">
+                                -{formatAmount(promoDiscountAmount)}
+                              </span>
+                            }
+                          />
+
+                          <SideDetail
+                            label="Final Charge"
+                            value={
+                              <span className="text-blue-600">
+                                {formatAmount(finalEstimatedCharge)}
+                              </span>
+                            }
+                          />
+                        </>
+                      )}
 
                       <SideDetail
                         label="Wallet Balance"
@@ -1953,10 +2241,54 @@ export default function OrdersPage() {
                           }
                         />
 
+                        {activeOrderPromo && (
+                          <div className="rounded-2xl border border-green-100 bg-green-50 p-4">
+                            <div className="flex items-start gap-3">
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-600 text-white">
+                                <Tag size={17} />
+                              </div>
+
+                              <div className="min-w-0">
+                                <p className="text-xs font-black uppercase tracking-wide text-green-600">
+                                  Active Promo
+                                </p>
+                                <p className="mt-1 text-sm font-black text-slate-900">
+                                  {activeOrderPromo.label}
+                                </p>
+                                <p className="mt-1 text-xs font-semibold text-green-700">
+                                  Discount applied automatically at checkout.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
                         <SideDetail
-                          label="Estimated Charge"
+                          label={activeOrderPromo ? "Original Charge" : "Estimated Charge"}
                           value={formatAmount(estimatedCharge)}
                         />
+
+                        {activeOrderPromo && (
+                          <>
+                            <SideDetail
+                              label="Promo Discount"
+                              value={
+                                <span className="text-green-600">
+                                  -{formatAmount(promoDiscountAmount)}
+                                </span>
+                              }
+                            />
+
+                            <SideDetail
+                              label="Final Charge"
+                              value={
+                                <span className="text-blue-600">
+                                  {formatAmount(finalEstimatedCharge)}
+                                </span>
+                              }
+                            />
+                          </>
+                        )}
 
                         <SideDetail
                           label="Wallet Balance"
@@ -1966,7 +2298,9 @@ export default function OrdersPage() {
 
                       <div className="mt-5 rounded-2xl bg-blue-50 p-4 text-sm font-semibold text-blue-700">
                         {selectedService
-                          ? "Review your order before placing it."
+                          ? activeOrderPromo
+                            ? "Promo preview is shown here. Final discount is still validated by the system when you place the order."
+                            : "Review your order before placing it."
                           : "Select a service to see details here."}
                       </div>
 
