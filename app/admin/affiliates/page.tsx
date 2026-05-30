@@ -1248,7 +1248,7 @@ export default function AdminResellerManagementPage() {
                   <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                     <p className="text-sm font-black text-slate-700">Reseller Preview</p>
                     <p className="mt-1 text-xs font-semibold text-slate-500">
-                      Current settings preview before saving.
+                      Current settings preview before saving
                     </p>
 
                     <div className="mt-5 space-y-3">
