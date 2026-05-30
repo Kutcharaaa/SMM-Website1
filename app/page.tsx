@@ -67,7 +67,7 @@ const steps = [
   },
   {
     title: "Grow Faster",
-    text: "Boost your online presence with trusted services.",
+    text: "Boost your online presence with trusted services",
     icon: TrendingUp,
   },
 ];
